@@ -1,0 +1,19 @@
+---
+description: Supabase/Postgres schema, RLS, and fitness-domain modeling for RxBetter
+globs:
+  - "**/*.sql"
+  - "**/supabase/**"
+alwaysApply: false
+---
+
+# RxBetter — Supabase / SQL
+
+When editing SQL, migrations, or `supabase/` config:
+
+- **Domain:** Training and performance for athletes/coaches—**not** healthcare. Table/column names and comments should use fitness vocabulary (athlete, coach, WOD, PR, gym, programming).
+- **Metadata translation:** Prefer normalized Postgres schemas and **SQL functions** (or views) for logic that mirrors Salesforce formulas and rollups—keep hot paths index-friendly.
+- **RLS:** Design for **gym-scoped** data (org/tenant) and **athlete-scoped** rows where only that athlete (and their coaches) may read/write. Document policy intent in comments when policies are non-obvious.
+- **Fitness math:** Heavy or reusable calculations (1RM %, scaling, leaderboard aggregates) can live in **SQL functions** or **Edge/app** layers—choose based on consistency, testability, and round-trip latency; say which you picked and why.
+- **Outputs:** Pair schema suggestions with **RLS sketches** when tables hold PII or competitive data.
+
+Canonical context: [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md).

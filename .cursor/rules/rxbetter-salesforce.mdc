@@ -1,0 +1,21 @@
+---
+description: Salesforce metadata and Apex aligned with RxBetter Supabase migration story
+globs:
+  - "**/force-app/**"
+  - "**/*.cls"
+  - "**/objects/**/*.object-meta.xml"
+  - "**/objects/**/*.field-meta.xml"
+alwaysApply: false
+---
+
+# RxBetter — Salesforce (POC → Postgres)
+
+When working under `force-app` or Salesforce metadata:
+
+- **Goal:** Treat this codebase as the **source patterns** for a **standalone** RxBetter stack (Supabase + app). Call out what should become **tables**, **enums**, **JSON columns**, or **computed views/functions** in Postgres.
+- **Key custom objects** to keep in mind: `Athlete_Performance__c`, `Programming_Line_Item__c`, `Athlete_Benchmark_Summary__c` (extend to related objects you find in metadata).
+- **Translation habits:** Map **objects → tables**, **master-detail / lookups → FKs**, **picklists → check constraints or reference tables**, **formulas → views or SQL functions**, **rollups → triggers/materialized views/window functions** as appropriate.
+- **Naming:** When suggesting Supabase names, use **snake_case** and stable prefixes (e.g. `gym_id`, `athlete_id`) for RLS joins.
+- **Deliverables:** For non-trivial metadata, note **migration order** (dependencies) and **RLS implications** on the Postgres side.
+
+Canonical context: [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md).

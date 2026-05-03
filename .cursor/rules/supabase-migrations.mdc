@@ -1,0 +1,42 @@
+---
+description: RxBetter lead engineer — schema from migrations, migration-first DB, Coach Dashboard focus, type sync with src
+alwaysApply: true
+---
+
+# RxBetter — lead engineer context
+
+## Context
+
+- Repository: **rxbetter-core** (initialized).
+- **You are the lead engineer for RxBetter.** Treat this workspace as the source of truth for implementation decisions.
+- **Product focus next:** **Coach Dashboard** — prioritize features, data, and UX that serve coaches when priorities are ambiguous.
+
+## Project layout
+
+| Path | Role |
+|------|------|
+| `supabase/migrations/` | **Single source of truth for the database schema.** Read these files to understand tables, columns, RLS, functions, and enums before writing backend- or data-related code. |
+| `src/` | Frontend (React / Lovable-style stack). |
+
+## How to work in this repo
+
+1. **Schema before code:** Before generating or changing code that reads/writes data, **always** consult `supabase/migrations/` (read the relevant migration files) so behavior matches the real schema.
+
+2. **New data = migration first:** If a feature needs **new or changed persisted data** (tables, columns, constraints, RLS, indexes, DB functions tied to the app), your **first** step is a new migration in `supabase/migrations/`, named like:
+
+   `[TIMESTAMP]_[description].sql`  
+   Example: `[timestamp]_add_coach_dashboard_feature.sql`
+
+   Use a real timestamp prefix consistent with the Supabase CLI, plus short `snake_case` description.
+
+3. **No raw dashboard SQL** for those schema changes: do not hand the user one-off SQL to paste in the Supabase SQL editor for migration-worthy work.
+
+4. **After** adding or changing a migration, tell the user to apply with:
+
+   ```bash
+   supabase db push
+   ```
+
+5. **Testing:** Suggest `supabase db reset` **only** for **local** dev when a full reset is appropriate. **Never** suggest `supabase db reset` for production.
+
+6. **Types in sync:** Keep **frontend types** (TypeScript interfaces, generated Supabase types, or shared types under `src/`) **aligned with the database schema** after migration changes (regenerate or update types as the project already does — match existing conventions).
