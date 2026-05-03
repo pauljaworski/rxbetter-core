@@ -2,10 +2,14 @@
 
 RxBetter helps coaches manage gym programming and athlete performance from one dashboard.
 
-## Repository Structure
+## Primary documentation
 
-- [`RXBETTER_SYSTEM_INSTRUCTIONS.md`](RXBETTER_SYSTEM_INSTRUCTIONS.md) canonical AI persona, guardrails, and response protocol (copied from Google Drive project)
-- `docs/` product strategy, roadmap, PRD notes, and data-model docs ([`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md), [`docs/RXBETTER_ARCHITECTURE.md`](docs/RXBETTER_ARCHITECTURE.md))
+- **[`RXBETTER_SYSTEM_INSTRUCTIONS.md`](RXBETTER_SYSTEM_INSTRUCTIONS.md)** — Persona, guardrails, and how the AI (Cursor) should operate as lead architect.
+- **[`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md)** — What each database table (and key views) is for. **`supabase/migrations/`** is the SQL source of truth for exact shape.
+
+## Repository structure
+
+- `docs/` product notes plus [`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md) (see [`docs/README.md`](docs/README.md))
 - `.cursor/rules/` Cursor rules (`rxbetter-core`, Supabase, Salesforce, migration workflow)
 - `supabase/migrations/` database schema source of truth
 - `supabase/seed.sql` demo seed data

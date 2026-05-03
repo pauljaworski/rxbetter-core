@@ -22,5 +22,3 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 
 - **benchmark_definition_display** — Human-readable benchmark labels (formula equivalent).
 - **programming_with_counts** — Rollup-style counts for programming completion.
-
-For Salesforce-centric narrative and automation flows (POC), see [RXBETTER_ARCHITECTURE.md](RXBETTER_ARCHITECTURE.md).

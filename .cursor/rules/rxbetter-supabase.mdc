@@ -16,4 +16,4 @@ When editing SQL, migrations, or `supabase/` config:
 - **Fitness math:** Heavy or reusable calculations (1RM %, scaling, leaderboard aggregates) can live in **SQL functions** or **Edge/app** layers—choose based on consistency, testability, and round-trip latency; say which you picked and why.
 - **Outputs:** Pair schema suggestions with **RLS sketches** when tables hold PII or competitive data.
 
-Canonical context: [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md).
+Canonical context: [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md). Table semantics overview: [docs/SUPABASE_DATA_MODEL.md](docs/SUPABASE_DATA_MODEL.md).

@@ -27,4 +27,6 @@ Structure as three parts when relevant:
 2. **Schema (SQL)** — Supabase tables, views, functions, **RLS** (gym-level vs athlete-level privacy).
 3. **Execution prompt** — A **paste-ready** block for Cursor Composer or Lovable.
 
-Full canonical text: [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md).
+Full canonical text (persona / architect behavior): [RXBETTER_SYSTEM_INSTRUCTIONS.md](RXBETTER_SYSTEM_INSTRUCTIONS.md).
+
+Primary table meanings (high-level): [docs/SUPABASE_DATA_MODEL.md](docs/SUPABASE_DATA_MODEL.md). Exact DDL always comes from `supabase/migrations/`.
