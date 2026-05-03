@@ -188,6 +188,7 @@ export type Database = {
           program_library_id: string | null
           start_date: string | null
           status: string | null
+          subscription_scope: string
           updated_at: string
         }
         Insert: {
@@ -201,6 +202,7 @@ export type Database = {
           program_library_id?: string | null
           start_date?: string | null
           status?: string | null
+          subscription_scope?: string
           updated_at?: string
         }
         Update: {
@@ -214,6 +216,7 @@ export type Database = {
           program_library_id?: string | null
           start_date?: string | null
           status?: string | null
+          subscription_scope?: string
           updated_at?: string
         }
         Relationships: [
@@ -576,15 +579,17 @@ export type Database = {
           athlete_notes: string | null
           coaches_notes: string | null
           created_at: string
+          created_by_contact_id: string | null
           description: string | null
           display_order: number | null
-          gym_id: string
+          gym_id: string | null
           id: string
           is_completed: boolean
           metcon_format: string | null
           name: string | null
           program_library_id: string | null
           programming_segment: string | null
+          source: string
           updated_at: string
           wod_date: string
         }
@@ -592,15 +597,17 @@ export type Database = {
           athlete_notes?: string | null
           coaches_notes?: string | null
           created_at?: string
+          created_by_contact_id?: string | null
           description?: string | null
           display_order?: number | null
-          gym_id: string
+          gym_id?: string | null
           id?: string
           is_completed?: boolean
           metcon_format?: string | null
           name?: string | null
           program_library_id?: string | null
           programming_segment?: string | null
+          source?: string
           updated_at?: string
           wod_date: string
         }
@@ -608,19 +615,28 @@ export type Database = {
           athlete_notes?: string | null
           coaches_notes?: string | null
           created_at?: string
+          created_by_contact_id?: string | null
           description?: string | null
           display_order?: number | null
-          gym_id?: string
+          gym_id?: string | null
           id?: string
           is_completed?: boolean
           metcon_format?: string | null
           name?: string | null
           program_library_id?: string | null
           programming_segment?: string | null
+          source?: string
           updated_at?: string
           wod_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "programming_created_by_contact_id_fkey"
+            columns: ["created_by_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "programming_gym_id_fkey"
             columns: ["gym_id"]
@@ -643,6 +659,7 @@ export type Database = {
           athlete_current_pr: number | null
           benchmark_definition_id: string | null
           benchmark_type_id: string | null
+          completed_at: string | null
           contact_id: string | null
           created_at: string
           id: string
@@ -662,6 +679,7 @@ export type Database = {
           athlete_current_pr?: number | null
           benchmark_definition_id?: string | null
           benchmark_type_id?: string | null
+          completed_at?: string | null
           contact_id?: string | null
           created_at?: string
           id?: string
@@ -681,6 +699,7 @@ export type Database = {
           athlete_current_pr?: number | null
           benchmark_definition_id?: string | null
           benchmark_type_id?: string | null
+          completed_at?: string | null
           contact_id?: string | null
           created_at?: string
           id?: string
@@ -803,6 +822,33 @@ export type Database = {
       }
     }
     Functions: {
+      auth_contact_id: { Args: never; Returns: string }
+      auth_is_staff_admin_anywhere: { Args: never; Returns: boolean }
+      has_active_fm_any: {
+        Args: { p_gym_id: string; p_roles: string[] }
+        Returns: boolean
+      }
+      has_active_fm_role: {
+        Args: { p_gym_id: string; p_role: string }
+        Returns: boolean
+      }
+      has_athlete_track_access: {
+        Args: { p_gym_id: string; p_program_library_id: string }
+        Returns: boolean
+      }
+      has_gym_staff_entitlement: {
+        Args: { p_gym_id: string; p_scope: string }
+        Returns: boolean
+      }
+      has_staff_library_scope: {
+        Args: {
+          p_gym_id: string
+          p_program_library_id: string
+          p_scope: string
+        }
+        Returns: boolean
+      }
+      is_gym_admin_scoped: { Args: { p_gym_id: string }; Returns: boolean }
       user_contact_id: { Args: never; Returns: string }
       user_gym_ids: { Args: never; Returns: string[] }
     }

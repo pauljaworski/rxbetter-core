@@ -13,9 +13,9 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 | **athlete_subscription** | **Track access** or **library-scoped staff** entitlement. Column **`subscription_scope`**: `athlete_track` (default) = access programming for that `program_library_id` at `gym_id`; `staff_coach` / `staff_programmer` / `staff_admin` = staff role for that library at that gym (pairs with `fitness_membership` role). `program_library_id` **null** on a staff row = gym-wide staff entitlement for that scope. |
 | **benchmark_type** | Global movement/benchmark category (e.g. strength vs metcon); SF `Programming_Type__c`. |
 | **benchmark_definition** | Specific benchmark variant for a type (e.g. rep scheme / “1RM”); ties to `benchmark_type`. |
-| **programming** | A scheduled workout/session for a gym on a date (WOD block); optional library link. |
-| **programming_line_item** | Prescribed sets/reps/movements within one `programming` row; optional athlete targeting. **`completed_at`** optional timestamp when the athlete marked completion. |
-| **athlete_performance** | Historical performance log (completed work, scores, PR-related flags). |
+| **programming** | A scheduled workout/session (WOD block) with optional library link. **`gym_id`** nullable for athlete-only “personal” sessions off-tenant. **`created_by_contact_id`**: null = staff/programmer-authored (`source = 'gym'`); set = athlete-authored solo session (`source = 'athlete_custom'`). |
+| **programming_line_item** | Prescribed sets/reps/movements within one `programming` row; optional **`contact_id`** for individualized lines. **`completed_at`** optional. **Class / shared prescription:** `contact_id` null — athletes **do not** update these rows for scores; they insert **`athlete_performance`** referencing `programming_line_item_id`. **Individualized** lines (`contact_id` = athlete) may still allow narrow result-field updates on the PLI. |
+| **athlete_performance** | **Primary ledger for class WOD completion** when programming is shared: one row per athlete per completed piece, linking `contact_id`, optional `programming_id`, optional `programming_line_item_id`, scores/PR flags. Also used for custom workouts tied to gym or personal `programming`. |
 | **athlete_benchmark_summary** | Rolling “current PR” style summary per athlete + benchmark definition. |
 
 **Views**
@@ -23,11 +23,20 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 - **benchmark_definition_display** — Human-readable benchmark labels (formula equivalent).
 - **programming_with_counts** — Rollup-style counts for programming completion.
 
+## Hybrid completion (shared WOD vs athlete-custom)
+
+| Flow | Programming / PLI | Where results live |
+|------|-------------------|---------------------|
+| **Gym / programmer class WOD** | One `programming` + shared `programming_line_item` rows (`contact_id` null). Do not duplicate PLIs per athlete. | **`athlete_performance`** rows (reference `programming_id` / `programming_line_item_id`). Updating shared PLIs for scores is **blocked** by trigger — use the performance ledger. |
+| **Athlete solo / custom** | Athlete inserts `programming` with `source = 'athlete_custom'`, `created_by_contact_id = self`, optional **`gym_id`** (Triad) or **`gym_id` null** for personal off-tenant sessions; adds `programming_line_item` rows under that session. | Same athlete may insert **`athlete_performance`** when logging outcomes; full edit of own custom PLIs while authoring the session. |
+
+Further migration: `20260504120000_hybrid_completion_athlete_custom_programming.sql`.
+
 ## Personas & RLS (summary)
 
-Row-level security is defined in migrations (see `20260503120000_persona_rls_and_library_scope.sql`). In short:
+Row-level security is defined in migrations (`20260503120000_persona_rls_and_library_scope.sql`, `20260504120000_hybrid_completion_athlete_custom_programming.sql`). In short:
 
-- **Athlete** — Updates own `contact` / `profiles`; may insert/update own `athlete_benchmark_summary`; may update **only result fields** on `programming_line_item` (`actual_weight_lifted`, `prescribed_score`, `status`, `completed_at`) when they have **active athlete membership**, **athlete_track subscription** to that programming’s library (or gym-wide null library), and the line targets their `contact_id`. Other tables are read-only via policy or trigger guards.
+- **Athlete** — Updates own `contact` / `profiles`; may insert/update own `athlete_benchmark_summary`; inserts **`athlete_performance`** for class completion; may insert/update **own** `programming` / `programming_line_item` when `source = 'athlete_custom'` and `created_by_contact_id` matches; may update **only result fields** on **individualized** `programming_line_item` (`contact_id` = self), not on **shared** (`contact_id` null) lines.
 - **Coach** — Same profile/contact self-service; may update **`programming.coaches_notes` only** on programming rows where they have **coach membership** + **`staff_coach`** subscription to that library; may update/correct **full** `programming_line_item` rows under the same library scope. Cannot create `programming` rows.
 - **Programmer** — Create/update `program_library`, `programming`, `programming_line_item` where **programmer membership** + **`staff_programmer`** subscription matches (or gym-wide staff subscription when `program_library_id` is null).
 - **Admin** — Same-gym **`is_gym_admin_scoped`**: **admin** membership + **`staff_admin`** subscription for that gym (any library row or gym-wide). Can maintain memberships/subscriptions, onboarding requests, global `benchmark_type` / `benchmark_definition`, and broad writes as defined in policies.
