@@ -822,6 +822,26 @@ export type Database = {
       }
     }
     Functions: {
+      athlete_performance_line_item_is_consistent: {
+        Args: {
+          p_contact_id: string
+          p_programming_id: string
+          p_programming_line_item_id: string
+        }
+        Returns: boolean
+      }
+      athlete_performance_read_scope_ok: {
+        Args: { p_contact_id: string; p_programming_id: string }
+        Returns: boolean
+      }
+      athlete_performance_write_scope_ok: {
+        Args: {
+          p_contact_id: string
+          p_programming_id: string
+          p_programming_line_item_id: string
+        }
+        Returns: boolean
+      }
       auth_contact_id: { Args: never; Returns: string }
       auth_is_staff_admin_anywhere: { Args: never; Returns: boolean }
       has_active_fm_any: {
