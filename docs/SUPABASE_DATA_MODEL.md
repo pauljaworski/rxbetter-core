@@ -6,7 +6,7 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 |----------------|---------|
 | **gym** | Tenant / gym account; subscription status and plan (maps SF Account + subscription fields). |
 | **contact** | A person (athlete, coach, owner); optional link to `auth.users` via `user_id`. |
-| **profiles** | Bridge from Supabase Auth (`auth.users.id`) to a `contact` row for app identity. |
+| **profiles** | Bridge from Supabase Auth (`auth.users.id`) to a `contact` row for app identity. Created automatically with **`contact`** when a row is inserted into **`auth.users`** (trigger `on_auth_user_created` → `handle_new_user`). |
 | **gym_onboarding_request** | Intake record while onboarding a new gym; may resolve to created `gym` + `contact`. |
 | **program_library** | A programming track/library owned by a gym (templates and catalog). |
 | **fitness_membership** | Person ↔ gym membership with **role** (`athlete`, `coach`, `programmer`, `admin`, `owner`). Multiple rows per (contact, gym) are **different roles** (additive personas). `head_coach` was renamed to **`programmer`**. |
@@ -42,3 +42,11 @@ Row-level security is defined in migrations (`20260503120000_persona_rls_and_lib
 - **Admin** — Same-gym **`is_gym_admin_scoped`**: **admin** membership + **`staff_admin`** subscription for that gym (any library row or gym-wide). Can maintain memberships/subscriptions, onboarding requests, global `benchmark_type` / `benchmark_definition`, and broad writes as defined in policies.
 
 Bootstrapping the first users still typically uses the **service role** or SQL console where RLS is bypassed.
+
+## Sign-up / sign-in (Auth → contact + profiles)
+
+1. The app calls Supabase Auth (`signUp` / OAuth). Any optional **`user_metadata`** / signup **`data`** (e.g. `first_name`, `last_name`, `full_name`) is stored on `auth.users.raw_user_meta_data`.
+2. After insert into **`auth.users`**, the trigger **`on_auth_user_created`** runs **`public.handle_new_user`**, which inserts **`public.contact`** (`user_id`, `email`, names from metadata) then **`public.profiles`** (`id` = auth uid, `contact_id`, `display_name` derived from metadata or email local-part).
+3. Client helpers live under **`src/lib/auth.ts`** (`signUpWithEmail`, `signInWithEmail`, `signOut`, `onAuthStateChange`). Env vars: **`NEXT_PUBLIC_SUPABASE_*`** or **`VITE_SUPABASE_*`** (see **`src/lib/supabase.ts`**).
+
+Migration: `20260510120000_auth_signup_contact_profile.sql`.

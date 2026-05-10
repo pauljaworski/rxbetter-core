@@ -24,6 +24,10 @@ RxBetter helps coaches manage gym programming and athlete performance from one d
 2. Apply migrations with `supabase db push`.
 3. Regenerate frontend database types into `src/types/database.ts`.
 
+## Auth (sign-up / sign-in)
+
+New **`auth.users`** rows automatically get a **`contact`** (master identity) and **`profiles`** row via migration **`20260510120000_auth_signup_contact_profile.sql`**. Use **`src/lib/auth.ts`** with env vars from **`.env.example`**. Details: [`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md) (section “Sign-up / sign-in”).
+
 ## Next Focus
 
 Coach Dashboard implementation.
