@@ -26,7 +26,7 @@ RxBetter helps coaches manage gym programming and athlete performance from one d
 
 ## Auth (sign-up / sign-in)
 
-New **`auth.users`** rows automatically get a **`contact`** (master identity) and **`profiles`** row via migration **`20260510120000_auth_signup_contact_profile.sql`**. Use **`src/lib/auth.ts`** with env vars from **`.env.example`**. Details: [`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md) (section “Sign-up / sign-in”).
+New **`auth.users`** rows automatically link one unclaimed matching **`contact`** (or create a new master identity) and get a **`profiles`** row via the auth signup migrations. Use **`src/lib/auth.ts`** with env vars from **`.env.example`**. Details: [`docs/SUPABASE_DATA_MODEL.md`](docs/SUPABASE_DATA_MODEL.md) (section “Sign-up / sign-in”).
 
 ## Next Focus
 
