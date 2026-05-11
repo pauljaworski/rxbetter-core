@@ -46,7 +46,7 @@ Bootstrapping the first users still typically uses the **service role** or SQL c
 ## Sign-up / sign-in (Auth → contact + profiles)
 
 1. The app calls Supabase Auth (`signUp` / OAuth). Any optional **`user_metadata`** / signup **`data`** (e.g. `first_name`, `last_name`, `full_name`) is stored on `auth.users.raw_user_meta_data`.
-2. After insert into **`auth.users`**, the trigger **`on_auth_user_created`** runs **`public.handle_new_user`**, which inserts **`public.contact`** (`user_id`, `email`, names from metadata) then **`public.profiles`** (`id` = auth uid, `contact_id`, `display_name` derived from metadata or email local-part).
+2. After insert into **`auth.users`**, the trigger **`on_auth_user_created`** runs **`public.handle_new_user`**, which links exactly one unclaimed **`public.contact`** with the same email when present (preserving pre-created memberships/subscriptions) or inserts a new **`contact`** (`user_id`, `email`, names from metadata), then inserts **`public.profiles`** (`id` = auth uid, `contact_id`, `display_name` derived from metadata or email local-part).
 3. Client helpers live under **`src/lib/auth.ts`** (`signUpWithEmail`, `signInWithEmail`, `signOut`, `onAuthStateChange`). Env vars: **`NEXT_PUBLIC_SUPABASE_*`** or **`VITE_SUPABASE_*`** (see **`src/lib/supabase.ts`**).
 
 Migration: `20260510120000_auth_signup_contact_profile.sql`.
