@@ -6,7 +6,9 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 |----------------|---------|
 | **gym** | Tenant / gym account; subscription status and plan (maps SF Account + subscription fields). |
 | **contact** | A person (athlete, coach, owner); optional link to `auth.users` via `user_id`. |
-| **profiles** | Bridge from Supabase Auth (`auth.users.id`) to a `contact` row for app identity. Created automatically with **`contact`** when a row is inserted into **`auth.users`** (trigger `on_auth_user_created` → `handle_new_user`). |
+| **profiles** | Bridge from Supabase Auth (`auth.users.id`) to a `contact` row for app identity. Created automatically with **`contact`** when a row is inserted into **`auth.users`** (trigger `on_auth_user_created` → `handle_new_user`). Optional **`last_active_gym_id`** / **`last_active_gym_at`** for Global Identity Router default gym. |
+| **fitness_track_link** | Productized invite URL (token = row `id`): gym admin defines allowed **`program_library`** options; athlete opens link, picks a track, **`claim_fitness_track_link`** creates **`fitness_membership`** (athlete) + **`athlete_subscription`** (`athlete_track`). |
+| **fitness_track_link_option** | Rows linking a **`fitness_track_link`** to a **`program_library_id`**; trigger enforces library belongs to the link’s **`gym_id`**. |
 | **gym_onboarding_request** | Intake record while onboarding a new gym; may resolve to created `gym` + `contact`. |
 | **program_library** | A programming track/library owned by a gym (templates and catalog). |
 | **fitness_membership** | Person ↔ gym membership with **role** (`athlete`, `coach`, `programmer`, `admin`, `owner`). Multiple rows per (contact, gym) are **different roles** (additive personas). `head_coach` was renamed to **`programmer`**. |
@@ -50,3 +52,19 @@ Bootstrapping the first users still typically uses the **service role** or SQL c
 3. Client helpers live under **`src/lib/auth.ts`** (`signUpWithEmail`, `signInWithEmail`, `signOut`, `onAuthStateChange`). Env vars: **`NEXT_PUBLIC_SUPABASE_*`** or **`VITE_SUPABASE_*`** (see **`src/lib/supabase.ts`**).
 
 Migration: `20260510120000_auth_signup_contact_profile.sql`.
+
+## Global Identity Router (Personal vs Gym mode)
+
+- **Active gym set** — Use **`public.user_gym_ids()`** (and/or query **`fitness_membership`** with `membership_status = 'active'` for the current **`profiles.contact_id`**) to decide mode. Empty set ⇒ **Personal mode** (benchmarks / PRs / personal programming). Non-empty ⇒ **Gym mode** with a **gym switcher** list.
+- **Default gym** — If **`profiles.last_active_gym_id`** is set and still in the active membership gym set, use it; otherwise use the gym with the latest **`fitness_membership.updated_at`** (tie-break **`created_at`**).
+- **Client module** — [`src/lib/identity-router.ts`](../src/lib/identity-router.ts): `loadIdentityContext`, `resolveIdentityFromMemberships`, `setLastActiveGym`.
+
+Migration: `20260511120000_global_identity_router_track_links.sql`.
+
+## Productized track links (RPC)
+
+- **`get_fitness_track_link_public(p_link_id uuid)`** — `SECURITY DEFINER`; **`anon` + `authenticated`** may execute. Returns JSON (`gym_name`, `options[]`, …) or **`null`** if missing, revoked, or expired. No direct public RLS on link tables.
+- **`claim_fitness_track_link(p_link_id, p_program_library_id)`** — `SECURITY DEFINER`; **`authenticated`** only. Validates option, creates/reactivates athlete **`fitness_membership`** and **`athlete_subscription`** (`athlete_track`). Increments **`fitness_track_link.redemption_count`** only when a **new** membership or subscription **row** is inserted (not pure reactivation updates).
+- **Client** — [`src/lib/track-links.ts`](../src/lib/track-links.ts).
+
+Gym staff create links via normal inserts into **`fitness_track_link`** / **`fitness_track_link_option`** under **`is_gym_admin_scoped`** RLS.

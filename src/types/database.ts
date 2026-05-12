@@ -396,6 +396,93 @@ export type Database = {
           },
         ]
       }
+      fitness_track_link: {
+        Row: {
+          created_at: string
+          created_by_contact_id: string | null
+          expires_at: string | null
+          gym_id: string
+          id: string
+          label: string | null
+          max_redemptions: number | null
+          redemption_count: number
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_contact_id?: string | null
+          expires_at?: string | null
+          gym_id: string
+          id?: string
+          label?: string | null
+          max_redemptions?: number | null
+          redemption_count?: number
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_contact_id?: string | null
+          expires_at?: string | null
+          gym_id?: string
+          id?: string
+          label?: string | null
+          max_redemptions?: number | null
+          redemption_count?: number
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fitness_track_link_created_by_contact_id_fkey"
+            columns: ["created_by_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fitness_track_link_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fitness_track_link_option: {
+        Row: {
+          created_at: string
+          link_id: string
+          program_library_id: string
+        }
+        Insert: {
+          created_at?: string
+          link_id: string
+          program_library_id: string
+        }
+        Update: {
+          created_at?: string
+          link_id?: string
+          program_library_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fitness_track_link_option_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_track_link"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fitness_track_link_option_program_library_id_fkey"
+            columns: ["program_library_id"]
+            isOneToOne: false
+            referencedRelation: "program_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gym: {
         Row: {
           created_at: string
@@ -501,6 +588,8 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          last_active_gym_at: string | null
+          last_active_gym_id: string | null
           updated_at: string
         }
         Insert: {
@@ -508,6 +597,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          last_active_gym_at?: string | null
+          last_active_gym_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -515,6 +606,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          last_active_gym_at?: string | null
+          last_active_gym_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -523,6 +616,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_last_active_gym_id_fkey"
+            columns: ["last_active_gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
             referencedColumns: ["id"]
           },
         ]
@@ -824,6 +924,14 @@ export type Database = {
     Functions: {
       auth_contact_id: { Args: never; Returns: string }
       auth_is_staff_admin_anywhere: { Args: never; Returns: boolean }
+      claim_fitness_track_link: {
+        Args: { p_link_id: string; p_program_library_id: string }
+        Returns: Json
+      }
+      get_fitness_track_link_public: {
+        Args: { p_link_id: string }
+        Returns: Json
+      }
       has_active_fm_any: {
         Args: { p_gym_id: string; p_roles: string[] }
         Returns: boolean

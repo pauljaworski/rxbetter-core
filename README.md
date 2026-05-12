@@ -15,7 +15,7 @@ RxBetter helps coaches manage gym programming and athlete performance from one d
 - `supabase/seed.sql` demo seed data
 - `src/components/` reusable UI components
 - `src/hooks/` Supabase data hooks and state logic
-- `src/lib/` shared clients and utilities
+- `src/lib/` shared clients and utilities (**`auth.ts`**, **`identity-router.ts`**, **`track-links.ts`**, **`supabase.ts`**)
 - `src/types/` generated TypeScript database types
 
 ## Database Workflow
