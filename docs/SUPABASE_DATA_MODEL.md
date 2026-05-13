@@ -7,12 +7,17 @@ This doc summarizes **`public`** tables from [`supabase/migrations/`](../supabas
 | **gym** | Tenant / gym account; subscription status and plan (maps SF Account + subscription fields). |
 | **contact** | A person (athlete, coach, owner); optional link to `auth.users` via `user_id`. |
 | **profiles** | Bridge from Supabase Auth (`auth.users.id`) to a `contact` row for app identity. Created automatically with **`contact`** when a row is inserted into **`auth.users`** (trigger `on_auth_user_created` → `handle_new_user`). Optional **`last_active_gym_id`** / **`last_active_gym_at`** for Global Identity Router default gym. |
-| **fitness_track_link** | Productized invite URL (token = row `id`): gym admin defines allowed **`program_library`** options; athlete opens link, picks a track, **`claim_fitness_track_link`** creates **`fitness_membership`** (athlete) + **`athlete_subscription`** (`athlete_track`). |
-| **fitness_track_link_option** | Rows linking a **`fitness_track_link`** to a **`program_library_id`**; trigger enforces library belongs to the link’s **`gym_id`**. |
+| **membership_offering** | Sellable gym product, e.g. `Group Class`, `Open Gym`, `24/7 Access`. |
+| **membership_offering_term** | One sellable term per offering, e.g. 1/3/6/12 month commitment and its quoted monthly price. |
+| **membership_offering_component** | Maps one offering to benefits: one or more **`program_library`** rows and/or non-library capability codes like `open_gym` / `access_24_7`. |
+| **athlete_offering_subscription** | Commercial snapshot of what an athlete bought: offering term, sold price, start/end dates, status, and originating link. |
+| **contact_gym_capability_grant** | Capability entitlement ledger for non-library benefits (currently `open_gym` and `access_24_7`). |
+| **fitness_track_link** | Productized invite URL (token = row `id`): gym admin defines allowed **`membership_offering_term`** options; athlete opens link, picks a sellable option, and **`claim_fitness_track_link`** creates commercial + entitlement rows. |
+| **fitness_track_link_option** | Rows linking a **`fitness_track_link`** to a **`membership_offering_term_id`**; trigger enforces the term’s offering belongs to the link’s **`gym_id`**. |
 | **gym_onboarding_request** | Intake record while onboarding a new gym; may resolve to created `gym` + `contact`. |
 | **program_library** | A programming track/library owned by a gym (templates and catalog). |
 | **fitness_membership** | Person ↔ gym membership with **role** (`athlete`, `coach`, `programmer`, `admin`, `owner`). Multiple rows per (contact, gym) are **different roles** (additive personas). `head_coach` was renamed to **`programmer`**. |
-| **athlete_subscription** | **Track access** or **library-scoped staff** entitlement. Column **`subscription_scope`**: `athlete_track` (default) = access programming for that `program_library_id` at `gym_id`; `staff_coach` / `staff_programmer` / `staff_admin` = staff role for that library at that gym (pairs with `fitness_membership` role). `program_library_id` **null** on a staff row = gym-wide staff entitlement for that scope. |
+| **athlete_subscription** | **Track access** or **library-scoped staff** entitlement. Column **`subscription_scope`**: `athlete_track` (default) = access programming for that `program_library_id` at `gym_id`; `staff_coach` / `staff_programmer` / `staff_admin` = staff role for that library at that gym (pairs with `fitness_membership` role). `program_library_id` **must be non-null** for `athlete_track`; `program_library_id` **null** is reserved for gym-wide staff entitlement. |
 | **benchmark_type** | Global movement/benchmark category (e.g. strength vs metcon); SF `Programming_Type__c`. |
 | **benchmark_definition** | Specific benchmark variant for a type (e.g. rep scheme / “1RM”); ties to `benchmark_type`. |
 | **programming** | A scheduled workout/session (WOD block) with optional library link. **`gym_id`** nullable for athlete-only “personal” sessions off-tenant. **`created_by_contact_id`**: null = staff/programmer-authored (`source = 'gym'`); set = athlete-authored solo session (`source = 'athlete_custom'`). |
@@ -61,10 +66,27 @@ Migration: `20260510120000_auth_signup_contact_profile.sql`.
 
 Migration: `20260511120000_global_identity_router_track_links.sql`.
 
+## Membership offerings (commercial layer)
+
+- **`membership_offering`** = what the gym sells.
+- **`membership_offering_term`** = 1/3/6/12 month term + quoted monthly price.
+- **`membership_offering_component`** = how a sold offering fans out into access:
+  - `program_library` components create/update **`athlete_subscription`** rows.
+  - `capability` components create/update **`contact_gym_capability_grant`** rows.
+- **`athlete_offering_subscription`** stores the sold term snapshot separately from entitlements so pricing/term history is preserved even if access rows are later reactivated/adjusted.
+
+Triad example:
+
+- `Group Class` -> `CrossFit` + `Hyrox`
+- `Open Gym` -> `open_gym`
+- `24/7 Access` -> `access_24_7`
+
+Migration: `20260513161000_membership_offerings_and_term_links.sql`.
+
 ## Productized track links (RPC)
 
-- **`get_fitness_track_link_public(p_link_id uuid)`** — `SECURITY DEFINER`; **`anon` + `authenticated`** may execute. Returns JSON (`gym_name`, `options[]`, …) or **`null`** if missing, revoked, or expired. No direct public RLS on link tables.
-- **`claim_fitness_track_link(p_link_id, p_program_library_id)`** — `SECURITY DEFINER`; **`authenticated`** only. Validates option, creates/reactivates athlete **`fitness_membership`** and **`athlete_subscription`** (`athlete_track`). Increments **`fitness_track_link.redemption_count`** only when a **new** membership or subscription **row** is inserted (not pure reactivation updates).
+- **`get_fitness_track_link_public(p_link_id uuid)`** — `SECURITY DEFINER`; **`anon` + `authenticated`** may execute. Returns JSON (`gym_name`, sellable term `options[]`, included libraries/capabilities, price metadata) or **`null`** if missing, revoked, or expired. No direct public RLS on link tables.
+- **`claim_fitness_track_link(p_link_id, p_membership_offering_term_id)`** — `SECURITY DEFINER`; **`authenticated`** only. Validates option, ensures athlete **`fitness_membership`**, creates/reactivates **`athlete_offering_subscription`**, then fans out entitlements into **`athlete_subscription`** and **`contact_gym_capability_grant`**. Increments **`fitness_track_link.redemption_count`** only when a **new** membership / commercial row / entitlement row is inserted (not pure reactivation updates).
 - **Client** — [`src/lib/track-links.ts`](../src/lib/track-links.ts).
 
 Gym staff create links via normal inserts into **`fitness_track_link`** / **`fitness_track_link_option`** under **`is_gym_admin_scoped`** RLS.

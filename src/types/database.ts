@@ -66,6 +66,106 @@ export type Database = {
           },
         ]
       }
+      athlete_offering_subscription: {
+        Row: {
+          auto_renew: boolean
+          claimed_from_track_link_id: string | null
+          contact_id: string
+          created_at: string
+          currency: string
+          end_date: string | null
+          fitness_membership_id: string | null
+          gym_id: string
+          id: string
+          membership_offering_id: string
+          membership_offering_term_id: string
+          sold_commitment_total_cents: number
+          sold_price_cents: number
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          claimed_from_track_link_id?: string | null
+          contact_id: string
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          fitness_membership_id?: string | null
+          gym_id: string
+          id?: string
+          membership_offering_id: string
+          membership_offering_term_id: string
+          sold_commitment_total_cents: number
+          sold_price_cents: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_renew?: boolean
+          claimed_from_track_link_id?: string | null
+          contact_id?: string
+          created_at?: string
+          currency?: string
+          end_date?: string | null
+          fitness_membership_id?: string | null
+          gym_id?: string
+          id?: string
+          membership_offering_id?: string
+          membership_offering_term_id?: string
+          sold_commitment_total_cents?: number
+          sold_price_cents?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_offering_subscription_claimed_from_track_link_id_fkey"
+            columns: ["claimed_from_track_link_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_track_link"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_offering_subscription_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_offering_subscription_fitness_membership_id_fkey"
+            columns: ["fitness_membership_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_membership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_offering_subscription_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_offering_subscription_membership_offering_id_fkey"
+            columns: ["membership_offering_id"]
+            isOneToOne: false
+            referencedRelation: "membership_offering"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_offering_subscription_membership_offering_term_id_fkey"
+            columns: ["membership_offering_term_id"]
+            isOneToOne: false
+            referencedRelation: "membership_offering_term"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_performance: {
         Row: {
           benchmark_definition_id: string | null
@@ -345,6 +445,77 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_gym_capability_grant: {
+        Row: {
+          athlete_offering_subscription_id: string | null
+          capability_code: string
+          contact_id: string
+          created_at: string
+          end_date: string | null
+          fitness_membership_id: string | null
+          gym_id: string
+          id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_offering_subscription_id?: string | null
+          capability_code: string
+          contact_id: string
+          created_at?: string
+          end_date?: string | null
+          fitness_membership_id?: string | null
+          gym_id: string
+          id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_offering_subscription_id?: string | null
+          capability_code?: string
+          contact_id?: string
+          created_at?: string
+          end_date?: string | null
+          fitness_membership_id?: string | null
+          gym_id?: string
+          id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_gym_capability_grant_athlete_offering_subscription_fkey"
+            columns: ["athlete_offering_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_offering_subscription"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_gym_capability_grant_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_gym_capability_grant_fitness_membership_id_fkey"
+            columns: ["fitness_membership_id"]
+            isOneToOne: false
+            referencedRelation: "fitness_membership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_gym_capability_grant_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fitness_membership: {
         Row: {
           contact_id: string
@@ -454,17 +625,17 @@ export type Database = {
         Row: {
           created_at: string
           link_id: string
-          program_library_id: string
+          membership_offering_term_id: string
         }
         Insert: {
           created_at?: string
           link_id: string
-          program_library_id: string
+          membership_offering_term_id: string
         }
         Update: {
           created_at?: string
           link_id?: string
-          program_library_id?: string
+          membership_offering_term_id?: string
         }
         Relationships: [
           {
@@ -475,10 +646,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fitness_track_link_option_program_library_id_fkey"
-            columns: ["program_library_id"]
+            foreignKeyName: "fitness_track_link_option_membership_offering_term_id_fkey"
+            columns: ["membership_offering_term_id"]
             isOneToOne: false
-            referencedRelation: "program_library"
+            referencedRelation: "membership_offering_term"
             referencedColumns: ["id"]
           },
         ]
@@ -578,6 +749,140 @@ export type Database = {
             columns: ["created_contact_id"]
             isOneToOne: false
             referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_offering: {
+        Row: {
+          created_at: string
+          created_by_contact_id: string | null
+          description: string | null
+          gym_id: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_contact_id?: string | null
+          description?: string | null
+          gym_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_contact_id?: string | null
+          description?: string | null
+          gym_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_offering_created_by_contact_id_fkey"
+            columns: ["created_by_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_offering_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_offering_component: {
+        Row: {
+          capability_code: string | null
+          component_type: string
+          created_at: string
+          id: string
+          membership_offering_id: string
+          program_library_id: string | null
+        }
+        Insert: {
+          capability_code?: string | null
+          component_type: string
+          created_at?: string
+          id?: string
+          membership_offering_id: string
+          program_library_id?: string | null
+        }
+        Update: {
+          capability_code?: string | null
+          component_type?: string
+          created_at?: string
+          id?: string
+          membership_offering_id?: string
+          program_library_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_offering_component_membership_offering_id_fkey"
+            columns: ["membership_offering_id"]
+            isOneToOne: false
+            referencedRelation: "membership_offering"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_offering_component_program_library_id_fkey"
+            columns: ["program_library_id"]
+            isOneToOne: false
+            referencedRelation: "program_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_offering_term: {
+        Row: {
+          billing_type: string
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          membership_offering_id: string
+          price_cents: number
+          term_months: number
+          updated_at: string
+        }
+        Insert: {
+          billing_type?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          membership_offering_id: string
+          price_cents: number
+          term_months: number
+          updated_at?: string
+        }
+        Update: {
+          billing_type?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          membership_offering_id?: string
+          price_cents?: number
+          term_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_offering_term_membership_offering_id_fkey"
+            columns: ["membership_offering_id"]
+            isOneToOne: false
+            referencedRelation: "membership_offering"
             referencedColumns: ["id"]
           },
         ]
@@ -925,12 +1230,16 @@ export type Database = {
       auth_contact_id: { Args: never; Returns: string }
       auth_is_staff_admin_anywhere: { Args: never; Returns: boolean }
       claim_fitness_track_link: {
-        Args: { p_link_id: string; p_program_library_id: string }
+        Args: { p_link_id: string; p_membership_offering_term_id: string }
         Returns: Json
       }
       get_fitness_track_link_public: {
         Args: { p_link_id: string }
         Returns: Json
+      }
+      has_active_capability: {
+        Args: { p_capability_code: string; p_gym_id: string }
+        Returns: boolean
       }
       has_active_fm_any: {
         Args: { p_gym_id: string; p_roles: string[] }
