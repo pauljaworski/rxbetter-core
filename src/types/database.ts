@@ -185,6 +185,7 @@ export type Database = {
           status: string | null
           updated_at: string
           weight_lifted: number | null
+          workout_scale: Database["public"]["Enums"]["workout_scale"] | null
         }
         Insert: {
           benchmark_definition_id?: string | null
@@ -204,6 +205,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           weight_lifted?: number | null
+          workout_scale?: Database["public"]["Enums"]["workout_scale"] | null
         }
         Update: {
           benchmark_definition_id?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           weight_lifted?: number | null
+          workout_scale?: Database["public"]["Enums"]["workout_scale"] | null
         }
         Relationships: [
           {
@@ -992,6 +995,7 @@ export type Database = {
           is_completed: boolean
           metcon_format: string | null
           name: string | null
+          prescribed_scale: Database["public"]["Enums"]["workout_scale"]
           program_library_id: string | null
           programming_segment: string | null
           source: string
@@ -1010,6 +1014,7 @@ export type Database = {
           is_completed?: boolean
           metcon_format?: string | null
           name?: string | null
+          prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
           source?: string
@@ -1028,6 +1033,7 @@ export type Database = {
           is_completed?: boolean
           metcon_format?: string | null
           name?: string | null
+          prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
           source?: string
@@ -1270,7 +1276,7 @@ export type Database = {
       user_gym_ids: { Args: never; Returns: string[] }
     }
     Enums: {
-      [_ in never]: never
+      workout_scale: "rx_plus" | "rx" | "fx" | "scaled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1397,6 +1403,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      workout_scale: ["rx_plus", "rx", "fx", "scaled"],
+    },
   },
 } as const

@@ -156,21 +156,9 @@ insert into public.contact_gym_capability_grant
   ('26000000-0000-4000-8000-000000000005', 'c0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000005', '25000000-0000-4000-8000-000000000008', 'access_24_7',  'active', '2026-04-01', '2026-06-30');
 
 -- ---- 10. Athlete Benchmark Summaries (existing PRs for context) ----
+-- Paul: loaded via scripts/import-paul-spreadsheet-data.mjs (SugarWod export)
 insert into public.athlete_benchmark_summary
   (contact_id, benchmark_definition_id, current_pr_weight, date_pr_achieved) values
-  -- Paul
-  ('c0000000-0000-4000-8000-000000000001',
-   (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 1),
-   225, '2025-11-08'),
-  ('c0000000-0000-4000-8000-000000000001',
-   (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 1),
-   405, '2025-12-02'),
-  ('c0000000-0000-4000-8000-000000000001',
-   (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 1),
-   500, '2026-01-20'),
-  ('c0000000-0000-4000-8000-000000000001',
-   (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Clean' and bd.rep_count = 1),
-   315, '2025-10-15'),
   -- Brooke
   ('c0000000-0000-4000-8000-000000000002',
    (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 1),
@@ -214,17 +202,10 @@ insert into public.programming_line_item (id, programming_id, benchmark_type_id,
   ('f1000000-0000-4000-8000-000001010006', 'e1000000-0000-4000-8000-000000010002',
    (select id from public.benchmark_type where name = 'Fran'), 1, '21-15-9 For Time', 'completed');
 
-insert into public.athlete_performance
-  (contact_id, programming_id, programming_line_item_id, benchmark_type_id, benchmark_definition_id, performance_date, status, weight_lifted, reps_prescribed, prescribed_percentage, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010001', 'f1000000-0000-4000-8000-000001010001', (select id from public.benchmark_type where name = 'Back Squat'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 3), '2026-04-14', 'completed', 325, 3, 0.80, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010001', 'f1000000-0000-4000-8000-000001010002', (select id from public.benchmark_type where name = 'Back Squat'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 3), '2026-04-14', 'completed', 325, 3, 0.80, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010001', 'f1000000-0000-4000-8000-000001010003', (select id from public.benchmark_type where name = 'Back Squat'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 3), '2026-04-14', 'completed', 325, 3, 0.80, 8),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010001', 'f1000000-0000-4000-8000-000001010004', (select id from public.benchmark_type where name = 'Back Squat'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 3), '2026-04-14', 'completed', 325, 3, 0.80, 8),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010001', 'f1000000-0000-4000-8000-000001010005', (select id from public.benchmark_type where name = 'Back Squat'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Back Squat' and bd.rep_count = 3), '2026-04-14', 'completed', 325, 3, 0.80, 9);
+-- Paul class results: import via scripts/import-triad-workout-trends.mjs
 
 insert into public.athlete_performance
   (contact_id, programming_id, programming_line_item_id, benchmark_type_id, performance_date, status, score, result_value, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000010002', 'f1000000-0000-4000-8000-000001010006', (select id from public.benchmark_type where name = 'Fran'), '2026-04-14', 'completed', '3:42 Rx', 222, 10),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000010002', 'f1000000-0000-4000-8000-000001010006', (select id from public.benchmark_type where name = 'Fran'), '2026-04-14', 'completed', '5:18 Rx', 318, 9);
 
 insert into public.athlete_performance
@@ -262,16 +243,12 @@ insert into public.programming_line_item (id, programming_id, benchmark_type_id,
 
 insert into public.athlete_performance
   (contact_id, programming_id, programming_line_item_id, benchmark_type_id, benchmark_definition_id, performance_date, status, weight_lifted, reps_prescribed, prescribed_percentage, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010001', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 375, 5, 0.75, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010002', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 375, 5, 0.75, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010003', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 375, 5, 0.75, 8),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010001', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 235, 5, 0.75, 7),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010002', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 235, 5, 0.75, 8),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000020001', 'f1000000-0000-4000-8000-000002010003', (select id from public.benchmark_type where name = 'Deadlift'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Deadlift' and bd.rep_count = 5), '2026-04-15', 'completed', 235, 5, 0.75, 8);
 
 insert into public.athlete_performance
   (contact_id, programming_id, programming_line_item_id, benchmark_type_id, performance_date, status, score, result_value, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000020002', 'f1000000-0000-4000-8000-000002010004', (select id from public.benchmark_type where name = 'Helen'), '2026-04-15', 'completed', '8:22 Rx', 502, 9),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000020002', 'f1000000-0000-4000-8000-000002010004', (select id from public.benchmark_type where name = 'Helen'), '2026-04-15', 'completed', '9:55 Rx', 595, 9);
 
 -- ============================================================
@@ -304,11 +281,6 @@ insert into public.programming_line_item (id, programming_id, benchmark_type_id,
 
 insert into public.athlete_performance
   (contact_id, programming_id, programming_line_item_id, benchmark_type_id, benchmark_definition_id, performance_date, status, weight_lifted, reps_prescribed, prescribed_percentage, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010001', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 155, 2, 0.70, 6),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010002', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 170, 2, 0.75, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010003', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 170, 2, 0.75, 7),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010004', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 175, 2, 0.78, 8),
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010005', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 180, 2, 0.80, 9),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010001', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 100, 2, 0.70, 6),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010002', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 110, 2, 0.75, 7),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000030001', 'f1000000-0000-4000-8000-000003010003', (select id from public.benchmark_type where name = 'Snatch'), (select bd.id from public.benchmark_definition bd join public.benchmark_type bt on bt.id = bd.benchmark_type_id where bt.name = 'Snatch' and bd.rep_count = 2), '2026-04-16', 'completed', 110, 2, 0.75, 7),
@@ -317,7 +289,6 @@ insert into public.athlete_performance
 
 insert into public.athlete_performance
   (contact_id, programming_id, programming_line_item_id, benchmark_type_id, performance_date, status, score, result_value, rpe) values
-  ('c0000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000030002', 'f1000000-0000-4000-8000-000003010006', (select id from public.benchmark_type where name = 'Annie'), '2026-04-16', 'completed', '6:45', 405, 8),
   ('c0000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000030002', 'f1000000-0000-4000-8000-000003010006', (select id from public.benchmark_type where name = 'Annie'), '2026-04-16', 'completed', '7:30', 450, 8);
 
 -- ============================================================
