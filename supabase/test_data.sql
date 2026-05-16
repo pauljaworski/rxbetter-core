@@ -378,7 +378,7 @@ insert into public.programming (id, gym_id, program_library_id, name, wod_date, 
   ('e1000000-0000-4000-8000-000000060001',
    'a0000000-0000-4000-8000-000000000001',
    '10000000-0000-4000-8000-000000000002',
-   'Hyrox Engine Builder', '2026-04-19', 'conditioning', 1,
+   'Hyrox Engine Builder', '2026-04-19', 'metcon', 1,
    '3 rounds: 1000m row, 50 wall balls, 200m sled push, 800m run.');
 
 insert into public.programming_line_item (id, programming_id, sequence_number, prescribed_score, status) values
