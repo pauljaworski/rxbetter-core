@@ -1,20 +1,21 @@
 /**
- * Build SQL from local Google Drive exports (Paul Crossfit Tracker / SugarWod).
- * .gsheet shortcuts are not readable; uses:
- *   - Stats/CrossFit Max Lifts Export SugarWod.xlsx (Raw Data)
- *   - SugarWod Workouts.csv (recent 2026 workouts)
+ * Build SQL from Paul Crossfit Tracker + SugarWod exports.
+ * Sources:
+ *   - Downloads/Paul Crossfit Tracker.xlsx (CrossFit Stats tab — yearly 1RMs)
+ *   - Google Drive: CrossFit Max Lifts Export SugarWod.xlsx (Raw Data)
+ *   - Google Drive: SugarWod Workouts.csv
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 
 const PAUL = 'c0000000-0000-4000-8000-000000000001';
-const GYM = 'a0000000-0000-4000-8000-000000000001';
-const LIB = '10000000-0000-4000-8000-000000000001';
 
 const BASE =
   'G:/.shortcut-targets-by-id/11Xq6cUUOFH_u3AJCtHkZPyMoSf1HgdCS/The Jaworskis/Fitness & Health';
 const XLSX = `${BASE}/Stats/CrossFit Max Lifts Export SugarWod.xlsx`;
 const CSV = `${BASE}/SugarWod Workouts.csv`;
+const TRACKER_XLSX = 'C:/Users/paulj/Downloads/Paul Crossfit Tracker.xlsx';
+const CROSSFIT_STATS_SHEET = 'CrossFit Stats';
 
 // Map SugarWod / export lift names -> seed benchmark_type.name
 const LIFT_MAP = {
@@ -100,6 +101,83 @@ function parseNum(s) {
   return Number.isFinite(n) ? n : null;
 }
 
+function parseCsvRecords(raw) {
+  const records = [];
+  let row = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (c === '"') {
+      if (inQ && raw[i + 1] === '"') {
+        cur += '"';
+        i++;
+        continue;
+      }
+      inQ = !inQ;
+      continue;
+    }
+    if (c === ',' && !inQ) {
+      row.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    if ((c === '\n' || c === '\r') && !inQ) {
+      if (c === '\r' && raw[i + 1] === '\n') i++;
+      row.push(cur.trim());
+      if (row.some((cell) => cell !== '')) records.push(row);
+      row = [];
+      cur = '';
+      continue;
+    }
+    cur += c;
+  }
+  if (cur.length || row.length) {
+    row.push(cur.trim());
+    if (row.some((cell) => cell !== '')) records.push(row);
+  }
+  return records;
+}
+
+/** CrossFit Stats tab: lift name -> benchmark_type.name (seed.sql) */
+const STATS_LIFT_MAP = {
+  'Power Snatch': 'Power Snatch',
+  Snatch: 'Snatch',
+  'Hang Power Snatch': 'Hang Power Snatch',
+  'Hang Snatch': 'Hang Snatch',
+  'Power Clean': 'Power Clean',
+  Clean: 'Clean',
+  'Hang Power Clean': 'Hang Power Clean',
+  'Hang Squat Clean': 'Hang Clean',
+  'Clean & Jerk': 'Clean & Jerk',
+  'Push Jerk': 'Push Jerk',
+  'Split Jerk': 'Split Jerk',
+  'Back Squat': 'Back Squat',
+  'Front Squat': 'Front Squat',
+  'Overhead Squat': 'Overhead Squat',
+  'Bench Press': 'Bench Press',
+  'Push Press': 'Push Press',
+  'Strict Press': 'Strict Press',
+  Deadlift: 'Deadlift',
+  Thruster: 'Thruster',
+};
+
+function parseYearFromHeader(h) {
+  const m = String(h || '').match(/(20\d{2})/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function isStatsSkipRow(name) {
+  if (!name) return true;
+  if (/totals?$/i.test(name)) return true;
+  if (/^(Snatches|Cleans|Jerks|Squats|Presses|Deadlifts|Other|Powerlifting|Gymnastics|Endurance|Heroes)/i.test(name)) {
+    return true;
+  }
+  if (/^Total\b/i.test(name)) return true;
+  if (name.includes('Hero') || name.includes('Girl')) return true;
+  return false;
+}
+
 // --- Parse Max Lifts xlsx via xlsx-cli CSV output ---
 const xlsxRaw = execSync(`npx --yes xlsx-cli "${XLSX}"`, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
 const xlsxLines = xlsxRaw.split(/\r?\n/).slice(1); // skip "Raw Data" title if present
@@ -122,6 +200,7 @@ for (const line of xlsxLines) {
 
 const strengthPrs = {}; // benchmarkName -> { weight, date }
 const metconPrs = {}; // benchmarkName -> { score, result_value, date }
+const oneRmHistory = []; // yearly 1RM rows from CrossFit Stats
 
 function upsertStrength(bt, weight, date) {
   if (!weight || !bt) return;
@@ -232,6 +311,45 @@ const manualMetcons = {
 };
 for (const [bt, v] of Object.entries(manualMetcons)) upsertMetcon(bt, v.score, v.result_value, v.date);
 
+// --- Paul Crossfit Tracker: CrossFit Stats tab (yearly 1RM achievements) ---
+const statsRaw = execSync(
+  `npx --yes xlsx-cli "${TRACKER_XLSX}" --sheet "${CROSSFIT_STATS_SHEET}"`,
+  { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 },
+);
+const statsRecords = parseCsvRecords(statsRaw);
+const headerIdx = statsRecords.findIndex((r) =>
+  String(r[0] || '').toLowerCase().includes('1rm'),
+);
+if (headerIdx >= 0) {
+  const headerRow = statsRecords[headerIdx];
+  const yearCols = [];
+  for (let i = 1; i < headerRow.length; i++) {
+    const year = parseYearFromHeader(headerRow[i]);
+    if (year) yearCols.push({ idx: i, year });
+  }
+  for (let r = headerIdx + 1; r < statsRecords.length; r++) {
+    const row = statsRecords[r];
+    const name = row[0]?.trim();
+    if (!name || isStatsSkipRow(name)) continue;
+    const bt = STATS_LIFT_MAP[name];
+    if (!bt) continue;
+    for (const { idx, year } of yearCols) {
+      const weight = parseNum(row[idx]);
+      if (weight == null || weight < 45 || weight > 700) continue;
+      const date = `${year}-12-15`;
+      oneRmHistory.push({ bt, weight, year, date });
+      upsertStrength(bt, weight, date);
+    }
+  }
+}
+
+const maxByLift = {};
+for (const h of oneRmHistory) {
+  if (!maxByLift[h.bt] || h.weight > maxByLift[h.bt].weight) {
+    maxByLift[h.bt] = h;
+  }
+}
+
 // --- Build programming from 2026 SugarWod (group by date) ---
 const byDate = new Map();
 for (const w of workouts2026) {
@@ -240,15 +358,10 @@ for (const w of workouts2026) {
 }
 
 const sql = [];
-sql.push('-- Auto-generated from Google Drive exports (SugarWod + Max Lifts)');
-sql.push('alter table public.programming disable trigger programming_update_guard;');
-sql.push('alter table public.programming_line_item disable trigger pli_update_guard;');
+sql.push('-- Auto-generated: Paul Crossfit Tracker (CrossFit Stats) + SugarWod + Max Lifts');
 sql.push('');
-sql.push('-- Programming: Triad Workout Trends .gsheet is cloud-only; keep seeded May weeks from 02_paul_auth_dates_prs.sql');
-sql.push('');
-
-// Paul's PRs and class history come only from SugarWod + Triad trends imports
-sql.push(`delete from public.athlete_performance where contact_id = '${PAUL}';`);
+sql.push('-- Standalone PR / 1RM history only (preserve Triad class performances from 04)');
+sql.push(`delete from public.athlete_performance where contact_id = '${PAUL}' and programming_id is null;`);
 sql.push(`delete from public.athlete_benchmark_summary where contact_id = '${PAUL}';`);
 
 for (const [bt, v] of Object.entries(strengthPrs)) {
@@ -262,6 +375,20 @@ on conflict (contact_id, benchmark_definition_id) do update
 set current_pr_weight = excluded.current_pr_weight, date_pr_achieved = excluded.date_pr_achieved;`);
 }
 
+// Yearly 1RM achievements (CrossFit Stats tab)
+for (const h of oneRmHistory) {
+  const isMax = maxByLift[h.bt]?.weight === h.weight && maxByLift[h.bt]?.date === h.date;
+  sql.push(`insert into public.athlete_performance (contact_id, benchmark_type_id, benchmark_definition_id, performance_date, status, weight_lifted, score, is_pr)
+select '${PAUL}', t.id, bd.id, ${sqlStr(h.date)}, 'completed', ${h.weight}, ${sqlStr(String(h.weight))}, ${isMax}
+from public.benchmark_type t
+join public.benchmark_definition bd on bd.benchmark_type_id = t.id and bd.rep_count = 1
+where t.name = ${sqlStr(h.bt)}
+and not exists (
+  select 1 from public.athlete_performance ap
+  where ap.contact_id = '${PAUL}' and ap.benchmark_definition_id = bd.id and ap.performance_date = ${sqlStr(h.date)}
+);`);
+}
+
 // Metcon PRs (standalone performances, no class programming)
 for (const [bt, v] of Object.entries(metconPrs)) {
   sql.push(`insert into public.athlete_performance (contact_id, benchmark_type_id, performance_date, status, score, result_value, is_pr)
@@ -270,15 +397,14 @@ from public.benchmark_type t where t.name = ${sqlStr(bt)}
 and not exists (
   select 1 from public.athlete_performance ap
   where ap.contact_id = '${PAUL}' and ap.benchmark_type_id = t.id and ap.programming_id is null
+    and ap.performance_date = ${sqlStr(v.date)}
 );`);
 }
-
-sql.push('alter table public.programming enable trigger programming_update_guard;');
-sql.push('alter table public.programming_line_item enable trigger pli_update_guard;');
 
 const outPath = new URL('../supabase/remote/03_spreadsheet_import.sql', import.meta.url);
 writeFileSync(outPath, sql.join('\n'));
 console.log('Wrote', outPath.pathname || outPath);
 console.log('Strength PRs:', Object.keys(strengthPrs).length);
+console.log('CrossFit Stats 1RM history rows:', oneRmHistory.length);
 console.log('Metcon PRs:', Object.keys(metconPrs).length);
 console.log('2026 SugarWod rows:', workouts2026.length);
