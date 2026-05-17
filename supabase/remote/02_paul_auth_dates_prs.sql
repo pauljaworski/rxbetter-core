@@ -25,6 +25,4 @@ where id = 'f5321db3-262b-4803-9403-5e2a0877160d';
 delete from public.contact
 where id = '0a112854-9b0c-484d-b5ab-40593c7a5565';
 
--- Paul: CrossFit track only (Group Class still valid commercially)
-delete from public.athlete_subscription
-where id = 'd1000000-0000-4000-8000-000000000006';
+-- Athlete/staff entitlements: see 06_paul_staff_roles.sql
