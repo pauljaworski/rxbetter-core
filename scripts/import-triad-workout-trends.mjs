@@ -14,8 +14,6 @@ const GYM = 'a0000000-0000-4000-8000-000000000001';
 const LIB = '10000000-0000-4000-8000-000000000001';
 const PAUL = 'c0000000-0000-4000-8000-000000000001';
 const YEAR = 2026;
-const DELETE_FROM = '2026-03-16';
-const DELETE_TO = '2026-06-30';
 
 /** Longest-first lift names for prefix matching */
 const LIFT_NAMES = [
@@ -330,12 +328,12 @@ sql.push('alter table public.programming disable trigger programming_update_guar
 sql.push('alter table public.programming_line_item disable trigger pli_update_guard;');
 sql.push('');
 sql.push(`delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}'
+  select id from public.programming where gym_id = '${GYM}' and id::text like 'e3000000%'
 );`);
 sql.push(`delete from public.programming_line_item where programming_id in (
-  select id from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}'
+  select id from public.programming where gym_id = '${GYM}' and id::text like 'e3000000%'
 );`);
-sql.push(`delete from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}';`);
+sql.push(`delete from public.programming where gym_id = '${GYM}' and id::text like 'e3000000%';`);
 sql.push('');
 
 let pliCount = 0;
