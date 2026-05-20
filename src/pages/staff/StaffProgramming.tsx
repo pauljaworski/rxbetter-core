@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProgramLibraries } from "@/hooks/useProgramLibraries";
+import {
+  fetchProgrammingDayForCopy,
+  useStaffProgrammingDay,
+} from "@/hooks/staff/useStaffProgrammingDay";
+import { useProgrammingSave } from "@/hooks/staff/useProgrammingSave";
+import type { BenchmarkTypeOption, EditorLineItem, EditorWod } from "@/hooks/staff/types";
+import { PageSkeleton } from "@/components/layout/PageSkeleton";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,35 +47,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Wod = {
-  id?: string;
-  _new?: boolean;
-  name: string | null;
-  description: string | null;
-  programming_segment: string;
-  metcon_format: string | null;
-  athlete_notes: string | null;
-  coaches_notes: string | null;
-  display_order: number;
-  program_library_id: string | null;
-  items: LineItem[];
-};
-
-type LineItem = {
-  id?: string;
-  _new?: boolean;
-  sequence_number: number;
-  reps_prescribed: number | null;
-  prescribed_weight: number | null;
-  prescribed_percentage: number | null;
-  prescribed_score: string | null;
-  benchmark_type_id: string | null;
-  bench_name?: string;
-};
-
-type Library = { id: string; name: string };
-type BenchType = { id: string; name: string; stimulus: string | null };
-
 const SEGMENTS = [
   { value: "warmup", label: "Warm-up" },
   { value: "skill", label: "Skill" },
@@ -79,88 +60,47 @@ const SEGMENTS = [
 const METCON_FORMATS = ["amrap", "for_time", "emom", "rft", "tabata", "chipper"];
 
 export default function StaffProgramming() {
-  const { activeGymId, contactId } = useAuth();
+  const { activeGymId } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [wods, setWods] = useState<Wod[]>([]);
-  const [libraries, setLibraries] = useState<Library[]>([]);
+  const [wods, setWods] = useState<EditorWod[]>([]);
   const [defaultLib, setDefaultLib] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [copyBusy, setCopyBusy] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
 
   const dateKey = format(date, "yyyy-MM-dd");
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
-  async function loadLibraries() {
-    if (!activeGymId) return;
-    const { data } = await supabase
-      .from("program_library")
-      .select("id, name")
-      .eq("gym_id", activeGymId)
-      .eq("is_active", true)
-      .order("name");
-    setLibraries((data ?? []) as Library[]);
-    if ((data ?? []).length && !defaultLib) setDefaultLib(data![0].id);
-  }
-
-  async function loadDay(target: Date) {
-    if (!activeGymId) return;
-    setLoading(true);
-    const key = format(target, "yyyy-MM-dd");
-    const { data: progs } = await supabase
-      .from("programming")
-      .select(
-        "id, name, description, programming_segment, metcon_format, athlete_notes, coaches_notes, display_order, program_library_id",
-      )
-      .eq("gym_id", activeGymId)
-      .eq("wod_date", key)
-      .order("display_order");
-    const ids = (progs ?? []).map((p) => p.id);
-    const { data: items } = ids.length
-      ? await supabase
-          .from("programming_line_item")
-          .select(
-            "id, programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id",
-          )
-          .in("programming_id", ids)
-          .order("sequence_number")
-      : { data: [] as any[] };
-    const typeIds = Array.from(
-      new Set((items ?? []).map((i) => i.benchmark_type_id).filter(Boolean) as string[]),
-    );
-    const { data: types } = typeIds.length
-      ? await supabase.from("benchmark_type").select("id, name").in("id", typeIds)
-      : { data: [] as any[] };
-    const typeMap = new Map((types ?? []).map((t: any) => [t.id, t.name]));
-    const w: Wod[] = (progs ?? []).map((p: any) => ({
-      ...p,
-      programming_segment: p.programming_segment ?? "metcon",
-      display_order: p.display_order ?? 0,
-      items: (items ?? [])
-        .filter((i: any) => i.programming_id === p.id)
-        .map((i: any, idx: number) => ({
-          ...i,
-          sequence_number: i.sequence_number ?? idx + 1,
-          bench_name: typeMap.get(i.benchmark_type_id) as string | undefined,
-        })),
-    }));
-    setWods(w);
-    setLoading(false);
-  }
+  const {
+    data: serverWods,
+    isLoading,
+    error,
+    isEmpty,
+    refetch,
+  } = useStaffProgrammingDay(activeGymId, date);
+  const { data: libraries } = useProgramLibraries(activeGymId);
+  const { saveAll, busy: saving } = useProgrammingSave(activeGymId, date, defaultLib);
 
   useEffect(() => {
-    void loadLibraries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGymId]);
+    setDirty(false);
+  }, [dateKey]);
 
   useEffect(() => {
-    void loadDay(date);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGymId, dateKey]);
+    if (!isLoading && !dirty) setWods(serverWods);
+  }, [serverWods, isLoading, dirty]);
+
+  useEffect(() => {
+    if (libraries.length && !defaultLib) setDefaultLib(libraries[0].id);
+  }, [libraries, defaultLib]);
+
+  function markDirty() {
+    setDirty(true);
+  }
 
   function addEmptyWod() {
+    markDirty();
     setWods((prev) => [
       ...prev,
       {
@@ -178,15 +118,18 @@ export default function StaffProgramming() {
     ]);
   }
 
-  function updateWod(idx: number, patch: Partial<Wod>) {
+  function updateWod(idx: number, patch: Partial<EditorWod>) {
+    markDirty();
     setWods((prev) => prev.map((w, i) => (i === idx ? { ...w, ...patch } : w)));
   }
 
   function removeWod(idx: number) {
+    markDirty();
     setWods((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function addLineItem(wodIdx: number, bench: BenchType) {
+  function addLineItem(wodIdx: number, bench: BenchmarkTypeOption) {
+    markDirty();
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx
@@ -211,7 +154,8 @@ export default function StaffProgramming() {
     );
   }
 
-  function updateItem(wodIdx: number, itemIdx: number, patch: Partial<LineItem>) {
+  function updateItem(wodIdx: number, itemIdx: number, patch: Partial<EditorLineItem>) {
+    markDirty();
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx
@@ -222,6 +166,7 @@ export default function StaffProgramming() {
   }
 
   function removeItem(wodIdx: number, itemIdx: number) {
+    markDirty();
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx
@@ -233,155 +178,47 @@ export default function StaffProgramming() {
 
   async function copyFromDate(source: Date) {
     if (!activeGymId) return;
-    setBusy(true);
-    const srcKey = format(source, "yyyy-MM-dd");
-    const { data: progs } = await supabase
-      .from("programming")
-      .select(
-        "id, name, description, programming_segment, metcon_format, athlete_notes, coaches_notes, display_order, program_library_id",
-      )
-      .eq("gym_id", activeGymId)
-      .eq("wod_date", srcKey)
-      .order("display_order");
-    if (!progs?.length) {
-      setBusy(false);
-      toast.error("No programming on that date to copy.");
-      return;
+    setCopyBusy(true);
+    try {
+      const copied = await fetchProgrammingDayForCopy(activeGymId, source);
+      if (!copied.length) {
+        toast.error("No programming on that date to copy.");
+        return;
+      }
+      const baseOrder = wods.length;
+      const newWods: EditorWod[] = copied.map((w, idx) => ({
+        ...w,
+        _new: true,
+        display_order: baseOrder + idx,
+        program_library_id: w.program_library_id ?? defaultLib,
+      }));
+      setWods((prev) => [...prev, ...newWods]);
+      markDirty();
+      setCopyOpen(false);
+      toast.success(
+        `Copied ${copied.length} segment${copied.length === 1 ? "" : "s"} from ${format(source, "MMM d")}`,
+      );
+    } catch (e) {
+      toast.error("Couldn't copy", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setCopyBusy(false);
     }
-    const srcIds = progs.map((p) => p.id);
-    const { data: items } = await supabase
-      .from("programming_line_item")
-      .select(
-        "programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id",
-      )
-      .in("programming_id", srcIds)
-      .order("sequence_number");
-    const typeIds = Array.from(
-      new Set((items ?? []).map((i) => i.benchmark_type_id).filter(Boolean) as string[]),
-    );
-    const { data: types } = typeIds.length
-      ? await supabase.from("benchmark_type").select("id, name").in("id", typeIds)
-      : { data: [] as any[] };
-    const typeMap = new Map((types ?? []).map((t: any) => [t.id, t.name]));
-    const baseOrder = wods.length;
-    const newWods: Wod[] = progs.map((p: any, idx: number) => ({
-      _new: true,
-      name: p.name,
-      description: p.description,
-      programming_segment: p.programming_segment ?? "metcon",
-      metcon_format: p.metcon_format,
-      athlete_notes: p.athlete_notes,
-      coaches_notes: p.coaches_notes,
-      display_order: baseOrder + idx,
-      program_library_id: p.program_library_id ?? defaultLib,
-      items: (items ?? [])
-        .filter((i: any) => i.programming_id === p.id)
-        .map((i: any, j: number) => ({
-          _new: true,
-          sequence_number: j + 1,
-          reps_prescribed: i.reps_prescribed,
-          prescribed_weight: i.prescribed_weight,
-          prescribed_percentage: i.prescribed_percentage,
-          prescribed_score: i.prescribed_score,
-          benchmark_type_id: i.benchmark_type_id,
-          bench_name: typeMap.get(i.benchmark_type_id) as string | undefined,
-        })),
-    }));
-    setWods((prev) => [...prev, ...newWods]);
-    setBusy(false);
-    setCopyOpen(false);
-    toast.success(`Copied ${progs.length} segment${progs.length === 1 ? "" : "s"} from ${format(source, "MMM d")}`);
   }
 
-  async function saveAll() {
-    if (!activeGymId || !contactId) {
-      toast.error("Missing gym / contact.");
+  async function handleSave() {
+    const { error: saveError } = await saveAll(wods);
+    if (saveError) {
+      toast.error("Couldn't save", { description: saveError });
       return;
     }
-    setBusy(true);
-    try {
-      for (let i = 0; i < wods.length; i++) {
-        const w = wods[i];
-        const lib = w.program_library_id ?? defaultLib;
-        if (!lib) {
-          throw new Error("Pick a program library before saving.");
-        }
-        let progId = w.id;
-        if (w._new || !progId) {
-          const { data, error } = await supabase
-            .from("programming")
-            .insert({
-              gym_id: activeGymId,
-              program_library_id: lib,
-              wod_date: dateKey,
-              name: w.name,
-              description: w.description,
-              programming_segment: w.programming_segment,
-              metcon_format: w.metcon_format,
-              athlete_notes: w.athlete_notes,
-              coaches_notes: w.coaches_notes,
-              display_order: i,
-              source: "gym",
-              prescribed_scale: "rx",
-              created_by_contact_id: contactId,
-            })
-            .select("id")
-            .single();
-          if (error) throw error;
-          progId = data.id;
-        } else {
-          const { error } = await supabase
-            .from("programming")
-            .update({
-              name: w.name,
-              description: w.description,
-              programming_segment: w.programming_segment,
-              metcon_format: w.metcon_format,
-              athlete_notes: w.athlete_notes,
-              coaches_notes: w.coaches_notes,
-              display_order: i,
-            })
-            .eq("id", progId);
-          if (error) throw error;
-        }
-        // Items
-        for (let j = 0; j < w.items.length; j++) {
-          const it = w.items[j];
-          if (it._new || !it.id) {
-            const { error } = await supabase.from("programming_line_item").insert({
-              programming_id: progId,
-              sequence_number: j + 1,
-              reps_prescribed: it.reps_prescribed,
-              prescribed_weight: it.prescribed_weight,
-              prescribed_percentage: it.prescribed_percentage,
-              prescribed_score: it.prescribed_score,
-              benchmark_type_id: it.benchmark_type_id,
-            });
-            if (error) throw error;
-          } else {
-            const { error } = await supabase
-              .from("programming_line_item")
-              .update({
-                sequence_number: j + 1,
-                reps_prescribed: it.reps_prescribed,
-                prescribed_weight: it.prescribed_weight,
-                prescribed_percentage: it.prescribed_percentage,
-                prescribed_score: it.prescribed_score,
-                benchmark_type_id: it.benchmark_type_id,
-              })
-              .eq("id", it.id);
-            if (error) throw error;
-          }
-        }
-      }
-      toast.success("Saved");
-      await loadDay(date);
-    } catch (e: any) {
-      toast.error("Couldn't save", { description: e.message ?? String(e) });
-    } finally {
-      setBusy(false);
-    }
+    toast.success("Saved");
+    setDirty(false);
+    refetch();
   }
+
+  const busy = saving || copyBusy;
 
   return (
     <div className="space-y-6">
@@ -392,6 +229,8 @@ export default function StaffProgramming() {
           Build the day. Duplicate yesterday, snap in a movement, ship it.
         </p>
       </header>
+
+      {error && <ErrorBanner message={error} />}
 
       {/* Week strip */}
       <Card className="glass-card p-3">
@@ -462,24 +301,25 @@ export default function StaffProgramming() {
             <Plus className="mr-1 h-3.5 w-3.5" /> Segment
           </Button>
           <Button
-            onClick={saveAll}
+            onClick={handleSave}
             disabled={busy || !wods.length}
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Save className="mr-1 h-3.5 w-3.5" /> {busy ? "Saving…" : "Save day"}
+            <Save className="mr-1 h-3.5 w-3.5" /> {saving ? "Saving…" : "Save day"}
           </Button>
         </div>
       </div>
 
       {/* WODs */}
-      {loading ? (
-        <Skeleton className="h-60 w-full" />
-      ) : wods.length === 0 ? (
-        <Card className="glass-card p-8 text-center text-sm text-muted-foreground">
-          Nothing scheduled for {format(date, "EEE, MMM d")}. Copy a previous day or add a segment.
-        </Card>
-      ) : (
+      {isLoading && <PageSkeleton rows={4} />}
+      {!isLoading && !error && isEmpty && wods.length === 0 && (
+        <EmptyState
+          title="Nothing scheduled"
+          description={`${format(date, "EEE, MMM d")} is empty. Copy a previous day or add a segment.`}
+        />
+      )}
+      {!isLoading && wods.length > 0 && (
         <div className="space-y-4">
           {wods.map((w, idx) => (
             <Card key={w.id ?? `new-${idx}`} className="glass-card overflow-hidden p-0">
@@ -720,10 +560,10 @@ function MovementPicker({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onPick: (b: BenchType) => void;
+  onPick: (b: BenchmarkTypeOption) => void;
 }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<BenchType[]>([]);
+  const [results, setResults] = useState<BenchmarkTypeOption[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -739,7 +579,7 @@ function MovementPicker({
       if (q) query.ilike("name", `%${q}%`);
       const { data } = await query;
       if (!cancelled) {
-        setResults((data ?? []) as BenchType[]);
+        setResults((data ?? []) as BenchmarkTypeOption[]);
         setLoading(false);
       }
     }, 150);
