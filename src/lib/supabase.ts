@@ -18,12 +18,16 @@ const supabaseUrl =
   readPublicEnv("NEXT_PUBLIC_SUPABASE_URL", "VITE_SUPABASE_URL") ?? "";
 const supabaseAnonKey =
   readPublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY") ??
+  readPublicEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY") ??
   "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing Supabase URL/anon key. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (Next.js) or VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (Vite)."
+  console.warn(
+    "Missing Supabase URL/anon key. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example)."
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(
+  supabaseUrl || "http://127.0.0.1:54321",
+  supabaseAnonKey || "placeholder-anon-key",
+);

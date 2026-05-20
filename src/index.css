@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RxBetter — dark, athletic, neon design system. All colors HSL. */
+
+@layer base {
+  :root {
+    /* Core surfaces — near-black with subtle elevation */
+    --background: 225 15% 5%;
+    --foreground: 210 20% 96%;
+
+    --card: 225 14% 8%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 225 14% 8%;
+    --popover-foreground: 210 20% 96%;
+
+    /* Primary = electric green neon */
+    --primary: 142 90% 55%;
+    --primary-foreground: 225 25% 6%;
+    --primary-glow: 142 95% 65%;
+
+    --secondary: 225 12% 14%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 225 10% 12%;
+    --muted-foreground: 215 12% 60%;
+
+    --accent: 22 95% 58%;
+    --accent-foreground: 225 25% 6%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 225 12% 16%;
+    --input: 225 12% 16%;
+    --ring: 142 90% 55%;
+
+    --radius: 0.875rem;
+
+    /* Effects */
+    --gradient-hero: radial-gradient(120% 80% at 50% 0%, hsl(142 90% 55% / 0.18), transparent 60%), linear-gradient(180deg, hsl(225 14% 9%), hsl(225 15% 5%));
+    --gradient-pr: linear-gradient(135deg, hsl(22 95% 58%), hsl(0 88% 60%));
+    --gradient-neon: linear-gradient(135deg, hsl(142 90% 55%), hsl(160 90% 55%));
+    --shadow-glow: 0 0 0 1px hsl(142 90% 55% / 0.25), 0 10px 40px -10px hsl(142 90% 55% / 0.35);
+    --shadow-card: 0 1px 0 0 hsl(0 0% 100% / 0.04) inset, 0 30px 60px -30px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 225 15% 6%;
+    --sidebar-foreground: 210 18% 78%;
+    --sidebar-primary: 142 90% 55%;
+    --sidebar-primary-foreground: 225 25% 6%;
+    --sidebar-accent: 225 12% 12%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 225 12% 14%;
+    --sidebar-ring: 142 90% 55%;
+  }
+
+  .dark {
+    --background: 225 15% 5%;
+    --foreground: 210 20% 96%;
+    --card: 225 14% 8%;
+    --card-foreground: 210 20% 96%;
+    --popover: 225 14% 8%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 142 90% 55%;
+    --primary-foreground: 225 25% 6%;
+    --secondary: 225 12% 14%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 225 10% 12%;
+    --muted-foreground: 215 12% 60%;
+    --accent: 22 95% 58%;
+    --accent-foreground: 225 25% 6%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 225 12% 16%;
+    --input: 225 12% 16%;
+    --ring: 142 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .font-mono-num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-[var(--radius)] border border-border bg-card/80 backdrop-blur-xl;
+    box-shadow: var(--shadow-card);
+  }
+  .glass-card-glow {
+    @apply glass-card;
+    box-shadow: var(--shadow-glow), var(--shadow-card);
+  }
+  .eyebrow {
+    @apply text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+  .neon-text {
+    color: hsl(var(--primary));
+    text-shadow: 0 0 24px hsl(var(--primary) / 0.5);
+  }
+}
+
+@keyframes pr-flash {
+  0% { box-shadow: 0 0 0 0 hsl(22 95% 58% / 0.7); }
+  100% { box-shadow: 0 0 0 24px hsl(22 95% 58% / 0); }
+}
+.pr-flash { animation: pr-flash 1.2s ease-out; }

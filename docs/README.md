@@ -11,8 +11,8 @@ Product strategy, roadmap, and PRD notes live here.
 | **[SUPABASE_DATA_MODEL.md](SUPABASE_DATA_MODEL.md)** | Primary explanation of **each Postgres table** (and views): purpose and SF lineage when relevant |
 | **[MEMBERSHIP_OFFERINGS_VERIFICATION.md](MEMBERSHIP_OFFERINGS_VERIFICATION.md)** | Smoke-test checklist for signup, identity routing, Triad offering links, and entitlement fan-out |
 
-## Related repository
+## Local UI
 
-- **Lovable UI:** https://github.com/pauljaworski/rxbetter-train-smarter
+The Vite app runs from the **repo root** (`npm run dev`). Historical Lovable sync: https://github.com/pauljaworski/rxbetter-train-smarter (archived).
 
-Schema columns and constraints always defer to **`supabase/migrations/`** in **rxbetter-core**.
+Schema columns and constraints always defer to **`supabase/migrations/`**.
