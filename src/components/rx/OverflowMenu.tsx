@@ -18,11 +18,12 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasAnyStaffPersona } from "@/lib/personas";
 import { toast } from "sonner";
 
 export function OverflowMenu() {
-  const { activePersona } = useAuth();
-  const isStaff = activePersona !== "athlete";
+  const { activePersona, availablePersonas } = useAuth();
+  const isStaff = hasAnyStaffPersona(availablePersonas);
   const soon = (label: string) => () =>
     toast.info(`${label} is coming soon`);
 
@@ -63,7 +64,7 @@ export function OverflowMenu() {
                 <CalendarCheck2 className="mr-2 h-4 w-4" /> Class Day
               </Link>
             </DropdownMenuItem>
-            {(activePersona === "programmer" || activePersona === "admin") && (
+            {(availablePersonas.includes("programmer") || availablePersonas.includes("admin")) && (
               <DropdownMenuItem asChild>
                 <Link to="/staff/programming">
                   <ClipboardList className="mr-2 h-4 w-4" /> Programming
@@ -75,7 +76,7 @@ export function OverflowMenu() {
                 <Users className="mr-2 h-4 w-4" /> Roster
               </Link>
             </DropdownMenuItem>
-            {activePersona === "admin" && (
+            {availablePersonas.includes("admin") && (
               <DropdownMenuItem asChild>
                 <Link to="/staff/memberships">
                   <CreditCard className="mr-2 h-4 w-4" /> Memberships

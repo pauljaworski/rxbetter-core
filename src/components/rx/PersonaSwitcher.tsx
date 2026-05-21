@@ -1,31 +1,41 @@
 import { useAuth, type Persona } from "@/contexts/AuthContext";
+import { hasAnyStaffPersona, STAFF_PERSONAS } from "@/lib/personas";
 import { cn } from "@/lib/utils";
 import { Activity, Megaphone, ClipboardList, ShieldCheck } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
-const META: Record<Persona, { label: string; short: string; icon: any; color: string }> = {
-  athlete:    { label: "Athlete",    short: "ATH", icon: Activity,      color: "text-primary" },
-  coach:      { label: "Coach",      short: "CCH", icon: Megaphone,     color: "text-accent" },
+const META: Record<Persona, { label: string; short: string; icon: typeof Activity; color: string }> = {
+  athlete: { label: "Athlete", short: "ATH", icon: Activity, color: "text-primary" },
+  coach: { label: "Coach", short: "CCH", icon: Megaphone, color: "text-accent" },
   programmer: { label: "Programmer", short: "PRG", icon: ClipboardList, color: "text-primary" },
-  admin:      { label: "Admin",      short: "ADM", icon: ShieldCheck,   color: "text-accent" },
+  admin: { label: "Admin", short: "ADM", icon: ShieldCheck, color: "text-accent" },
 };
-
-const STAFF_PERSONAS: Persona[] = ["coach", "programmer", "admin"];
 
 export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
   const { availablePersonas, activePersona, setActivePersona } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
 
-  // Auto-route between athlete and staff areas when persona changes.
   useEffect(() => {
     const isStaffRoute = loc.pathname.startsWith("/staff");
     const isStaffPersona = STAFF_PERSONAS.includes(activePersona);
-    if (isStaffPersona && !isStaffRoute) nav("/staff", { replace: true });
-    if (!isStaffPersona && isStaffRoute) nav("/", { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePersona]);
+    const staffAvailable = availablePersonas.filter((p) => STAFF_PERSONAS.includes(p));
+
+    if (isStaffRoute && staffAvailable.length && !isStaffPersona) {
+      setActivePersona(staffAvailable[staffAvailable.length - 1]!);
+      return;
+    }
+
+    if (isStaffPersona && !isStaffRoute) {
+      nav("/staff", { replace: true });
+      return;
+    }
+
+    if (!isStaffPersona && isStaffRoute && !hasAnyStaffPersona(availablePersonas)) {
+      nav("/", { replace: true });
+    }
+  }, [activePersona, loc.pathname, availablePersonas, setActivePersona, nav]);
 
   if (availablePersonas.length < 2) return null;
 

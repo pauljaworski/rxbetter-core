@@ -2,6 +2,10 @@
 
 RxBetter helps coaches manage gym programming and athlete performance from one dashboard.
 
+## Canonical repository
+
+**All product code lives in this repo** ([github.com/pauljaworski/rxbetter-core](https://github.com/pauljaworski/rxbetter-core)). Clone and open this directory directly in your editor — do not use a separate wrapper repo.
+
 ## Monorepo (schema + UI)
 
 This repository is the **single local dev root**: Supabase migrations, scripts, and the **Vite/React app** (`npm run dev`). The former Lovable repo [rxbetter-train-smarter](https://github.com/pauljaworski/rxbetter-train-smarter) was merged here for Cursor-first development (no Lovable API required).
