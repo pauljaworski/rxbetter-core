@@ -28,7 +28,9 @@ export type SavePerformanceInput = {
 export function useSavePerformance() {
   const [submitting, setSubmitting] = useState(false);
 
-  async function save(input: SavePerformanceInput): Promise<{ error: string | null }> {
+  async function save(
+    input: SavePerformanceInput,
+  ): Promise<{ error: string | null; id?: string }> {
     setSubmitting(true);
     const payload: PerformanceUpdate = {
       score: input.score,
@@ -42,19 +44,34 @@ export function useSavePerformance() {
       workout_scale: input.workoutScale,
     };
 
-    const { error } = input.existingId
-      ? await supabase.from("athlete_performance").update(payload).eq("id", input.existingId)
-      : await supabase.from("athlete_performance").insert({
+    let id = input.existingId;
+    let error: { message: string } | null = null;
+
+    if (input.existingId) {
+      const res = await supabase
+        .from("athlete_performance")
+        .update(payload)
+        .eq("id", input.existingId);
+      error = res.error;
+    } else {
+      const res = await supabase
+        .from("athlete_performance")
+        .insert({
           ...payload,
           contact_id: input.contactId,
           programming_id: input.programmingId,
           programming_line_item_id: input.lineItemId,
           benchmark_definition_id: input.benchmarkDefinitionId,
           benchmark_type_id: input.benchmarkTypeId,
-        } satisfies PerformanceInsert);
+        } satisfies PerformanceInsert)
+        .select("id")
+        .single();
+      error = res.error;
+      id = res.data?.id ?? id;
+    }
 
     setSubmitting(false);
-    return { error: error ? formatSupabaseError(error.message) : null };
+    return { error: error ? formatSupabaseError(error.message) : null, id };
   }
 
   async function removePerformance(performanceId: string): Promise<{ error: string | null }> {

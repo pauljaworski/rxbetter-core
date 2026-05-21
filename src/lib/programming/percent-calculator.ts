@@ -33,10 +33,22 @@ export function normalizePercentFraction(fraction: number | null | undefined): n
   return percentFractionFromWhole(percentWholeFromFraction(fraction ?? null));
 }
 
+/** Round barbell weights to whole pounds for display and prescriptions. */
+export function roundWeightLb(weight: number | null | undefined): number | null {
+  if (weight == null || Number.isNaN(weight)) return null;
+  return Math.round(weight);
+}
+
 export function computeWeightFromPr(prWeight: number | null, percentage: number | null): number | null {
   if (prWeight == null || percentage == null) return null;
   const pct = normalizePercentFraction(percentage) ?? percentage;
-  return Math.round(prWeight * pct * 10) / 10;
+  return roundWeightLb(prWeight * pct);
+}
+
+/** Default input value from prescribed weight (whole number, not decimal). */
+export function formatWeightInputDefault(weight: number | null | undefined): string {
+  const rounded = roundWeightLb(weight);
+  return rounded != null ? String(rounded) : "";
 }
 
 export type BenchmarkDefinitionRow = {

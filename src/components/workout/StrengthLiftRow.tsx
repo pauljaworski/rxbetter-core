@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Flame, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { computeWeightFromPr } from "@/lib/programming/percent-calculator";
+import {
+  computeWeightFromPr,
+  formatWeightInputDefault,
+  roundWeightLb,
+} from "@/lib/programming/percent-calculator";
 import { loadRepCountForDefinition } from "@/lib/programming/enrich-line-items";
 import { recomputeBenchmarkSummary } from "@/lib/pr/record-athlete-pr";
 import { useSavePerformance } from "@/hooks/useSavePerformance";
@@ -15,6 +19,11 @@ import type { WorkoutScale } from "@/lib/format";
 import type { LogLineItem, LogWodContext, ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
 import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
+
+function weightToInputValue(lb: number): string {
+  if (Number.isInteger(lb)) return String(lb);
+  return String(lb);
+}
 
 export function StrengthLiftRow({
   item,
@@ -33,18 +42,28 @@ export function StrengthLiftRow({
   const [repCount, setRepCount] = useState(1);
   const [weight, setWeight] = useState("");
   const [rpe, setRpe] = useState("");
+  const [liftStatus, setLiftStatus] = useState<"completed" | "failed">("completed");
+  const [localPerf, setLocalPerf] = useState<ExistingPerformance | null>(existing);
   const [prDialogOpen, setPrDialogOpen] = useState(false);
   const { save, submitting } = useSavePerformance();
+
+  const displayPerf = localPerf ?? existing;
 
   const prescribedFromPr = useMemo(
     () => computeWeightFromPr(prWeight, item.prescribed_percentage),
     [prWeight, item.prescribed_percentage],
   );
 
-  const prescribedWeight =
-    item.prescribed_weight != null ? item.prescribed_weight : prescribedFromPr;
+  const prescribedWeight = useMemo(() => {
+    const raw =
+      item.prescribed_weight != null ? item.prescribed_weight : prescribedFromPr;
+    return roundWeightLb(raw);
+  }, [item.prescribed_weight, prescribedFromPr]);
 
-  const needsPr = contactId != null && item.benchmark_definition_id != null && prWeight == null;
+  const displayPrWeight = roundWeightLb(prWeight);
+
+  const needsPr =
+    contactId != null && item.benchmark_definition_id != null && displayPrWeight == null;
 
   useEffect(() => {
     if (!contactId || !item.benchmark_definition_id) return;
@@ -75,15 +94,20 @@ export function StrengthLiftRow({
   }, [item.benchmark_definition_id]);
 
   useEffect(() => {
-    if (existing?.weight_lifted != null) {
-      setWeight(String(existing.weight_lifted));
+    setLocalPerf(existing);
+    setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
+  }, [item.id, existing?.id]);
+
+  useEffect(() => {
+    if (displayPerf?.weight_lifted != null) {
+      setWeight(weightToInputValue(displayPerf.weight_lifted));
     } else if (prescribedWeight != null) {
-      setWeight(String(prescribedWeight));
+      setWeight(formatWeightInputDefault(prescribedWeight));
     } else {
       setWeight("");
     }
-    setRpe(existing?.rpe != null ? String(existing.rpe) : "");
-  }, [existing, prescribedWeight]);
+    setRpe(displayPerf?.rpe != null ? String(displayPerf.rpe) : "");
+  }, [item.id, displayPerf?.id, displayPerf?.weight_lifted, prescribedWeight]);
 
   async function refreshPr() {
     if (!contactId || !item.benchmark_definition_id) return;
@@ -107,7 +131,9 @@ export function StrengthLiftRow({
       return;
     }
 
-    const { error } = await save({
+    const perfId = displayPerf?.id;
+
+    const { error, id: savedId } = await save({
       contactId,
       programmingId: wod.id,
       lineItemId: item.id,
@@ -115,7 +141,7 @@ export function StrengthLiftRow({
       benchmarkDefinitionId: item.benchmark_definition_id,
       benchmarkTypeId: item.benchmark_type_id,
       repsPrescribed: item.reps_prescribed,
-      existingId: existing?.id,
+      existingId: perfId,
       score: null,
       weightLifted: weightNum,
       rpe: rpe ? Number(rpe) : null,
@@ -130,7 +156,7 @@ export function StrengthLiftRow({
       return;
     }
 
-    let becamePr = false;
+    let isPr = displayPerf?.is_pr ?? false;
     if (item.benchmark_definition_id && status === "completed") {
       const { error: prErr } = await recomputeBenchmarkSummary(
         contactId,
@@ -146,16 +172,33 @@ export function StrengthLiftRow({
           .eq("contact_id", contactId)
           .eq("benchmark_definition_id", item.benchmark_definition_id)
           .maybeSingle();
-        becamePr = bench?.current_pr_weight === weightNum;
+        isPr = bench?.current_pr_weight === weightNum;
       }
     }
 
-    if (becamePr) toast.success("New PR!");
-    else toast.success(status === "completed" ? "Lift logged" : "Marked failed");
+    setLocalPerf({
+      id: savedId ?? perfId ?? "local",
+      score: null,
+      weight_lifted: weightNum,
+      rpe: rpe ? Number(rpe) : null,
+      is_pr: isPr,
+      workout_scale: (wod.prescribed_scale as WorkoutScale | null) ?? "rx",
+      status,
+    });
+    setLiftStatus(status);
+
+    if (isPr && !displayPerf?.is_pr) toast.success("New PR!");
+    else if (status === "failed") toast.message("Marked failed");
+    else toast.success(displayPerf ? "Lift updated" : "Lift logged");
+
     onLogged?.();
   }
 
-  const isLogged = !!existing;
+  async function applyStatus(status: "completed" | "failed") {
+    await submitLift(status);
+  }
+
+  const isLogged = displayPerf?.weight_lifted != null;
 
   return (
     <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
@@ -169,7 +212,7 @@ export function StrengthLiftRow({
           sequenceNumber={item.sequence_number}
         />
         <div className="flex flex-wrap items-center gap-2">
-          {existing?.is_pr && (
+          {displayPerf?.is_pr && (
             <Badge className="gap-1 bg-accent text-accent-foreground">
               <Flame className="h-3 w-3" /> PR
             </Badge>
@@ -195,7 +238,7 @@ export function StrengthLiftRow({
             Your PR (lb)
           </Label>
           <p className="font-mono-num text-lg font-black">
-            {prWeight != null ? prWeight : "—"}
+            {displayPrWeight != null ? displayPrWeight : "—"}
           </p>
         </div>
         <div className="space-y-1">
@@ -233,19 +276,26 @@ export function StrengthLiftRow({
 
       <div className="flex flex-wrap gap-2">
         <Button
+          type="button"
           size="sm"
           disabled={submitting}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => void submitLift("completed")}
+          variant={liftStatus === "completed" ? "default" : "outline"}
+          className={
+            liftStatus === "completed"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : undefined
+          }
+          onClick={() => void applyStatus("completed")}
         >
           <CheckCircle2 className="mr-1 h-4 w-4" />
-          {isLogged && existing?.status !== "failed" ? "Update · Success" : "Success"}
+          Success
         </Button>
         <Button
+          type="button"
           size="sm"
-          variant="destructive"
           disabled={submitting}
-          onClick={() => void submitLift("failed")}
+          variant={liftStatus === "failed" ? "destructive" : "outline"}
+          onClick={() => void applyStatus("failed")}
         >
           <XCircle className="mr-1 h-4 w-4" />
           Failed
