@@ -17,7 +17,11 @@ Data-fetching hooks for Supabase. Pages should stay thin and call hooks here.
 | `useStaffClassDay` | Class day WODs, shared PLIs, performances, contacts |
 | `useStaffProgrammingDay` | Programming editor load for a date |
 | `fetchProgrammingDayForCopy` | Copy-from-date helper (new `_new` WODs) |
-| `useProgrammingSave` | Persist editor WODs + shared PLIs (`source: gym`) |
+| `useProgrammingSave` | Persist editor WODs + shared PLIs (`source: gym`); `saveWod` for single segment |
+| `useBenchmarkCatalog` | Global `benchmark_type` list for intake fuzzy match |
+| `useWodParser` | Client-side plain-text → intake draft |
+| `useIntakeCommit` | Stage + commit intake to `programming` / `programming_intake_stage` |
+| `useIntakeStageList` | Recent intake rows for a gym day |
 | `useStaffPerformanceUpdate` | Coach/admin score corrections |
 
 Auth/identity: `useAuth()` from `@/contexts/AuthContext`.

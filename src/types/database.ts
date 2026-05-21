@@ -1064,6 +1064,92 @@ export type Database = {
           },
         ]
       }
+      programming_intake_stage: {
+        Row: {
+          coach_contact_id: string
+          committed_programming_id: string | null
+          contains_errors: boolean
+          correction_applied: boolean
+          created_at: string
+          gym_id: string
+          id: string
+          latency_ms: number | null
+          parsed_payload: Json
+          parser_mode: string
+          program_library_id: string
+          raw_text: string
+          status: string
+          token_count: number | null
+          updated_at: string
+          wod_date: string
+        }
+        Insert: {
+          coach_contact_id: string
+          committed_programming_id?: string | null
+          contains_errors?: boolean
+          correction_applied?: boolean
+          created_at?: string
+          gym_id: string
+          id?: string
+          latency_ms?: number | null
+          parsed_payload?: Json
+          parser_mode?: string
+          program_library_id: string
+          raw_text: string
+          status?: string
+          token_count?: number | null
+          updated_at?: string
+          wod_date: string
+        }
+        Update: {
+          coach_contact_id?: string
+          committed_programming_id?: string | null
+          contains_errors?: boolean
+          correction_applied?: boolean
+          created_at?: string
+          gym_id?: string
+          id?: string
+          latency_ms?: number | null
+          parsed_payload?: Json
+          parser_mode?: string
+          program_library_id?: string
+          raw_text?: string
+          status?: string
+          token_count?: number | null
+          updated_at?: string
+          wod_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programming_intake_stage_coach_contact_id_fkey"
+            columns: ["coach_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programming_intake_stage_committed_programming_id_fkey"
+            columns: ["committed_programming_id"]
+            isOneToOne: false
+            referencedRelation: "programming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programming_intake_stage_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programming_intake_stage_program_library_id_fkey"
+            columns: ["program_library_id"]
+            isOneToOne: false
+            referencedRelation: "program_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programming_line_item: {
         Row: {
           actual_weight_lifted: number | null

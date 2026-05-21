@@ -113,3 +113,24 @@ export type EditorWod = {
 };
 
 export type BenchmarkTypeOption = { id: string; name: string; stimulus: string | null };
+
+/** Client-side draft from plain-text intake before commit. */
+export type IntakeDraftPayload = {
+  segment: EditorWod;
+  lineItems: EditorLineItem[];
+  warnings: string[];
+  unmatchedTokens?: string[];
+};
+
+export type IntakeStageRow = {
+  id: string;
+  raw_text: string;
+  parsed_payload: IntakeDraftPayload;
+  parser_mode: string;
+  contains_errors: boolean;
+  correction_applied: boolean;
+  status: string;
+  committed_programming_id: string | null;
+  latency_ms: number | null;
+  created_at: string;
+};

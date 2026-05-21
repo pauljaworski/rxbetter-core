@@ -64,6 +64,7 @@ The script copies **frontend app files only** from `rxbetter-core` into the Lova
 **Not copied** (stay only in core):
 
 - `supabase/migrations/` — schema SSOT in core
+- `supabase/functions/` — edge functions (e.g. Phase 2 `parse-complex-wod`); deploy from core via Supabase CLI, not Lovable sync
 - `docs/`, `scripts/` (data generators), `.cursor/`
 
 **Never overwritten** in the Lovable clone:

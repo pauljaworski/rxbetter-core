@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { WodIntakePanel } from "@/components/programmer/WodIntakePanel";
 
 const SEGMENTS = [
   { value: "warmup", label: "Warm-up" },
@@ -231,6 +232,16 @@ export default function StaffProgramming() {
       </header>
 
       {error && <ErrorBanner message={error} />}
+
+      <WodIntakePanel
+        date={date}
+        defaultLib={defaultLib}
+        displayOrder={wods.length}
+        onCommitted={() => {
+          setDirty(false);
+          refetch();
+        }}
+      />
 
       {/* Week strip */}
       <Card className="glass-card p-3">
