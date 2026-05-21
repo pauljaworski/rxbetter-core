@@ -72,6 +72,7 @@ export const intakeDraftPayloadSchema = z.object({
     coaches_notes: z.string().nullable(),
     display_order: z.number(),
     program_library_id: z.string().nullable(),
+    program_library_ids: z.array(z.string()).optional(),
   }),
   lineItems: z.array(
     z.object({

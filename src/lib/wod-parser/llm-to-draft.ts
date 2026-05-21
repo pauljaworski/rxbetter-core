@@ -61,6 +61,7 @@ export function mapLlmToIntakeDraft(options: MapLlmDraftOptions): IntakeDraftPay
       coaches_notes: segment.coaches_notes ?? null,
       display_order: options.displayOrder,
       program_library_id: options.defaultLibraryId,
+      program_library_ids: options.defaultLibraryId ? [options.defaultLibraryId] : [],
       items: [],
     },
     lineItems,

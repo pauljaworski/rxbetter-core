@@ -3,6 +3,11 @@ import { addDays, format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "./useAsyncState";
 import type { LogLineItem, ExistingPerformance } from "@/components/rx/LogScoreSheet";
+import {
+  fetchAthleteTrackLibraryIds,
+  isProgrammingVisibleForTracks,
+  loadAssignmentMap,
+} from "@/lib/programming/athlete-library-filter";
 
 export type WeekWod = {
   id: string;
@@ -15,6 +20,8 @@ export type WeekWod = {
   display_order: number | null;
   wod_date: string;
   prescribed_scale?: string | null;
+  program_library_id?: string | null;
+  published_at?: string | null;
 };
 
 export type GymAthlete = { id: string; name: string };
@@ -48,10 +55,13 @@ export function useProgrammingWeek(
     const start = dayKey(weekStart);
     const end = dayKey(addDays(weekStart, 6));
 
+    const trackIds =
+      contactId != null ? await fetchAthleteTrackLibraryIds(contactId, activeGymId) : [];
+
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, display_order, wod_date, prescribed_scale",
+        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, display_order, wod_date, prescribed_scale, program_library_id, published_at",
       )
       .eq("gym_id", activeGymId)
       .eq("source", "gym")
@@ -61,7 +71,13 @@ export function useProgrammingWeek(
 
     if (progErr) throw new Error(progErr.message);
 
-    const wods = (progs ?? []) as WeekWod[];
+    const raw = (progs ?? []) as WeekWod[];
+    const assignmentMap = await loadAssignmentMap(raw.map((p) => p.id));
+    const wods = raw.filter(
+      (p) =>
+        p.published_at != null &&
+        isProgrammingVisibleForTracks(p, assignmentMap, trackIds),
+    ) as WeekWod[];
     const progIds = wods.map((p) => p.id);
 
     const itemsByWod = new Map<string, LogLineItem[]>();
@@ -71,7 +87,7 @@ export function useProgrammingWeek(
       const { data: items, error: itemErr } = await supabase
         .from("programming_line_item")
         .select(
-          "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id",
+          "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label",
         )
         .in("programming_id", progIds)
         .is("contact_id", null)
@@ -99,7 +115,7 @@ export function useProgrammingWeek(
           status: it.status,
           benchmark_definition_id: it.benchmark_definition_id,
           benchmark_type_id: it.benchmark_type_id,
-          bench_name: t?.name,
+          bench_name: t?.name ?? it.movement_label ?? undefined,
           stimulus: t?.stimulus ?? undefined,
         };
         const arr = itemsByWod.get(it.programming_id) ?? [];

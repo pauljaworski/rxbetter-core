@@ -2,6 +2,11 @@ import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "./useAsyncState";
 import type { Tables } from "@/types/database";
+import {
+  fetchAthleteTrackLibraryIds,
+  isProgrammingVisibleForTracks,
+  loadAssignmentMap,
+} from "@/lib/programming/athlete-library-filter";
 
 export type WorkoutLineItem = {
   id: string;
@@ -54,36 +59,41 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
   const loader = useCallback(async (): Promise<WorkoutDayResult> => {
     if (!activeGymId) return EMPTY;
 
-    const { data: latest, error: latestErr } = await supabase
+    const trackIds =
+      contactId != null ? await fetchAthleteTrackLibraryIds(contactId, activeGymId) : [];
+
+    const { data: recentProgs, error: recentErr } = await supabase
       .from("programming")
-      .select("wod_date")
+      .select(
+        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+      )
       .eq("gym_id", activeGymId)
       .eq("source", "gym")
       .order("wod_date", { ascending: false })
-      .limit(1);
+      .order("display_order", { ascending: true })
+      .limit(80);
 
-    if (latestErr) throw new Error(latestErr.message);
-    const wodDate = latest?.[0]?.wod_date ?? null;
-    if (!wodDate) return { ...EMPTY, wodDate: null };
+    if (recentErr) throw new Error(recentErr.message);
+    const allRecent = recentProgs ?? [];
+    if (!allRecent.length) return { ...EMPTY, wodDate: null };
 
-    const { data: progs, error: progErr } = await supabase
-      .from("programming")
-      .select(
-        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, display_order, wod_date, prescribed_scale",
-      )
-      .eq("gym_id", activeGymId)
-      .eq("wod_date", wodDate)
-      .eq("source", "gym")
-      .order("display_order", { ascending: true });
+    const assignmentMap = await loadAssignmentMap(allRecent.map((p) => p.id));
+    const visible = allRecent.filter(
+      (p) =>
+        p.published_at != null &&
+        isProgrammingVisibleForTracks(p, assignmentMap, trackIds),
+    );
+    if (!visible.length) return { ...EMPTY, wodDate: null };
 
-    if (progErr) throw new Error(progErr.message);
-    const ids = (progs ?? []).map((p) => p.id);
+    const wodDate = visible[0].wod_date;
+    const progs = visible.filter((p) => p.wod_date === wodDate);
+    const ids = progs.map((p) => p.id);
     if (!ids.length) return { wodDate, wods: [], perfByItem: new Map() };
 
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id",
+        "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
@@ -99,7 +109,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
       : { data: [] as { id: string; name: string; stimulus: string | null }[] };
     const typeMap = new Map((types ?? []).map((t) => [t.id, t]));
 
-    const wods: WorkoutDayProgramming[] = (progs ?? []).map((p) => ({
+    const wods: WorkoutDayProgramming[] = progs.map((p) => ({
       ...p,
       items: (items ?? [])
         .filter((i) => i.programming_id === p.id)
@@ -107,7 +117,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
           const t = i.benchmark_type_id ? typeMap.get(i.benchmark_type_id) : undefined;
           return {
             ...i,
-            bench_name: t?.name,
+            bench_name: t?.name ?? i.movement_label ?? undefined,
             stimulus: t?.stimulus ?? undefined,
           };
         }),

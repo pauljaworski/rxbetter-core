@@ -3,6 +3,7 @@ import { Flame, Timer, Dumbbell, NotebookPen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { segmentLabel } from "@/lib/format";
 import { LogScoreRow } from "@/components/rx/LogScoreSheet";
+import { StrengthLiftRow } from "@/components/workout/StrengthLiftRow";
 import type { WorkoutDayProgramming, WorkoutPerformance } from "@/hooks/useWorkoutDay";
 
 export function WorkoutDayView({
@@ -108,16 +109,27 @@ function WodCard({
         {wod.items.length === 0 && (
           <div className="p-5 text-sm text-muted-foreground">No prescribed sets.</div>
         )}
-        {wod.items.map((it) => (
-          <LogScoreRow
-            key={it.id}
-            item={it}
-            wod={wod}
-            contactId={contactId}
-            existing={perfByItem.get(it.id) ?? null}
-            onLogged={onLogged}
-          />
-        ))}
+        {wod.items.map((it) =>
+          wod.programming_segment === "weightlifting" ? (
+            <StrengthLiftRow
+              key={it.id}
+              item={it}
+              wod={wod}
+              contactId={contactId}
+              existing={perfByItem.get(it.id) ?? null}
+              onLogged={onLogged}
+            />
+          ) : (
+            <LogScoreRow
+              key={it.id}
+              item={it}
+              wod={wod}
+              contactId={contactId}
+              existing={perfByItem.get(it.id) ?? null}
+              onLogged={onLogged}
+            />
+          ),
+        )}
       </div>
     </Card>
   );

@@ -13,18 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle } from "lucide-react";
-
-const SEGMENTS = [
-  { value: "warmup", label: "Warm-up" },
-  { value: "skill", label: "Skill" },
-  { value: "strength", label: "Strength" },
-  { value: "weightlifting", label: "Weightlifting" },
-  { value: "metcon", label: "Metcon" },
-  { value: "accessory", label: "Accessory" },
-  { value: "cooldown", label: "Cooldown" },
-];
-
-const METCON_FORMATS = ["amrap", "for_time", "emom", "rft", "tabata", "chipper"];
+import {
+  MANUAL_PROGRAMMING_TYPES,
+  METCON_FORMAT_OPTIONS,
+  filterBenchmarkCatalog,
+  getLineItemMode,
+  getTypeByUiKey,
+  requiresMetconFormat,
+} from "@/lib/programming/manual-config";
+import { LineItemFields } from "./LineItemFields";
 
 type Props = {
   draft: IntakeDraftPayload;
@@ -32,33 +29,13 @@ type Props = {
   onChange: (draft: IntakeDraftPayload) => void;
 };
 
-function NumInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (v: number | null) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</Label>
-      <Input
-        inputMode="decimal"
-        value={value ?? ""}
-        onChange={(e) => {
-          const v = e.target.value;
-          onChange(v === "" ? null : Number(v));
-        }}
-        className="h-8 font-mono-num text-xs"
-      />
-    </div>
-  );
-}
-
 export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
   const { segment, lineItems, warnings } = draft;
+  const uiKey =
+    MANUAL_PROGRAMMING_TYPES.find((t) => t.dbSegment === segment.programming_segment)?.uiKey ??
+    segment.programming_segment;
+  const filteredCatalog = filterBenchmarkCatalog(catalog, segment.programming_segment);
+  const lineMode = getLineItemMode(segment.programming_segment);
 
   function patchSegment(patch: Partial<typeof segment>) {
     onChange({ ...draft, segment: { ...segment, ...patch } });
@@ -67,6 +44,15 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
   function patchItem(idx: number, patch: Partial<(typeof lineItems)[0]>) {
     const items = lineItems.map((it, i) => (i === idx ? { ...it, ...patch } : it));
     onChange({ ...draft, lineItems: items });
+  }
+
+  function setTypeUiKey(key: string) {
+    const t = getTypeByUiKey(key);
+    if (!t) return;
+    patchSegment({
+      programming_segment: t.dbSegment,
+      metcon_format: t.requiresFormat ? segment.metcon_format : null,
+    });
   }
 
   return (
@@ -82,33 +68,30 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Select
-          value={segment.programming_segment}
-          onValueChange={(v) => patchSegment({ programming_segment: v })}
-        >
+        <Select value={uiKey} onValueChange={setTypeUiKey}>
           <SelectTrigger className="h-8 w-36">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SEGMENTS.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
+            {MANUAL_PROGRAMMING_TYPES.map((s) => (
+              <SelectItem key={s.uiKey} value={s.uiKey}>
                 {s.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {segment.programming_segment === "metcon" && (
+        {requiresMetconFormat(segment.programming_segment) && (
           <Select
             value={segment.metcon_format ?? ""}
             onValueChange={(v) => patchSegment({ metcon_format: v || null })}
           >
-            <SelectTrigger className="h-8 w-32">
+            <SelectTrigger className="h-8 w-36">
               <SelectValue placeholder="format" />
             </SelectTrigger>
             <SelectContent>
-              {METCON_FORMATS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f.toUpperCase()}
+              {METCON_FORMAT_OPTIONS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -150,7 +133,7 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
                 <SelectValue placeholder="Movement" />
               </SelectTrigger>
               <SelectContent>
-                {catalog.map((b) => (
+                {filteredCatalog.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name}
                   </SelectItem>
@@ -158,36 +141,7 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            <NumInput
-              label="reps / set"
-              value={it.reps_prescribed}
-              onChange={(v) => patchItem(j, { reps_prescribed: v })}
-            />
-            <NumInput
-              label="weight (lb)"
-              value={it.prescribed_weight}
-              onChange={(v) => patchItem(j, { prescribed_weight: v })}
-            />
-            <NumInput
-              label="% 1RM"
-              value={it.prescribed_percentage != null ? it.prescribed_percentage * 100 : null}
-              onChange={(v) =>
-                patchItem(j, { prescribed_percentage: v != null ? v / 100 : null })
-              }
-            />
-            <div className="space-y-1">
-              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                score
-              </Label>
-              <Input
-                value={it.prescribed_score ?? ""}
-                onChange={(e) => patchItem(j, { prescribed_score: e.target.value || null })}
-                placeholder="Athlete logs"
-                className="h-8 font-mono-num text-xs"
-              />
-            </div>
-          </div>
+          <LineItemFields mode={lineMode} item={it} onChange={(patch) => patchItem(j, patch)} />
         </div>
       ))}
     </Card>

@@ -7,7 +7,7 @@ export function useBenchmarkCatalog() {
   const loader = useCallback(async (): Promise<BenchmarkTypeOption[]> => {
     const { data, error } = await supabase
       .from("benchmark_type")
-      .select("id, name, stimulus")
+      .select("id, name, stimulus, sub_stimulus, purpose_variation")
       .order("name");
     if (error) throw new Error(error.message);
     return (data ?? []) as BenchmarkTypeOption[];

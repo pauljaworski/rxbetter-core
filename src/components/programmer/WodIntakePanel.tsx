@@ -132,6 +132,7 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
           coaches_notes: null,
           display_order: displayOrder,
           program_library_id: defaultLib,
+          program_library_ids: defaultLib ? [defaultLib] : [],
           items: [],
         },
         lineItems: [],

@@ -20,6 +20,7 @@ function emptySegment(libId: string | null, order: number): EditorWod {
     coaches_notes: null,
     display_order: order,
     program_library_id: libId,
+    program_library_ids: libId ? [libId] : [],
     items: [],
   };
 }

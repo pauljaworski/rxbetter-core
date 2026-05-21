@@ -998,6 +998,7 @@ export type Database = {
           prescribed_scale: Database["public"]["Enums"]["workout_scale"]
           program_library_id: string | null
           programming_segment: string | null
+          published_at: string | null
           source: string
           updated_at: string
           wod_date: string
@@ -1017,6 +1018,7 @@ export type Database = {
           prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
+          published_at?: string | null
           source?: string
           updated_at?: string
           wod_date: string
@@ -1036,6 +1038,7 @@ export type Database = {
           prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
+          published_at?: string | null
           source?: string
           updated_at?: string
           wod_date?: string
@@ -1060,6 +1063,39 @@ export type Database = {
             columns: ["program_library_id"]
             isOneToOne: false
             referencedRelation: "program_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      programming_library_assignment: {
+        Row: {
+          created_at: string
+          program_library_id: string
+          programming_id: string
+        }
+        Insert: {
+          created_at?: string
+          program_library_id: string
+          programming_id: string
+        }
+        Update: {
+          created_at?: string
+          program_library_id?: string
+          programming_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programming_library_assignment_program_library_id_fkey"
+            columns: ["program_library_id"]
+            isOneToOne: false
+            referencedRelation: "program_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programming_library_assignment_programming_id_fkey"
+            columns: ["programming_id"]
+            isOneToOne: false
+            referencedRelation: "programming"
             referencedColumns: ["id"]
           },
         ]
@@ -1161,6 +1197,7 @@ export type Database = {
           created_at: string
           id: string
           intensity_percentage: number | null
+          movement_label: string | null
           prescribed_percentage: number | null
           prescribed_score: string | null
           prescribed_weight: number | null
@@ -1181,6 +1218,7 @@ export type Database = {
           created_at?: string
           id?: string
           intensity_percentage?: number | null
+          movement_label?: string | null
           prescribed_percentage?: number | null
           prescribed_score?: string | null
           prescribed_weight?: number | null
@@ -1201,6 +1239,7 @@ export type Database = {
           created_at?: string
           id?: string
           intensity_percentage?: number | null
+          movement_label?: string | null
           prescribed_percentage?: number | null
           prescribed_score?: string | null
           prescribed_weight?: number | null

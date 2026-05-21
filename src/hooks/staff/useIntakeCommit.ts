@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import type { Json } from "@/types/database";
 import { formatSupabaseError } from "@/lib/format";
-import { saveWod } from "./useProgrammingSave";
+import { loadDefinitionMap, saveWod } from "./useProgrammingSave";
 import type { EditorWod, IntakeDraftPayload } from "./types";
 
 export type IntakeCommitInput = {
@@ -57,14 +57,17 @@ export function useIntakeCommit(
       return { error: "Missing gym, contact, or library.", programmingId: null };
     }
 
+    const primaryLib = input.draft.segment.program_library_id ?? defaultLib;
     const wod: EditorWod = {
       ...input.draft.segment,
       _new: true,
-      program_library_id: input.draft.segment.program_library_id ?? defaultLib,
+      program_library_id: primaryLib,
+      program_library_ids: primaryLib ? [primaryLib] : [],
       items: input.draft.lineItems.map((it, idx) => ({
         ...it,
         _new: true,
         sequence_number: it.sequence_number ?? idx + 1,
+        percent_rep_max: it.percent_rep_max ?? 1,
       })),
     };
 
@@ -98,12 +101,14 @@ export function useIntakeCommit(
 
       if (stageErr) throw new Error(stageErr.message);
 
+      const defMap = await loadDefinitionMap();
       const { programmingId, error: saveErr } = await saveWod(
         activeGymId,
         dateKey,
         defaultLib,
         wod,
         input.displayOrder,
+        defMap,
       );
       if (saveErr) throw new Error(saveErr);
 

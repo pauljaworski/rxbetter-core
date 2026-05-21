@@ -2,9 +2,64 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
-import type { EditorWod } from "./types";
+import { normalizeEditorWodFields, validateEditorWod } from "@/lib/programming/manual-config";
+import {
+  buildDefinitionMap,
+  resolveDefinitionId,
+  type BenchmarkDefinitionRow,
+} from "@/lib/programming/percent-calculator";
+import type { EditorLineItem, EditorWod } from "./types";
+
+export async function loadDefinitionMap(): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("benchmark_definition")
+    .select("id, benchmark_type_id, rep_count");
+  if (error) throw new Error(error.message);
+  return buildDefinitionMap((data ?? []) as BenchmarkDefinitionRow[]);
+}
+
+function resolveLineItemForSave(
+  it: EditorLineItem,
+  defMap: Map<string, string>,
+): {
+  benchmark_definition_id: string | null;
+  benchmark_type_id: string | null;
+  movement_label: string | null;
+  prescribed_weight: number | null;
+  prescribed_percentage: number | null;
+  prescribed_score: string | null;
+  reps_prescribed: number | null;
+} {
+  const repMax = it.percent_rep_max ?? 1;
+  const defId =
+    resolveDefinitionId(defMap, it.benchmark_type_id, repMax) ??
+    it.benchmark_definition_id ??
+    null;
+  return {
+    reps_prescribed: it.reps_prescribed,
+    prescribed_weight: it.prescribed_weight,
+    prescribed_percentage: it.prescribed_percentage,
+    prescribed_score: it.prescribed_score,
+    benchmark_type_id: it.benchmark_type_id,
+    benchmark_definition_id: defId,
+    movement_label: it.benchmark_type_id ? null : (it.movement_label ?? it.bench_name ?? null),
+  };
+}
 
 export type SaveWodResult = { programmingId: string | null; error: string | null };
+
+async function syncLibraryAssignments(programmingId: string, libraryIds: string[]): Promise<void> {
+  const { error: delErr } = await supabase
+    .from("programming_library_assignment")
+    .delete()
+    .eq("programming_id", programmingId);
+  if (delErr) throw new Error(delErr.message);
+  if (!libraryIds.length) return;
+  const { error: insErr } = await supabase.from("programming_library_assignment").insert(
+    libraryIds.map((program_library_id) => ({ programming_id: programmingId, program_library_id })),
+  );
+  if (insErr) throw new Error(insErr.message);
+}
 
 export async function saveWod(
   activeGymId: string,
@@ -12,24 +67,38 @@ export async function saveWod(
   defaultLib: string,
   wod: EditorWod,
   displayOrder: number,
+  defMap: Map<string, string>,
 ): Promise<SaveWodResult> {
-  const lib = wod.program_library_id ?? defaultLib;
-  let progId = wod.id;
+  const normalized = normalizeEditorWodFields({
+    ...wod,
+    program_library_ids:
+      wod.program_library_ids?.length > 0
+        ? wod.program_library_ids
+        : wod.program_library_id
+          ? [wod.program_library_id]
+          : [defaultLib],
+  });
+  const validationErr = validateEditorWod(normalized);
+  if (validationErr) return { programmingId: null, error: validationErr };
+
+  const lib = normalized.program_library_id ?? defaultLib;
+  const libraryIds = normalized.program_library_ids;
+  let progId = normalized.id;
 
   try {
-    if (wod._new || !progId) {
+    if (normalized._new || !progId) {
       const { data, error } = await supabase
         .from("programming")
         .insert({
           gym_id: activeGymId,
           program_library_id: lib,
           wod_date: dateKey,
-          name: wod.name,
-          description: wod.description,
-          programming_segment: wod.programming_segment,
-          metcon_format: wod.metcon_format,
-          athlete_notes: wod.athlete_notes,
-          coaches_notes: wod.coaches_notes,
+          name: normalized.name,
+          description: normalized.description,
+          programming_segment: normalized.programming_segment,
+          metcon_format: normalized.metcon_format,
+          athlete_notes: normalized.athlete_notes,
+          coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
           source: "gym",
           prescribed_scale: "rx",
@@ -43,12 +112,12 @@ export async function saveWod(
       const { error } = await supabase
         .from("programming")
         .update({
-          name: wod.name,
-          description: wod.description,
-          programming_segment: wod.programming_segment,
-          metcon_format: wod.metcon_format,
-          athlete_notes: wod.athlete_notes,
-          coaches_notes: wod.coaches_notes,
+          name: normalized.name,
+          description: normalized.description,
+          programming_segment: normalized.programming_segment,
+          metcon_format: normalized.metcon_format,
+          athlete_notes: normalized.athlete_notes,
+          coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
           program_library_id: lib,
         })
@@ -56,31 +125,25 @@ export async function saveWod(
       if (error) throw new Error(error.message);
     }
 
-    for (let j = 0; j < wod.items.length; j++) {
-      const it = wod.items[j];
+    await syncLibraryAssignments(progId!, libraryIds);
+
+    for (let j = 0; j < normalized.items.length; j++) {
+      const it = normalized.items[j];
+      const payload = {
+        sequence_number: j + 1,
+        ...resolveLineItemForSave(it, defMap),
+        contact_id: null,
+      };
       if (it._new || !it.id) {
         const { error } = await supabase.from("programming_line_item").insert({
           programming_id: progId,
-          sequence_number: j + 1,
-          reps_prescribed: it.reps_prescribed,
-          prescribed_weight: it.prescribed_weight,
-          prescribed_percentage: it.prescribed_percentage,
-          prescribed_score: it.prescribed_score,
-          benchmark_type_id: it.benchmark_type_id,
-          contact_id: null,
+          ...payload,
         });
         if (error) throw new Error(error.message);
       } else {
         const { error } = await supabase
           .from("programming_line_item")
-          .update({
-            sequence_number: j + 1,
-            reps_prescribed: it.reps_prescribed,
-            prescribed_weight: it.prescribed_weight,
-            prescribed_percentage: it.prescribed_percentage,
-            prescribed_score: it.prescribed_score,
-            benchmark_type_id: it.benchmark_type_id,
-          })
+          .update(payload)
           .eq("id", it.id);
         if (error) throw new Error(error.message);
       }
@@ -111,8 +174,9 @@ export function useProgrammingSave(
 
     setBusy(true);
     try {
+      const defMap = await loadDefinitionMap();
       for (let i = 0; i < wods.length; i++) {
-        const { error } = await saveWod(activeGymId, dateKey, defaultLib, wods[i], i);
+        const { error } = await saveWod(activeGymId, dateKey, defaultLib, wods[i], i, defMap);
         if (error) throw new Error(error);
       }
       setBusy(false);
@@ -124,5 +188,12 @@ export function useProgrammingSave(
     }
   }
 
-  return { saveAll, saveWod: (wod: EditorWod, order: number) => saveWod(activeGymId!, dateKey, defaultLib!, wod, order), busy };
+  return {
+    saveAll,
+    saveWod: async (wod: EditorWod, order: number) => {
+      const defMap = await loadDefinitionMap();
+      return saveWod(activeGymId!, dateKey, defaultLib!, wod, order, defMap);
+    },
+    busy,
+  };
 }

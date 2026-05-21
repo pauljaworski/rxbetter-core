@@ -95,7 +95,12 @@ export type EditorLineItem = {
   prescribed_percentage: number | null;
   prescribed_score: string | null;
   benchmark_type_id: string | null;
+  benchmark_definition_id?: string | null;
+  /** Rep-max basis for % prescription (1, 2, 3, 5, 10). */
+  percent_rep_max?: number | null;
   bench_name?: string;
+  /** Custom movement name when benchmark_type_id is null. */
+  movement_label?: string | null;
 };
 
 export type EditorWod = {
@@ -108,11 +113,22 @@ export type EditorWod = {
   athlete_notes: string | null;
   coaches_notes: string | null;
   display_order: number;
+  /** Primary track (legacy column); first of program_library_ids. */
   program_library_id: string | null;
+  /** Junction source of truth for multi-track publish. */
+  program_library_ids: string[];
+  /** Set when published to athletes. */
+  published_at?: string | null;
   items: EditorLineItem[];
 };
 
-export type BenchmarkTypeOption = { id: string; name: string; stimulus: string | null };
+export type BenchmarkTypeOption = {
+  id: string;
+  name: string;
+  stimulus: string | null;
+  sub_stimulus?: string | null;
+  purpose_variation?: string | null;
+};
 
 /** Client-side draft from plain-text intake before commit. */
 export type IntakeDraftPayload = {
