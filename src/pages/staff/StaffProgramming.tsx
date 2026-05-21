@@ -8,6 +8,7 @@ import {
   useStaffProgrammingDay,
 } from "@/hooks/staff/useStaffProgrammingDay";
 import { useProgrammingSave } from "@/hooks/staff/useProgrammingSave";
+import { METCON_FORMATS, PROGRAMMING_SEGMENTS } from "@/hooks/staff/programmingEditor";
 import type { BenchmarkTypeOption, EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -47,18 +48,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const SEGMENTS = [
-  { value: "warmup", label: "Warm-up" },
-  { value: "skill", label: "Skill" },
-  { value: "strength", label: "Strength" },
-  { value: "weightlifting", label: "Weightlifting" },
-  { value: "metcon", label: "Metcon" },
-  { value: "accessory", label: "Accessory" },
-  { value: "cooldown", label: "Cooldown" },
-];
-
-const METCON_FORMATS = ["amrap", "for_time", "emom", "rft", "tabata", "chipper"];
-
 export default function StaffProgramming() {
   const { activeGymId } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
@@ -85,7 +74,12 @@ export default function StaffProgramming() {
 
   useEffect(() => {
     setDirty(false);
-  }, [dateKey]);
+    setWods([]);
+  }, [activeGymId, dateKey]);
+
+  useEffect(() => {
+    setDefaultLib(null);
+  }, [activeGymId]);
 
   useEffect(() => {
     if (!isLoading && !dirty) setWods(serverWods);
@@ -208,7 +202,8 @@ export default function StaffProgramming() {
   }
 
   async function handleSave() {
-    const { error: saveError } = await saveAll(wods);
+    const { error: saveError, wods: savedWods } = await saveAll(wods);
+    setWods(savedWods);
     if (saveError) {
       toast.error("Couldn't save", { description: saveError });
       return;
@@ -327,13 +322,18 @@ export default function StaffProgramming() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
                     value={w.programming_segment}
-                    onValueChange={(v) => updateWod(idx, { programming_segment: v })}
+                    onValueChange={(v) =>
+                      updateWod(idx, {
+                        programming_segment: v,
+                        metcon_format: v === "metcon" ? w.metcon_format : null,
+                      })
+                    }
                   >
                     <SelectTrigger className="h-8 w-36">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {SEGMENTS.map((s) => (
+                      {PROGRAMMING_SEGMENTS.map((s) => (
                         <SelectItem key={s.value} value={s.value}>
                           {s.label}
                         </SelectItem>

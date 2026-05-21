@@ -28,6 +28,7 @@ export function useAsyncState<T>(
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+    setData(initial);
     (async () => {
       try {
         const result = await loader();
