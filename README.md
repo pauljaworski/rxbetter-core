@@ -12,12 +12,17 @@ This repository is the **single local dev root**: Supabase migrations, scripts, 
 
 ### Lovable.dev
 
-If your Lovable project still points at **rxbetter-train-smarter**, you are previewing **old code** (no staff-route fixes, no hook migrations). Either:
+Lovable syncs with **[rxbetter-train-smarter-0dddcf23](https://github.com/pauljaworski/rxbetter-train-smarter-0dddcf23)** (not `rxbetter-core`). See **[`docs/LOVABLE_SYNC.md`](docs/LOVABLE_SYNC.md)** for the full workflow.
 
-1. **Recommended:** In Lovable → Project settings → GitHub, reconnect the repo to **pauljaworski/rxbetter-core** (same Supabase env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), or  
-2. Periodically merge `main` from **rxbetter-core** into **rxbetter-train-smarter** if you must keep that repo name.
+```powershell
+# After pushing UI changes to rxbetter-core:
+.\scripts\sync-to-lovable.ps1 -LovablePath "..\rxbetter-train-smarter-0dddcf23" -Push
+```
 
-Supabase project linkage does **not** change when you switch Git repos — only which source code Lovable builds.
+| Role | Repo |
+|------|------|
+| Cursor / migrations / hooks | **rxbetter-core** |
+| Lovable preview | **rxbetter-train-smarter-0dddcf23** |
 
 ## Quick start (local UI)
 
