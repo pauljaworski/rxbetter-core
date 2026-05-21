@@ -361,6 +361,10 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# Edge function: WOD intake AI parse (OpenRouter). Secret: OPENROUTER_API_KEY
+[functions.parse-complex-wod]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

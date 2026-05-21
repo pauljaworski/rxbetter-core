@@ -11,7 +11,8 @@
     "check": "tsc -p tsconfig.app.json --noEmit && npm run lint && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy:wod-parse": "supabase functions deploy parse-complex-wod --project-ref uztjncbmuyoqzqqqnohv --use-api"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
