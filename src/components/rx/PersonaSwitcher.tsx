@@ -13,11 +13,13 @@ const META: Record<Persona, { label: string; short: string; icon: typeof Activit
 };
 
 export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
-  const { availablePersonas, activePersona, setActivePersona } = useAuth();
+  const { availablePersonas, activePersona, setActivePersona, loading } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
 
   useEffect(() => {
+    if (loading) return;
+
     const isStaffRoute = loc.pathname.startsWith("/staff");
     const isStaffPersona = STAFF_PERSONAS.includes(activePersona);
     const staffAvailable = availablePersonas.filter((p) => STAFF_PERSONAS.includes(p));
@@ -35,7 +37,7 @@ export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
     if (!isStaffPersona && isStaffRoute && !hasAnyStaffPersona(availablePersonas)) {
       nav("/", { replace: true });
     }
-  }, [activePersona, loc.pathname, availablePersonas, setActivePersona, nav]);
+  }, [loading, activePersona, loc.pathname, availablePersonas, setActivePersona, nav]);
 
   if (availablePersonas.length < 2) return null;
 

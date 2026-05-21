@@ -17,7 +17,6 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
       )
       .eq("gym_id", activeGymId)
       .eq("wod_date", dateKey)
-      .eq("source", "gym")
       .order("display_order", { ascending: true });
 
     if (progErr) throw new Error(progErr.message);
@@ -85,7 +84,6 @@ export async function fetchProgrammingDayForCopy(
     )
     .eq("gym_id", activeGymId)
     .eq("wod_date", srcKey)
-    .eq("source", "gym")
     .order("display_order", { ascending: true });
 
   if (error) throw new Error(error.message);

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveAvailablePersonas, staffScopesFromSubscriptions } from "@/lib/personas";
+import { normalizeMembershipRole, resolveAvailablePersonas } from "@/lib/personas";
 
 export type Persona = "athlete" | "coach" | "programmer" | "admin";
 export const PERSONA_ORDER: Persona[] = ["athlete", "coach", "programmer", "admin"];
@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeGymId, setActiveGymId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<GymMembership[]>([]);
-  const [staffScopesByGym, setStaffScopesByGym] = useState<Map<string, string[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activePersona, setActivePersonaState] = useState<Persona>("athlete");
 
@@ -50,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDisplayName(null);
       setActiveGymId(null);
       setMemberships([]);
-      setStaffScopesByGym(new Map());
       return;
     }
     // contact for current user
@@ -89,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       for (const m of fm ?? []) {
         if (!m.role) continue;
         const s = rolesByGym.get(m.gym_id) ?? new Set<string>();
-        s.add(m.role);
+        s.add(normalizeMembershipRole(m.role));
         rolesByGym.set(m.gym_id, s);
       }
       mems = gymIds.map((gid) => ({
@@ -97,16 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         gym_name: nameMap.get(gid) ?? null,
         roles: Array.from(rolesByGym.get(gid) ?? []),
       }));
-
-      const { data: staffSubs } = await supabase
-        .from("athlete_subscription")
-        .select("gym_id, subscription_scope")
-        .eq("contact_id", cid)
-        .eq("status", "active")
-        .in("subscription_scope", ["staff_coach", "staff_programmer", "staff_admin"]);
-      setStaffScopesByGym(staffScopesFromSubscriptions(staffSubs ?? []));
-    } else {
-      setStaffScopesByGym(new Map());
     }
     setMemberships(mems);
 
@@ -158,10 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const mode: IdentityMode = memberships.length === 0 ? "personal" : "gym";
   const activeMembership = memberships.find((m) => m.gym_id === activeGymId);
   const availablePersonas = useMemo<Persona[]>(() => {
-    const roles = activeMembership?.roles ?? [];
-    const scopes = activeGymId ? (staffScopesByGym.get(activeGymId) ?? []) : [];
-    return resolveAvailablePersonas(roles, scopes);
-  }, [activeMembership?.roles?.join("|"), activeGymId, staffScopesByGym]);
+    return resolveAvailablePersonas(activeMembership?.roles ?? []);
+  }, [activeMembership?.roles?.join("|")]);
 
   // Keep activePersona in sync with what's available; default to highest privilege.
   useEffect(() => {
