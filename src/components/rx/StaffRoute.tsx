@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { Navigate } from "react-router-dom";
 import { useAuth, type Persona } from "@/contexts/AuthContext";
 import { pickStaffPersonaForAllow, staffPersonasFromRoles } from "@/lib/personas";
 import { Card } from "@/components/ui/card";
@@ -12,8 +11,15 @@ export function StaffRoute({
   children: React.ReactNode;
   allow?: Persona[];
 }) {
-  const { availablePersonas, activePersona, setActivePersona, loading, memberships, activeGymId } =
-    useAuth();
+  const {
+    availablePersonas,
+    activePersona,
+    setActivePersona,
+    loading,
+    identityReady,
+    memberships,
+    activeGymId,
+  } = useAuth();
   const allowed = useMemo(
     () => allow ?? (["coach", "programmer", "admin"] as Persona[]),
     [allow],
@@ -28,12 +34,25 @@ export function StaffRoute({
     allowed,
   );
 
-  useEffect(() => {
-    if (loading || !hasAccess || allowed.includes(activePersona)) return;
-    if (promotedPersona) setActivePersona(promotedPersona);
-  }, [loading, hasAccess, activePersona, promotedPersona, allowed, setActivePersona]);
+  const personaForRoute = allowed.includes(activePersona)
+    ? activePersona
+    : promotedPersona;
 
-  if (loading) return null;
+  useEffect(() => {
+    if (loading || !identityReady || !hasAccess || !promotedPersona) return;
+    if (allowed.includes(activePersona)) return;
+    setActivePersona(promotedPersona);
+  }, [
+    loading,
+    identityReady,
+    hasAccess,
+    activePersona,
+    promotedPersona,
+    allowed,
+    setActivePersona,
+  ]);
+
+  if (loading || !identityReady) return null;
 
   if (!hasAccess) {
     return (
@@ -48,9 +67,16 @@ export function StaffRoute({
     );
   }
 
-  if (!allowed.includes(activePersona)) {
-    if (promotedPersona) return null;
-    return <Navigate to="/staff" replace />;
+  if (!personaForRoute || !allowed.includes(personaForRoute)) {
+    return (
+      <Card className="glass-card mx-auto mt-12 max-w-md p-8 text-center">
+        <p className="eyebrow">Restricted</p>
+        <h2 className="mt-2 text-lg font-bold">Wrong workspace</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Your current role cannot open this page. Use Staff Overview or switch persona.
+        </p>
+      </Card>
+    );
   }
 
   return <>{children}</>;

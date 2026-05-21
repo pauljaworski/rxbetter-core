@@ -10,6 +10,15 @@ RxBetter helps coaches manage gym programming and athlete performance from one d
 
 This repository is the **single local dev root**: Supabase migrations, scripts, and the **Vite/React app** (`npm run dev`). The former Lovable repo [rxbetter-train-smarter](https://github.com/pauljaworski/rxbetter-train-smarter) was merged here for Cursor-first development (no Lovable API required).
 
+### Lovable.dev
+
+If your Lovable project still points at **rxbetter-train-smarter**, you are previewing **old code** (no staff-route fixes, no hook migrations). Either:
+
+1. **Recommended:** In Lovable → Project settings → GitHub, reconnect the repo to **pauljaworski/rxbetter-core** (same Supabase env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), or  
+2. Periodically merge `main` from **rxbetter-core** into **rxbetter-train-smarter** if you must keep that repo name.
+
+Supabase project linkage does **not** change when you switch Git repos — only which source code Lovable builds.
+
 ## Quick start (local UI)
 
 ```bash

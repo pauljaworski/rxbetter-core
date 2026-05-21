@@ -1,8 +1,8 @@
 import { useAuth, type Persona } from "@/contexts/AuthContext";
-import { hasAnyStaffPersona, STAFF_PERSONAS } from "@/lib/personas";
+import { STAFF_PERSONAS } from "@/lib/personas";
 import { cn } from "@/lib/utils";
 import { Activity, Megaphone, ClipboardList, ShieldCheck } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
 const META: Record<Persona, { label: string; short: string; icon: typeof Activity; color: string }> = {
@@ -12,32 +12,22 @@ const META: Record<Persona, { label: string; short: string; icon: typeof Activit
   admin: { label: "Admin", short: "ADM", icon: ShieldCheck, color: "text-accent" },
 };
 
+/**
+ * Persona toggle only — no automatic route redirects (those caused /staff reload loops).
+ */
 export function PersonaSwitcher({ compact = false }: { compact?: boolean }) {
-  const { availablePersonas, activePersona, setActivePersona, loading } = useAuth();
-  const nav = useNavigate();
+  const { availablePersonas, activePersona, setActivePersona, loading, identityReady } = useAuth();
   const loc = useLocation();
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !identityReady) return;
+    if (!loc.pathname.startsWith("/staff")) return;
 
-    const isStaffRoute = loc.pathname.startsWith("/staff");
-    const isStaffPersona = STAFF_PERSONAS.includes(activePersona);
     const staffAvailable = availablePersonas.filter((p) => STAFF_PERSONAS.includes(p));
-
-    if (isStaffRoute && staffAvailable.length && !isStaffPersona) {
+    if (staffAvailable.length && !STAFF_PERSONAS.includes(activePersona)) {
       setActivePersona(staffAvailable[staffAvailable.length - 1]!);
-      return;
     }
-
-    if (isStaffPersona && !isStaffRoute) {
-      nav("/staff", { replace: true });
-      return;
-    }
-
-    if (!isStaffPersona && isStaffRoute && !hasAnyStaffPersona(availablePersonas)) {
-      nav("/", { replace: true });
-    }
-  }, [loading, activePersona, loc.pathname, availablePersonas, setActivePersona, nav]);
+  }, [loading, identityReady, loc.pathname, availablePersonas, activePersona, setActivePersona]);
 
   if (availablePersonas.length < 2) return null;
 

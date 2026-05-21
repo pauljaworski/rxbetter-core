@@ -23,6 +23,8 @@ type AuthState = {
   activeGymId: string | null;
   memberships: GymMembership[];
   loading: boolean;
+  /** False until the first membership hydrate completes for a signed-in user. */
+  identityReady: boolean;
   availablePersonas: Persona[];
   activePersona: Persona;
   setActivePersona: (p: Persona) => void;
@@ -41,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeGymId, setActiveGymId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<GymMembership[]>([]);
   const [loading, setLoading] = useState(true);
+  const [identityReady, setIdentityReady] = useState(false);
   const [activePersona, setActivePersonaState] = useState<Persona>("athlete");
 
   async function hydrate(u: User | null) {
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDisplayName(null);
       setActiveGymId(null);
       setMemberships([]);
+      setIdentityReady(false);
       return;
     }
     // contact for current user
@@ -102,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile?.last_active_gym_id && mems.some((m) => m.gym_id === profile.last_active_gym_id)
         ? profile.last_active_gym_id
         : (mems[0]?.gym_id ?? null);
-    setActiveGymId(mems.length ? preferred : null);
+    setActiveGymId((prev) => {
+      const next = mems.length ? preferred : null;
+      return prev && next && mems.some((m) => m.gym_id === prev) ? prev : next;
+    });
+    setIdentityReady(true);
   }
 
   async function refresh() {
@@ -171,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activeGymId,
       memberships,
       loading,
+      identityReady,
       availablePersonas,
       activePersona,
       setActivePersona,
@@ -178,7 +187,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refresh,
     }),
-    [session, user, contactId, displayName, mode, activeGymId, memberships, loading, availablePersonas, activePersona],
+    [
+      session,
+      user,
+      contactId,
+      displayName,
+      mode,
+      activeGymId,
+      memberships,
+      loading,
+      identityReady,
+      availablePersonas,
+      activePersona,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
