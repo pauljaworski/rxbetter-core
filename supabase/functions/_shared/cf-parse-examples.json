@@ -1,0 +1,72 @@
+[
+  {
+    "input": "Back Squat 5x3 @ 80%",
+    "output": {
+      "segment": { "name": "Back Squat", "programming_segment": "weightlifting", "metcon_format": null, "description": null },
+      "movements": [{ "name": "Back Squat", "sequence_number": 1, "reps_prescribed": 15, "prescribed_percentage": 0.8, "prescribed_score": "5x3 @ 80%" }],
+      "warnings": []
+    }
+  },
+  {
+    "input": "Deadlift 3 @ 225",
+    "output": {
+      "segment": { "name": "Deadlift", "programming_segment": "weightlifting", "metcon_format": null },
+      "movements": [{ "name": "Deadlift", "sequence_number": 1, "reps_prescribed": 3, "prescribed_weight": 225, "prescribed_score": "3 @ 225" }],
+      "warnings": []
+    }
+  },
+  {
+    "input": "AMRAP 12\n10 Thrusters (95/65)\n15 Pull-ups",
+    "output": {
+      "segment": { "name": "AMRAP 12", "programming_segment": "metcon", "metcon_format": "amrap", "description": "AMRAP 12\n10 Thrusters (95/65)\n15 Pull-ups" },
+      "movements": [
+        { "name": "Thruster", "sequence_number": 1, "reps_prescribed": 10, "prescribed_score": "10 @ 95/65" },
+        { "name": "Pull-up", "sequence_number": 2, "reps_prescribed": 15 }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "input": "EMOM 10\nMin 1: 5 Power Cleans (135/95)\nMin 2: 10 Burpees",
+    "output": {
+      "segment": { "name": "EMOM 10", "programming_segment": "metcon", "metcon_format": "emom" },
+      "movements": [
+        { "name": "Power Clean", "sequence_number": 1, "reps_prescribed": 5, "prescribed_score": "135/95" },
+        { "name": "Burpee", "sequence_number": 2, "reps_prescribed": 10 }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "input": "For Time\n50 Wall Balls\n40 Box Jumps\n30 KB Swings",
+    "output": {
+      "segment": { "name": "Chipper", "programming_segment": "metcon", "metcon_format": "chipper" },
+      "movements": [
+        { "name": "Wall Ball", "sequence_number": 1, "reps_prescribed": 50 },
+        { "name": "Box Jump", "sequence_number": 2, "reps_prescribed": 40 },
+        { "name": "Kettlebell Swing", "sequence_number": 3, "reps_prescribed": 30 }
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "input": "Skill: 15 min practice Handstand Walk",
+    "output": {
+      "segment": { "name": "Handstand Walk", "programming_segment": "skill", "metcon_format": null, "description": "15 min practice" },
+      "movements": [{ "name": "Handstand Walk", "sequence_number": 1 }],
+      "warnings": []
+    }
+  },
+  {
+    "input": "Partner WOD\nBuy-in: 400m Run each\nThen AMRAP 14: Synced 10 T2B + 20 DU",
+    "output": {
+      "segment": { "name": "Partner AMRAP", "programming_segment": "metcon", "metcon_format": "amrap", "description": "Partner WOD with buy-in run" },
+      "movements": [
+        { "name": "Run", "sequence_number": 1, "prescribed_score": "400m each" },
+        { "name": "Toes-to-Bar", "sequence_number": 2, "reps_prescribed": 10 },
+        { "name": "Double Under", "sequence_number": 3, "reps_prescribed": 20 }
+      ],
+      "warnings": ["Partner/synced work — verify reps in editor."]
+    }
+  }
+]

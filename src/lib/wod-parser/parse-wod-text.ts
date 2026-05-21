@@ -1,5 +1,6 @@
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import { fuzzyMatchBenchmark } from "./fuzzy-benchmark";
+import { normalizeMetconFormat } from "./intake-draft-schema";
 import {
   METCON_KEYWORDS,
   SETS_REPS_PCT,
@@ -12,7 +13,7 @@ function emptySegment(libId: string | null, order: number): EditorWod {
   return {
     name: "New segment",
     description: "",
-    programming_segment: "strength",
+    programming_segment: "weightlifting",
     metcon_format: null,
     athlete_notes: null,
     coaches_notes: null,
@@ -30,9 +31,9 @@ function detectSegment(line: string): { segment: string; metconFormat: string | 
     else if (/\brft\b/i.test(line)) metconFormat = "rft";
     else if (/\btabata\b/i.test(line)) metconFormat = "tabata";
     else if (/\bchipper\b/i.test(line)) metconFormat = "chipper";
-    return { segment: "metcon", metconFormat };
+    return { segment: "metcon", metconFormat: normalizeMetconFormat(metconFormat) };
   }
-  return { segment: "strength", metconFormat: null };
+  return { segment: "weightlifting", metconFormat: null };
 }
 
 function parseStrengthLine(
@@ -139,7 +140,7 @@ export function parseWodText(options: ParseWodOptions): ParseWodResult {
     ...emptySegment(options.defaultLibraryId, options.displayOrder ?? 0),
     name: parsed.movement,
     description: description || null,
-    programming_segment: "strength",
+    programming_segment: "weightlifting",
   };
 
   const warnings = [...parsed.warnings];

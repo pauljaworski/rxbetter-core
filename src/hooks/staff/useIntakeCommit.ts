@@ -11,6 +11,7 @@ export type IntakeCommitInput = {
   draft: IntakeDraftPayload;
   parserMode: "regex" | "llm" | "manual";
   latencyMs: number;
+  tokenCount?: number | null;
   containsErrors: boolean;
   correctionApplied: boolean;
   displayOrder: number;
@@ -41,6 +42,7 @@ export function useIntakeCommit(
       contains_errors: input.containsErrors,
       correction_applied: input.correctionApplied,
       latency_ms: input.latencyMs,
+      token_count: input.tokenCount ?? null,
       status: "rejected",
     });
     setBusy(false);
@@ -66,7 +68,7 @@ export function useIntakeCommit(
       })),
     };
 
-    if (wod.items.some((it) => !it.benchmark_type_id) && wod.programming_segment === "strength") {
+    if (wod.items.some((it) => !it.benchmark_type_id) && wod.programming_segment === "weightlifting") {
       return {
         error: "Each strength movement needs a catalog match before saving.",
         programmingId: null,
@@ -88,6 +90,7 @@ export function useIntakeCommit(
           contains_errors: input.containsErrors,
           correction_applied: input.correctionApplied,
           latency_ms: input.latencyMs,
+          token_count: input.tokenCount ?? null,
           status: "staged",
         })
         .select("id")

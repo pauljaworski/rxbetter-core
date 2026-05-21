@@ -120,6 +120,11 @@ export type IntakeDraftPayload = {
   lineItems: EditorLineItem[];
   warnings: string[];
   unmatchedTokens?: string[];
+  _meta?: {
+    model?: string;
+    token_count?: number;
+    parser_tier?: string;
+  };
 };
 
 export type IntakeStageRow = {

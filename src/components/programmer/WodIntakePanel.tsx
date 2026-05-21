@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
@@ -31,6 +31,7 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
     [catalog],
   );
 
+  const draftEditedRef = useRef(false);
   const parser = useWodParser(catalogEntries, defaultLib, displayOrder);
   const { commitIntake, rejectIntake, busy } = useIntakeCommit(
     activeGymId,
@@ -50,16 +51,45 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
       return;
     }
     const result = parser.parse(parser.rawText);
+    draftEditedRef.current = false;
     if (!result.draft) {
       toast.message(
         result.needsLlmFallback
-          ? "Complex WOD — use the manual editor below or AI assist (Phase 2)."
+          ? "Complex WOD — try Parse with AI or edit manually below."
           : "Could not parse. Try a line like: Back Squat 5x3 @ 80%",
       );
       return;
     }
     if (result.needsLlmFallback) {
-      toast.message("Metcon detected — edit the draft below; AI assist coming in Phase 2.");
+      toast.message("Metcon detected — review the draft or use Parse with AI for line items.");
+    }
+  }
+
+  async function handleParseWithAi() {
+    if (!parser.rawText.trim()) {
+      toast.error("Enter workout text first.");
+      return;
+    }
+    if (!activeGymId || !defaultLib) {
+      toast.error("Select a gym and program library.");
+      return;
+    }
+    const { error, draft } = await parser.parseWithAi(parser.rawText, {
+      gymId: activeGymId,
+      programLibraryId: defaultLib,
+      wodDate: date,
+    });
+    draftEditedRef.current = false;
+    if (error) {
+      toast.error("AI parse failed", { description: error });
+      return;
+    }
+    if (draft) {
+      toast.success("AI structured workout", {
+        description: parser.modelUsed
+          ? `${parser.modelUsed} · ${parser.tokenCount ?? "?"} tokens`
+          : undefined,
+      });
     }
   }
 
@@ -68,10 +98,11 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
     const { error, programmingId } = await commitIntake({
       rawText: parser.rawText,
       draft: parser.draft,
-      parserMode: "regex",
+      parserMode: parser.usedAi ? "llm" : "regex",
       latencyMs: parser.lastLatencyMs,
+      tokenCount: parser.tokenCount,
       containsErrors: parser.draft.warnings.length > 0,
-      correctionApplied: false,
+      correctionApplied: parser.usedAi && draftEditedRef.current,
       displayOrder,
     });
     if (error) {
@@ -94,7 +125,7 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
         segment: {
           name: "Rejected",
           description: parser.rawText,
-          programming_segment: "strength",
+          programming_segment: "weightlifting",
           metcon_format: null,
           athlete_notes: null,
           coaches_notes: null,
@@ -158,16 +189,27 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
             disabled={catalogLoading || !defaultLib}
           />
           <p className="text-[10px] text-muted-foreground">
-            Ctrl+Enter to parse. No AI on save — only structured inserts.
+            Ctrl+Enter to parse (regex). Parse with AI for complex metcons. No AI on save.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="secondary"
               onClick={() => void handleParse()}
-              disabled={catalogLoading || !defaultLib}
+              disabled={catalogLoading || !defaultLib || parser.aiParsing}
             >
               Parse
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleParseWithAi()}
+              disabled={
+                catalogLoading || !defaultLib || !parser.rawText.trim() || parser.aiParsing
+              }
+            >
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+              {parser.aiParsing ? "Parsing…" : "Parse with AI"}
             </Button>
             {parser.draft && (
               <>
@@ -185,17 +227,22 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
               </>
             )}
           </div>
-          {parser.needsLlmFallback && !parser.draft?.lineItems.length && (
+          {parser.aiError && (
+            <p className="text-xs text-destructive">{parser.aiError}</p>
+          )}
+          {parser.needsLlmFallback && !parser.draft?.lineItems.length && !parser.usedAi && (
             <p className="text-xs text-amber-600">
-              Regex could not fully structure this WOD. Edit manually below or wait for Phase 2 AI
-              assist.
+              Regex could not fully structure this WOD. Use Parse with AI or edit manually below.
             </p>
           )}
           {parser.draft && (
             <WodIntakeDraft
               draft={parser.draft}
               catalog={catalog}
-              onChange={parser.updateDraft}
+              onChange={(d) => {
+                draftEditedRef.current = true;
+                parser.updateDraft(d);
+              }}
             />
           )}
           <IntakeStageTable rows={stageRows} isLoading={stagesLoading} />
