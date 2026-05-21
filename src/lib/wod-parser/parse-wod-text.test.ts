@@ -21,7 +21,7 @@ describe("parseWodText", () => {
       expect(it.benchmark_type_id).toBe("bt-squat");
       expect(it.reps_prescribed).toBe(3);
       expect(it.prescribed_percentage).toBeCloseTo(0.8);
-      expect(it.prescribed_score).toBe("3 @ 80%");
+      expect(it.prescribed_score).toBeNull();
     }
     expect(r.draft?.segment.description).toBe("5x3 @ 80%");
   });
@@ -33,7 +33,7 @@ describe("parseWodText", () => {
       defaultLibraryId: "lib-1",
     });
     expect(r.draft?.lineItems).toHaveLength(5);
-    expect(r.draft?.lineItems[0].prescribed_score).toBe("3 @ 70%");
+    expect(r.draft?.lineItems[0].prescribed_score).toBeNull();
     expect(r.draft?.segment.name).toBe("Back Squat");
   });
 
@@ -46,7 +46,7 @@ describe("parseWodText", () => {
     expect(r.draft?.lineItems).toHaveLength(5);
     expect(r.draft?.lineItems[0].prescribed_percentage).toBeCloseTo(0.65);
     expect(r.draft?.lineItems[4].prescribed_percentage).toBeCloseTo(0.85);
-    expect(r.draft?.lineItems[0].prescribed_score).toBe("3 @ 65%");
+    expect(r.draft?.lineItems[0].prescribed_score).toBeNull();
   });
 
   it("parses Deadlift 3 @ 225 as single line item", () => {

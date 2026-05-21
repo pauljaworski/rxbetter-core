@@ -56,11 +56,6 @@ function parsePercentLadder(raw: string): number[] {
   });
 }
 
-function formatPctDisplay(decimal: number): string {
-  const n = decimal <= 1 ? Math.round(decimal * 1000) / 10 : decimal;
-  return Number.isInteger(n) ? String(n) : String(n);
-}
-
 type StrengthParseResult = {
   movement: string;
   lineItems: EditorLineItem[];
@@ -80,13 +75,12 @@ function buildPerSetLineItems(options: {
 
   for (let s = 1; s <= sets; s++) {
     const pct = percentages[s - 1] ?? percentages[0] ?? null;
-    const pctLabel = pct != null ? ` @ ${formatPctDisplay(pct)}%` : "";
     items.push({
       sequence_number: s,
       reps_prescribed: reps,
       prescribed_weight: null,
       prescribed_percentage: pct,
-      prescribed_score: `${reps}${pctLabel}`,
+      prescribed_score: null,
       benchmark_type_id,
       bench_name,
     });
@@ -154,14 +148,12 @@ function parseStrengthLine(
     const lineItems: EditorLineItem[] = [];
     for (let s = 0; s < count; s++) {
       const pct = percentages[s] ?? null;
-      const pctRaw = m[4].match(/\d+(?:\.\d+)?/g)?.[s] ?? "";
-      const pctLabel = pct != null ? ` @ ${pctRaw || formatPctDisplay(pct)}%` : "";
       lineItems.push({
         sequence_number: s + 1,
         reps_prescribed: reps,
         prescribed_weight: null,
         prescribed_percentage: pct,
-        prescribed_score: `${reps}${pctLabel}`,
+        prescribed_score: null,
         benchmark_type_id: benchId,
         bench_name: benchName,
       });
@@ -211,7 +203,7 @@ function parseStrengthLine(
           reps_prescribed: reps,
           prescribed_weight: weight,
           prescribed_percentage: null,
-          prescribed_score: `${reps} @ ${weight}`,
+          prescribed_score: null,
           benchmark_type_id: match?.id ?? null,
           bench_name: match?.name ?? movement,
         },

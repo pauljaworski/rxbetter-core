@@ -160,7 +160,7 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <NumInput
-              label={/\d+\s*x\s*\d+/i.test(it.prescribed_score ?? "") ? "reps / set" : "reps"}
+              label="reps / set"
               value={it.reps_prescribed}
               onChange={(v) => patchItem(j, { reps_prescribed: v })}
             />
@@ -183,6 +183,7 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
               <Input
                 value={it.prescribed_score ?? ""}
                 onChange={(e) => patchItem(j, { prescribed_score: e.target.value || null })}
+                placeholder="Athlete logs"
                 className="h-8 font-mono-num text-xs"
               />
             </div>
