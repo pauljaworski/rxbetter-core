@@ -14,7 +14,8 @@ Programmers paste workout text on **Programming** (`/staff/programming`). The cl
 
 | Pattern | Example |
 |---------|---------|
-| Sets × reps @ % | `Back Squat 5x3 @ 80%` → **reps** = per set (3), **score** = `5x3 @ 80%` |
+| Sets × reps @ % | `Back Squat 5x3 @ 80%` → **5 line items**, each 3 reps @ 80%; segment description = `5x3 @ 80%` |
+| Percent ladder | `Back Squat 5x3 65,70,75,80,85%` → one line item per % |
 | Reps @ weight | `Deadlift 3 @ 225` |
 | Metcon (fallback) | `AMRAP 12…` → draft metcon + **Parse with AI** for line items |
 
