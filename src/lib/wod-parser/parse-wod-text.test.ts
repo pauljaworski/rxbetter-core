@@ -17,7 +17,8 @@ describe("parseWodText", () => {
     expect(r.needsLlmFallback).toBe(false);
     expect(r.draft?.lineItems[0].benchmark_type_id).toBe("bt-squat");
     expect(r.draft?.lineItems[0].prescribed_percentage).toBeCloseTo(0.8);
-    expect(r.draft?.lineItems[0].reps_prescribed).toBe(15);
+    expect(r.draft?.lineItems[0].reps_prescribed).toBe(3);
+    expect(r.draft?.lineItems[0].prescribed_score).toBe("5x3 @ 80%");
   });
 
   it("parses Deadlift 3 @ 225", () => {

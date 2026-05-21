@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { WOD_AI_PARSE_ENABLED } from "@/lib/wod-parser/feature-flags";
 import { Sparkles, ChevronDown, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,13 +56,13 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
     if (!result.draft) {
       toast.message(
         result.needsLlmFallback
-          ? "Complex WOD — try Parse with AI or edit manually below."
+          ? "Complex WOD — edit the draft below or add line items in the manual editor."
           : "Could not parse. Try a line like: Back Squat 5x3 @ 80%",
       );
       return;
     }
     if (result.needsLlmFallback) {
-      toast.message("Metcon detected — review the draft or use Parse with AI for line items.");
+      toast.message("Metcon detected — review the draft and add movements below or in the manual editor.");
     }
   }
 
@@ -189,7 +190,7 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
             disabled={catalogLoading || !defaultLib}
           />
           <p className="text-[10px] text-muted-foreground">
-            Ctrl+Enter to parse (regex). Parse with AI for complex metcons. No AI on save.
+            Ctrl+Enter to parse. Sets×reps (e.g. 5x3 @ 80%) → reps per set in the score field.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -200,17 +201,19 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
             >
               Parse
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void handleParseWithAi()}
-              disabled={
-                catalogLoading || !defaultLib || !parser.rawText.trim() || parser.aiParsing
-              }
-            >
-              <Sparkles className="mr-1 h-3.5 w-3.5" />
-              {parser.aiParsing ? "Parsing…" : "Parse with AI"}
-            </Button>
+            {WOD_AI_PARSE_ENABLED && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleParseWithAi()}
+                disabled={
+                  catalogLoading || !defaultLib || !parser.rawText.trim() || parser.aiParsing
+                }
+              >
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                {parser.aiParsing ? "Parsing…" : "Parse with AI"}
+              </Button>
+            )}
             {parser.draft && (
               <>
                 <Button
@@ -232,7 +235,7 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
           )}
           {parser.needsLlmFallback && !parser.draft?.lineItems.length && !parser.usedAi && (
             <p className="text-xs text-amber-600">
-              Regex could not fully structure this WOD. Use Parse with AI or edit manually below.
+              Regex could not fully structure this WOD. Edit below or use the manual editor.
             </p>
           )}
           {parser.draft && (

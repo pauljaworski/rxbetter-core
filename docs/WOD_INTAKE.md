@@ -6,7 +6,7 @@ Programmers paste workout text on **Programming** (`/staff/programming`). The cl
 
 1. Paste text (e.g. `Back Squat 5x3 @ 80%`)
 2. **Parse** — regex + fuzzy `benchmark_type` match (`src/lib/wod-parser/`)
-3. **Parse with AI** (optional) — OpenRouter via edge function for complex metcons
+3. **Parse with AI** (optional, **off by default**) — set `VITE_ENABLE_WOD_AI_PARSE=true` for OpenRouter
 4. Verify/edit draft (`WodIntakeDraft`)
 5. **Save to calendar** — insert `programming_intake_stage` → `programming` + `programming_line_item` → mark intake `committed`
 
@@ -14,7 +14,7 @@ Programmers paste workout text on **Programming** (`/staff/programming`). The cl
 
 | Pattern | Example |
 |---------|---------|
-| Sets × reps @ % | `Back Squat 5x3 @ 80%` |
+| Sets × reps @ % | `Back Squat 5x3 @ 80%` → **reps** = per set (3), **score** = `5x3 @ 80%` |
 | Reps @ weight | `Deadlift 3 @ 225` |
 | Metcon (fallback) | `AMRAP 12…` → draft metcon + **Parse with AI** for line items |
 

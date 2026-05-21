@@ -54,7 +54,8 @@ function parseStrengthLine(
       movement,
       item: {
         sequence_number: 1,
-        reps_prescribed: reps * sets,
+        // reps per set (e.g. 5x3 → 3); full scheme lives in prescribed_score
+        reps_prescribed: reps,
         prescribed_weight: null,
         prescribed_percentage: pct,
         prescribed_score: `${sets}x${reps}${pct != null ? ` @ ${m[4]}%` : ""}`,
