@@ -1,8 +1,8 @@
 const MAX_CHARS = 2500;
-const MIN_CHARS = 20;
+const MIN_CHARS = 8;
 
 const FITNESS_KEYWORDS =
-  /\b(amrap|emom|rft|for\s+time|rounds?|reps?|sets?|squat|deadlift|clean|snatch|thruster|burpee|pull[- ]?up|push[- ]?up|box\s+jump|wall\s+ball|row|run|calories?|@\s*\d|x\d|\d+\s*x\s*\d)/i;
+  /\b(amrap|emom|rft|for\s+time|rounds?|reps?|sets?|squat|deadlift|clean|snatch|thruster|burpee|pull[- ]?up|push[- ]?up|box\s+jump|wall\s+ball|row|run|calories?|%\s*$|@\s*\d|\d+\s*%|\d+x\d|\d+\s*x\s*\d)/i;
 
 const INJECTION_PATTERNS =
   /\b(ignore\s+(all\s+)?(previous|prior)|system\s+prompt|you\s+are\s+now|act\s+as\s+(a\s+)?chat)/i;

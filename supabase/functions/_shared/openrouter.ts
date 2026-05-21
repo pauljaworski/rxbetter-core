@@ -91,5 +91,10 @@ export async function callOpenRouter(options: {
     }
   }
 
-  throw lastError ?? new Error("OpenRouter request failed");
+  const hint = lastError?.message?.includes("401")
+    ? "Check OPENROUTER_API_KEY secret name and value in Supabase."
+    : "";
+  throw new Error(
+    hint ? `OpenRouter auth failed. ${hint}` : (lastError?.message ?? "OpenRouter request failed"),
+  );
 }

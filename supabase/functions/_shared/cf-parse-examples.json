@@ -8,6 +8,16 @@
     }
   },
   {
+    "input": "Back Squat 5x3 65,70,75,80,85%",
+    "output": {
+      "segment": { "name": "Back Squat", "programming_segment": "weightlifting", "metcon_format": null },
+      "movements": [
+        { "name": "Back Squat", "sequence_number": 1, "reps_prescribed": 15, "prescribed_score": "5x3 @ 65/70/75/80/85%" }
+      ],
+      "warnings": ["Percent ladder — verify each set % in editor."]
+    }
+  },
+  {
     "input": "Deadlift 3 @ 225",
     "output": {
       "segment": { "name": "Deadlift", "programming_segment": "weightlifting", "metcon_format": null },

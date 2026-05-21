@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { format } from "date-fns";
+import { formatFunctionsInvokeError } from "@/lib/functions-error";
 import { supabase } from "@/lib/supabase";
 import { parseWodText } from "@/lib/wod-parser/parse-wod-text";
 import type { BenchmarkCatalogEntry } from "@/lib/wod-parser/types";
@@ -76,7 +77,7 @@ export function useWodParser(
       setAiParsing(false);
 
       if (error) {
-        const msg = error.message ?? "AI parse failed";
+        const msg = await formatFunctionsInvokeError(error);
         setAiError(msg);
         return { error: msg, draft: null as IntakeDraftPayload | null };
       }

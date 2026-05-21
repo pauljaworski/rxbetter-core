@@ -95,7 +95,12 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("OpenRouter error", msg);
-    return jsonResponse({ error: "AI parse failed. Try again or edit manually." }, 502);
+    const clientMsg = msg.includes("OPENROUTER_API_KEY")
+      ? msg
+      : msg.includes("OpenRouter auth failed")
+        ? msg
+        : "AI parse failed. Try again or edit manually.";
+    return jsonResponse({ error: clientMsg }, 502);
   }
 
   let llmParsed = parseLlmJsonFromText(orResult.content);

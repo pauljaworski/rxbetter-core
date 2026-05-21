@@ -80,7 +80,13 @@ export async function authorizeProgrammer(
       p_program_library_id: programLibraryId,
       p_scope: "staff_programmer",
     });
-    if (!scoped) return { error: "No library scope for programmer" };
+    const { data: gymWide } = await userClient.rpc("has_gym_staff_entitlement", {
+      p_gym_id: gymId,
+      p_scope: "staff_programmer",
+    });
+    if (!scoped && !gymWide) {
+      return { error: "No library scope for programmer on this program library" };
+    }
   } else {
     const { data: scopedAdmin } = await userClient.rpc("has_staff_library_scope", {
       p_gym_id: gymId,
