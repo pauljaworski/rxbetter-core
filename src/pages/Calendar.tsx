@@ -17,7 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { LogScoreRow } from "@/components/rx/LogScoreSheet";
+import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import type { GymAthlete } from "@/hooks/useProgrammingWeek";
 
 type ClassSlot = {
@@ -266,26 +266,19 @@ export default function CalendarPage() {
                         </p>
                       )}
                       <div className="divide-y divide-border/60">
-                        {(itemsByWod.get(w.id) ?? []).length === 0 ? (
-                          <div className="p-4 text-xs text-muted-foreground">No prescribed sets.</div>
-                        ) : (
-                          (itemsByWod.get(w.id) ?? []).map((it) => (
-                            <LogScoreRow
-                              key={it.id}
-                              item={it}
-                              wod={{
-                                id: w.id,
-                                name: w.name,
-                                wod_date: w.wod_date,
-                                programming_segment: w.programming_segment,
-                                prescribed_scale: w.prescribed_scale,
-                              }}
-                              contactId={contactId}
-                              existing={perfByItem.get(it.id)}
-                              onLogged={refetch}
-                            />
-                          ))
-                        )}
+                        <WorkoutSegmentItems
+                          wod={{
+                            id: w.id,
+                            name: w.name,
+                            wod_date: w.wod_date,
+                            programming_segment: w.programming_segment,
+                            prescribed_scale: w.prescribed_scale,
+                          }}
+                          items={itemsByWod.get(w.id) ?? []}
+                          contactId={contactId}
+                          perfByItem={perfByItem}
+                          onLogged={refetch}
+                        />
                       </div>
                     </div>
                   )}

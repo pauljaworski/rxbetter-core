@@ -2,8 +2,7 @@ import { format } from "date-fns";
 import { Flame, Timer, Dumbbell, NotebookPen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { segmentLabel } from "@/lib/format";
-import { LogScoreRow } from "@/components/rx/LogScoreSheet";
-import { StrengthLiftRow } from "@/components/workout/StrengthLiftRow";
+import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import type { WorkoutDayProgramming, WorkoutPerformance } from "@/hooks/useWorkoutDay";
 
 export function WorkoutDayView({
@@ -106,30 +105,19 @@ function WodCard({
         </div>
       )}
       <div className="divide-y divide-border/60">
-        {wod.items.length === 0 && (
-          <div className="p-5 text-sm text-muted-foreground">No prescribed sets.</div>
-        )}
-        {wod.items.map((it) =>
-          wod.programming_segment === "weightlifting" ? (
-            <StrengthLiftRow
-              key={it.id}
-              item={it}
-              wod={wod}
-              contactId={contactId}
-              existing={perfByItem.get(it.id) ?? null}
-              onLogged={onLogged}
-            />
-          ) : (
-            <LogScoreRow
-              key={it.id}
-              item={it}
-              wod={wod}
-              contactId={contactId}
-              existing={perfByItem.get(it.id) ?? null}
-              onLogged={onLogged}
-            />
-          ),
-        )}
+        <WorkoutSegmentItems
+          wod={{
+            id: wod.id,
+            name: wod.name,
+            wod_date: wod.wod_date,
+            programming_segment: wod.programming_segment,
+            prescribed_scale: wod.prescribed_scale,
+          }}
+          items={wod.items}
+          contactId={contactId}
+          perfByItem={perfByItem}
+          onLogged={onLogged}
+        />
       </div>
     </Card>
   );

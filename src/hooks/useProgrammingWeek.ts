@@ -8,6 +8,7 @@ import {
   isProgrammingVisibleForTracks,
   loadAssignmentMap,
 } from "@/lib/programming/athlete-library-filter";
+import { enrichLogLineItems } from "@/lib/programming/enrich-line-items";
 
 export type WeekWod = {
   id: string;
@@ -103,9 +104,10 @@ export function useProgrammingWeek(
         : { data: [] as { id: string; name: string; stimulus: string | null }[] };
       const typeMap = new Map((types ?? []).map((t) => [t.id, t]));
 
+      const rawByWod = new Map<string, LogLineItem[]>();
       for (const it of items ?? []) {
         const t = it.benchmark_type_id ? typeMap.get(it.benchmark_type_id) : undefined;
-        const enriched: LogLineItem = {
+        const row: LogLineItem = {
           id: it.id,
           sequence_number: it.sequence_number,
           reps_prescribed: it.reps_prescribed,
@@ -118,9 +120,12 @@ export function useProgrammingWeek(
           bench_name: t?.name ?? it.movement_label ?? undefined,
           stimulus: t?.stimulus ?? undefined,
         };
-        const arr = itemsByWod.get(it.programming_id) ?? [];
-        arr.push(enriched);
-        itemsByWod.set(it.programming_id, arr);
+        const arr = rawByWod.get(it.programming_id) ?? [];
+        arr.push(row);
+        rawByWod.set(it.programming_id, arr);
+      }
+      for (const [progId, rows] of rawByWod) {
+        itemsByWod.set(progId, await enrichLogLineItems(rows));
       }
 
       if (contactId) {

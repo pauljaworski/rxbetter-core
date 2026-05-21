@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Flame, XCircle } from "lucide-react";
+import { CheckCircle2, Flame, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  computeWeightFromPr,
-  percentRepMaxLabel,
-} from "@/lib/programming/percent-calculator";
+import { computeWeightFromPr } from "@/lib/programming/percent-calculator";
+import { loadRepCountForDefinition } from "@/lib/programming/enrich-line-items";
+import { recomputeBenchmarkSummary } from "@/lib/pr/record-athlete-pr";
 import { useSavePerformance } from "@/hooks/useSavePerformance";
 import type { WorkoutScale } from "@/lib/format";
 import type { LogLineItem, LogWodContext, ExistingPerformance } from "@/components/rx/LogScoreSheet";
+import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
+import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
 
 export function StrengthLiftRow({
   item,
@@ -32,6 +33,7 @@ export function StrengthLiftRow({
   const [repCount, setRepCount] = useState(1);
   const [weight, setWeight] = useState("");
   const [rpe, setRpe] = useState("");
+  const [prDialogOpen, setPrDialogOpen] = useState(false);
   const { save, submitting } = useSavePerformance();
 
   const prescribedFromPr = useMemo(
@@ -42,7 +44,7 @@ export function StrengthLiftRow({
   const prescribedWeight =
     item.prescribed_weight != null ? item.prescribed_weight : prescribedFromPr;
 
-  const repMaxLabel = percentRepMaxLabel(repCount);
+  const needsPr = contactId != null && item.benchmark_definition_id != null && prWeight == null;
 
   useEffect(() => {
     if (!contactId || !item.benchmark_definition_id) return;
@@ -50,7 +52,7 @@ export function StrengthLiftRow({
     (async () => {
       const { data } = await supabase
         .from("athlete_benchmark_summary")
-        .select("current_pr_weight, benchmark_definition_id")
+        .select("current_pr_weight")
         .eq("contact_id", contactId)
         .eq("benchmark_definition_id", item.benchmark_definition_id)
         .maybeSingle();
@@ -62,16 +64,14 @@ export function StrengthLiftRow({
   }, [contactId, item.benchmark_definition_id]);
 
   useEffect(() => {
-    if (!item.benchmark_definition_id) {
-      setRepCount(1);
-      return;
-    }
-    supabase
-      .from("benchmark_definition")
-      .select("rep_count")
-      .eq("id", item.benchmark_definition_id)
-      .maybeSingle()
-      .then(({ data }) => setRepCount(data?.rep_count ?? 1));
+    let cancelled = false;
+    (async () => {
+      const rc = await loadRepCountForDefinition(item.benchmark_definition_id);
+      if (!cancelled) setRepCount(rc);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [item.benchmark_definition_id]);
 
   useEffect(() => {
@@ -85,6 +85,17 @@ export function StrengthLiftRow({
     setRpe(existing?.rpe != null ? String(existing.rpe) : "");
   }, [existing, prescribedWeight]);
 
+  async function refreshPr() {
+    if (!contactId || !item.benchmark_definition_id) return;
+    const { data } = await supabase
+      .from("athlete_benchmark_summary")
+      .select("current_pr_weight")
+      .eq("contact_id", contactId)
+      .eq("benchmark_definition_id", item.benchmark_definition_id)
+      .maybeSingle();
+    setPrWeight(data?.current_pr_weight ?? null);
+  }
+
   async function submitLift(status: "completed" | "failed") {
     if (!contactId) {
       toast.error("Sign in to log lifts");
@@ -94,33 +105,6 @@ export function StrengthLiftRow({
     if (weightNum == null || Number.isNaN(weightNum)) {
       toast.error("Enter actual weight lifted");
       return;
-    }
-
-    let isPr = existing?.is_pr ?? false;
-    if (item.benchmark_definition_id && status === "completed") {
-      const { data: bench } = await supabase
-        .from("athlete_benchmark_summary")
-        .select("id, current_pr_weight")
-        .eq("contact_id", contactId)
-        .eq("benchmark_definition_id", item.benchmark_definition_id)
-        .maybeSingle();
-      if (!bench || (bench.current_pr_weight ?? 0) < weightNum) {
-        isPr = true;
-        const today = new Date().toISOString().slice(0, 10);
-        if (bench) {
-          await supabase
-            .from("athlete_benchmark_summary")
-            .update({ current_pr_weight: weightNum, date_pr_achieved: today })
-            .eq("id", bench.id);
-        } else {
-          await supabase.from("athlete_benchmark_summary").insert({
-            contact_id: contactId,
-            benchmark_definition_id: item.benchmark_definition_id,
-            current_pr_weight: weightNum,
-            date_pr_achieved: today,
-          });
-        }
-      }
     }
 
     const { error } = await save({
@@ -135,7 +119,7 @@ export function StrengthLiftRow({
       score: null,
       weightLifted: weightNum,
       rpe: rpe ? Number(rpe) : null,
-      isPr,
+      isPr: false,
       status,
       workoutScale: (wod.prescribed_scale as WorkoutScale | null) ?? "rx",
       isMetcon: false,
@@ -145,44 +129,64 @@ export function StrengthLiftRow({
       toast.error("Couldn't save", { description: error });
       return;
     }
-    if (isPr && !existing?.is_pr) toast.success("New PR!");
+
+    let becamePr = false;
+    if (item.benchmark_definition_id && status === "completed") {
+      const { error: prErr } = await recomputeBenchmarkSummary(
+        contactId,
+        item.benchmark_definition_id,
+      );
+      if (prErr) {
+        toast.error("Lift saved but PR vault didn't update", { description: prErr });
+      } else {
+        await refreshPr();
+        const { data: bench } = await supabase
+          .from("athlete_benchmark_summary")
+          .select("current_pr_weight")
+          .eq("contact_id", contactId)
+          .eq("benchmark_definition_id", item.benchmark_definition_id)
+          .maybeSingle();
+        becamePr = bench?.current_pr_weight === weightNum;
+      }
+    }
+
+    if (becamePr) toast.success("New PR!");
     else toast.success(status === "completed" ? "Lift logged" : "Marked failed");
     onLogged?.();
   }
 
   const isLogged = !!existing;
-  const pctLabel =
-    item.prescribed_percentage != null
-      ? `${Math.round(item.prescribed_percentage * 100)}%`
-      : null;
 
   return (
-    <div
-      className={cn(
-        "space-y-3 p-4",
-        isLogged && "bg-primary/[0.04]",
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono-num inline-grid h-8 w-8 place-items-center rounded-md bg-secondary text-xs font-bold text-muted-foreground">
-          {item.sequence_number ?? "·"}
-        </span>
-        <p className="text-sm font-semibold">{item.bench_name ?? "Lift"}</p>
-        {item.reps_prescribed != null && (
-          <Badge variant="outline" className="font-mono-num text-[10px]">
-            {item.reps_prescribed} reps
-          </Badge>
-        )}
-        {pctLabel && (
-          <Badge variant="outline" className="font-mono-num text-[10px]">
-            {pctLabel} {repMaxLabel}
-          </Badge>
-        )}
-        {existing?.is_pr && (
-          <Badge className="gap-1 bg-accent text-accent-foreground">
-            <Flame className="h-3 w-3" /> PR
-          </Badge>
-        )}
+    <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <AthletePrescriptionHeader
+          movementName={item.bench_name ?? "Lift"}
+          repsPrescribed={item.reps_prescribed}
+          prescribedPercentage={item.prescribed_percentage}
+          repMaxCount={repCount}
+          prescribedWeight={item.prescribed_weight}
+          sequenceNumber={item.sequence_number}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          {existing?.is_pr && (
+            <Badge className="gap-1 bg-accent text-accent-foreground">
+              <Flame className="h-3 w-3" /> PR
+            </Badge>
+          )}
+          {needsPr && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={() => setPrDialogOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add PR
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -232,7 +236,7 @@ export function StrengthLiftRow({
           size="sm"
           disabled={submitting}
           className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => submitLift("completed")}
+          onClick={() => void submitLift("completed")}
         >
           <CheckCircle2 className="mr-1 h-4 w-4" />
           {isLogged && existing?.status !== "failed" ? "Update · Success" : "Success"}
@@ -241,12 +245,28 @@ export function StrengthLiftRow({
           size="sm"
           variant="destructive"
           disabled={submitting}
-          onClick={() => submitLift("failed")}
+          onClick={() => void submitLift("failed")}
         >
           <XCircle className="mr-1 h-4 w-4" />
           Failed
         </Button>
       </div>
+
+      <LogAthletePrDialog
+        open={prDialogOpen}
+        onOpenChange={setPrDialogOpen}
+        contactId={contactId}
+        benchmarkDefinitionId={item.benchmark_definition_id}
+        benchmarkTypeId={item.benchmark_type_id}
+        movementName={item.bench_name ?? "Lift"}
+        repMaxCount={repCount}
+        repsPrescribed={item.reps_prescribed}
+        defaultDate={wod.wod_date}
+        onSaved={() => {
+          void refreshPr();
+          onLogged?.();
+        }}
+      />
     </div>
   );
 }

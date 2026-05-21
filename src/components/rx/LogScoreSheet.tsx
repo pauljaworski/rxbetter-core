@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WORKOUT_SCALE_OPTIONS, type WorkoutScale } from "@/lib/format";
 import { useSavePerformance } from "@/hooks/useSavePerformance";
+import { loadRepCountForDefinition } from "@/lib/programming/enrich-line-items";
+import { recomputeBenchmarkSummary } from "@/lib/pr/record-athlete-pr";
+import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
 
 export type LogLineItem = {
   id: string;
@@ -69,18 +72,31 @@ export function LogScoreRow({
   const [rpe, setRpe] = useState("");
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
   const [liftStatus, setLiftStatus] = useState<"completed" | "failed">("completed");
+  const [repCount, setRepCount] = useState(1);
   const { save, removePerformance, submitting } = useSavePerformance();
 
-  const isMetcon =
-    wod.programming_segment === "metcon" || !!item.prescribed_score;
+  const isMetcon = wod.programming_segment === "metcon" || !!item.prescribed_score;
   const isLogged = !!existing;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rc = await loadRepCountForDefinition(item.benchmark_definition_id);
+      if (!cancelled) setRepCount(rc);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item.benchmark_definition_id]);
 
   useEffect(() => {
     if (open) {
       setScore(existing?.score ?? "");
       setWeight(existing?.weight_lifted != null ? String(existing.weight_lifted) : "");
       setRpe(existing?.rpe != null ? String(existing.rpe) : "");
-      setWorkoutScale((existing?.workout_scale as WorkoutScale) ?? (wod.prescribed_scale as WorkoutScale) ?? "rx");
+      setWorkoutScale(
+        (existing?.workout_scale as WorkoutScale) ?? (wod.prescribed_scale as WorkoutScale) ?? "rx",
+      );
       setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
     }
   }, [open, existing, wod.prescribed_scale]);
@@ -101,33 +117,6 @@ export function LogScoreRow({
       return;
     }
 
-    let isPr = existing?.is_pr ?? false;
-    if (weightNum && item.benchmark_definition_id) {
-      const { data: bench } = await supabase
-        .from("athlete_benchmark_summary")
-        .select("id, current_pr_weight")
-        .eq("contact_id", contactId)
-        .eq("benchmark_definition_id", item.benchmark_definition_id)
-        .maybeSingle();
-      if (!bench || (bench.current_pr_weight ?? 0) < weightNum) {
-        isPr = true;
-        const today = new Date().toISOString().slice(0, 10);
-        if (bench) {
-          await supabase
-            .from("athlete_benchmark_summary")
-            .update({ current_pr_weight: weightNum, date_pr_achieved: today })
-            .eq("id", bench.id);
-        } else {
-          await supabase.from("athlete_benchmark_summary").insert({
-            contact_id: contactId,
-            benchmark_definition_id: item.benchmark_definition_id,
-            current_pr_weight: weightNum,
-            date_pr_achieved: today,
-          });
-        }
-      }
-    }
-
     const { error } = await save({
       contactId,
       programmingId: wod.id,
@@ -140,7 +129,7 @@ export function LogScoreRow({
       score: score || null,
       weightLifted: weightNum,
       rpe: rpeNum,
-      isPr,
+      isPr: false,
       status: isMetcon ? "completed" : liftStatus,
       workoutScale: workoutScale || null,
       isMetcon,
@@ -150,11 +139,38 @@ export function LogScoreRow({
       toast.error("Couldn't save score", { description: error });
       return;
     }
-    if (isPr && !existing?.is_pr)
+
+    let becamePr = false;
+    if (
+      !isMetcon &&
+      liftStatus === "completed" &&
+      weightNum != null &&
+      item.benchmark_definition_id
+    ) {
+      const { error: prErr } = await recomputeBenchmarkSummary(
+        contactId,
+        item.benchmark_definition_id,
+      );
+      if (prErr) {
+        toast.error("Score saved but PR vault didn't update", { description: prErr });
+      } else {
+        const { data: bench } = await supabase
+          .from("athlete_benchmark_summary")
+          .select("current_pr_weight")
+          .eq("contact_id", contactId)
+          .eq("benchmark_definition_id", item.benchmark_definition_id)
+          .maybeSingle();
+        becamePr = bench?.current_pr_weight === weightNum;
+      }
+    }
+
+    if (becamePr && !existing?.is_pr) {
       toast.success("New PR!", {
         description: `${weightNum} lb on ${item.bench_name ?? "lift"}`,
       });
-    else toast.success(existing ? "Score updated" : "Score logged");
+    } else {
+      toast.success(existing ? "Score updated" : "Score logged");
+    }
     setOpen(false);
     onLogged?.();
   }
@@ -174,17 +190,10 @@ export function LogScoreRow({
     }
   }
 
-  const prescribedPills: string[] = [];
-  if (item.reps_prescribed) prescribedPills.push(`${item.reps_prescribed} reps`);
-  if (item.prescribed_percentage)
-    prescribedPills.push(`${Math.round(item.prescribed_percentage * 100)}%`);
-  if (item.prescribed_weight) prescribedPills.push(`${item.prescribed_weight} lb`);
-  if (item.prescribed_score) prescribedPills.push(item.prescribed_score);
-
   const loggedDisplay = existing
     ? existing.weight_lifted != null
       ? `${existing.weight_lifted} lb${existing.status === "failed" ? " (fail)" : ""}`
-      : existing.score ?? "Logged"
+      : (existing.score ?? "Logged")
     : null;
 
   return (
@@ -192,37 +201,21 @@ export function LogScoreRow({
       <SheetTrigger asChild>
         <button
           className={cn(
-            "flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40",
+            "flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40 md:p-5",
             isLogged && "bg-primary/[0.04]",
           )}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <span
-              className={cn(
-                "font-mono-num inline-grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-bold",
-                isLogged ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground",
-              )}
-            >
-              {item.sequence_number ?? "·"}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {item.bench_name ?? wod.name ?? "Set"}
-              </p>
-              {prescribedPills.length > 0 && (
-                <div className="mt-1 flex flex-wrap items-center gap-1">
-                  {prescribedPills.map((p, i) => (
-                    <span
-                      key={i}
-                      className="font-mono-num rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <AthletePrescriptionHeader
+            movementName={item.bench_name ?? wod.name ?? "Set"}
+            repsPrescribed={item.reps_prescribed}
+            prescribedPercentage={item.prescribed_percentage}
+            repMaxCount={repCount}
+            prescribedWeight={item.prescribed_weight}
+            prescribedScore={item.prescribed_score}
+            sequenceNumber={item.sequence_number}
+            compact
+            className="min-w-0 flex-1"
+          />
           <div className="flex shrink-0 items-center gap-2">
             {isLogged ? (
               <div className="flex items-center gap-2">
@@ -258,9 +251,18 @@ export function LogScoreRow({
       </SheetTrigger>
       <SheetContent side="bottom" className="border-border bg-card">
         <SheetHeader>
-          <SheetTitle>
+          <SheetTitle className="sr-only">
             {isLogged ? "Edit score" : "Log score"} · {item.bench_name ?? wod.name}
           </SheetTitle>
+          <AthletePrescriptionHeader
+            movementName={item.bench_name ?? wod.name ?? "Set"}
+            repsPrescribed={item.reps_prescribed}
+            prescribedPercentage={item.prescribed_percentage}
+            repMaxCount={repCount}
+            prescribedWeight={item.prescribed_weight}
+            prescribedScore={item.prescribed_score}
+            sequenceNumber={item.sequence_number}
+          />
         </SheetHeader>
         <div className="mt-6 space-y-4">
           <div className="space-y-2">
@@ -331,7 +333,7 @@ export function LogScoreRow({
             />
           </div>
           <Button
-            onClick={submit}
+            onClick={() => void submit()}
             disabled={submitting}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             size="lg"
@@ -339,7 +341,7 @@ export function LogScoreRow({
             {submitting ? "Saving…" : isLogged ? "Update score" : "Save score"}
           </Button>
           {isLogged && (
-            <Button type="button" variant="ghost" className="w-full" onClick={markNa}>
+            <Button type="button" variant="ghost" className="w-full" onClick={() => void markNa()}>
               Mark N/A (clear result)
             </Button>
           )}
