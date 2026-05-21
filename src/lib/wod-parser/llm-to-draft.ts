@@ -1,4 +1,5 @@
 import type { EditorLineItem, IntakeDraftPayload } from "@/hooks/staff/types";
+import { normalizePercentFraction } from "@/lib/programming/percent-calculator";
 import { fuzzyMatchBenchmark } from "./fuzzy-benchmark";
 import {
   type LlmIntakeDraft,
@@ -32,6 +33,7 @@ export function mapLlmToIntakeDraft(options: MapLlmDraftOptions): IntakeDraftPay
 
     let pct = m.prescribed_percentage ?? null;
     if (pct != null && pct > 1) pct = pct / 100;
+    pct = normalizePercentFraction(pct);
 
     return {
       sequence_number: m.sequence_number ?? idx + 1,

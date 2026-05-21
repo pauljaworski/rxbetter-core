@@ -16,7 +16,7 @@ const titles: Record<string, string> = {
   "/prs": "PR Vault",
   "/history": "History",
   "/staff": "Staff",
-  "/staff/programming": "Programming Builder",
+  "/staff/programming": "Programming",
   "/staff/classes": "Class Day",
   "/staff/roster": "Roster",
   "/staff/memberships": "Memberships",
@@ -40,7 +40,6 @@ export function AppShell() {
               <>
                 <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
                 <div className="h-4 w-px bg-border" />
-                <OverflowMenu />
               </>
             )}
             {isAthlete && (

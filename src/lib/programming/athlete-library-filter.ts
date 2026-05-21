@@ -10,6 +10,7 @@ export async function fetchAthleteTrackLibraryIds(
     .eq("contact_id", contactId)
     .eq("gym_id", gymId)
     .eq("subscription_scope", "athlete_track")
+    .eq("status", "active")
     .not("program_library_id", "is", null);
   if (error) throw new Error(error.message);
   return (data ?? [])
@@ -52,5 +53,6 @@ export function isProgrammingVisibleForTracks(
 ): boolean {
   if (!trackIds.length) return true;
   const libs = libraryIdsForProgramming(prog, assignmentMap);
+  if (!libs.length) return true;
   return libs.some((id) => trackIds.includes(id));
 }

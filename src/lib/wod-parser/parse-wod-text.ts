@@ -1,4 +1,5 @@
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
+import { normalizePercentFraction } from "@/lib/programming/percent-calculator";
 import { fuzzyMatchBenchmark } from "./fuzzy-benchmark";
 import { normalizeMetconFormat } from "./intake-draft-schema";
 import {
@@ -75,7 +76,7 @@ function buildPerSetLineItems(options: {
   const items: EditorLineItem[] = [];
 
   for (let s = 1; s <= sets; s++) {
-    const pct = percentages[s - 1] ?? percentages[0] ?? null;
+    const pct = normalizePercentFraction(percentages[s - 1] ?? percentages[0] ?? null);
     items.push({
       sequence_number: s,
       reps_prescribed: reps,
@@ -148,7 +149,7 @@ function parseStrengthLine(
 
     const lineItems: EditorLineItem[] = [];
     for (let s = 0; s < count; s++) {
-      const pct = percentages[s] ?? null;
+      const pct = normalizePercentFraction(percentages[s] ?? null);
       lineItems.push({
         sequence_number: s + 1,
         reps_prescribed: reps,

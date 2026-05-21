@@ -1,4 +1,5 @@
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
+import { normalizePercentFraction } from "@/lib/programming/percent-calculator";
 import {
   METCON_FORMATS,
   normalizeMetconFormat,
@@ -175,6 +176,7 @@ export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
   const items = wod.items.map((it) => ({
     ...it,
     prescribed_score: mode === "tracking_only" ? null : it.prescribed_score,
+    prescribed_percentage: normalizePercentFraction(it.prescribed_percentage),
   }));
   const ids =
     wod.program_library_ids?.length > 0

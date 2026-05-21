@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgramLibraries } from "@/hooks/useProgramLibraries";
-import {
-  fetchProgrammingDayForCopy,
-  useStaffProgrammingDay,
-} from "@/hooks/staff/useStaffProgrammingDay";
+import { useStaffProgrammingDay } from "@/hooks/staff/useStaffProgrammingDay";
 import { useProgrammingSave } from "@/hooks/staff/useProgrammingSave";
 import { useProgrammingPublish } from "@/hooks/staff/useProgrammingPublish";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
@@ -14,31 +11,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  Plus,
-  Save,
-  Sparkles,
-  Library,
-  Send,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WodIntakePanel } from "@/components/programmer/WodIntakePanel";
@@ -54,15 +27,14 @@ export default function StaffProgramming() {
   const [date, setDate] = useState<Date>(new Date());
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [wods, setWods] = useState<EditorWod[]>([]);
-  const [viewTrackId, setViewTrackId] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [copyBusy, setCopyBusy] = useState(false);
-  const [copyOpen, setCopyOpen] = useState(false);
+  const [syncFromServer, setSyncFromServer] = useState(true);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
+  const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
+  const [stashedDrafts, setStashedDrafts] = useState<EditorWod[]>([]);
 
   const dateKey = format(date, "yyyy-MM-dd");
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const {
     data: serverWods,
@@ -72,54 +44,40 @@ export default function StaffProgramming() {
     refetch,
   } = useStaffProgrammingDay(activeGymId, date);
   const { data: libraries } = useProgramLibraries(activeGymId);
-  const { saveAll, busy: saving } = useProgrammingSave(activeGymId, date, viewTrackId);
+  const defaultLibId = libraries[0]?.id ?? null;
+  const { saveWod, busy: saving } = useProgrammingSave(activeGymId, date, defaultLibId);
   const { publishDay, publishWeek, busy: publishing } = useProgrammingPublish(activeGymId);
 
-  const visibleWods = useMemo(() => {
-    if (!viewTrackId) return wods;
-    return wods.filter((w) => {
-      const ids = w.program_library_ids?.length
-        ? w.program_library_ids
-        : w.program_library_id
-          ? [w.program_library_id]
-          : [];
-      return ids.includes(viewTrackId);
-    });
-  }, [wods, viewTrackId]);
-
   useEffect(() => {
-    setDirty(false);
+    setSyncFromServer(true);
+    setStashedDrafts([]);
   }, [dateKey]);
 
   useEffect(() => {
-    if (!isLoading && !dirty) setWods(serverWods);
-  }, [serverWods, isLoading, dirty]);
-
-  useEffect(() => {
-    if (libraries.length && !viewTrackId) setViewTrackId(libraries[0].id);
-  }, [libraries, viewTrackId]);
-
-  function markDirty() {
-    setDirty(true);
-  }
+    if (!isLoading && syncFromServer) {
+      setWods([...serverWods, ...stashedDrafts]);
+      setStashedDrafts([]);
+      setSyncFromServer(false);
+    }
+  }, [serverWods, isLoading, syncFromServer, stashedDrafts]);
 
   function addWod(wod: EditorWod) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) => [...prev, wod]);
   }
 
   function updateWod(idx: number, patch: Partial<EditorWod>) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) => prev.map((w, i) => (i === idx ? { ...w, ...patch } : w)));
   }
 
   function removeWod(idx: number) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -152,7 +110,7 @@ export default function StaffProgramming() {
   }
 
   function updateItem(wodIdx: number, itemIdx: number, patch: Partial<EditorLineItem>) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx
@@ -163,7 +121,7 @@ export default function StaffProgramming() {
   }
 
   function removeItem(wodIdx: number, itemIdx: number) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx ? { ...w, items: w.items.filter((_, j) => j !== itemIdx) } : w,
@@ -172,7 +130,7 @@ export default function StaffProgramming() {
   }
 
   function cloneItem(wodIdx: number, itemIdx: number) {
-    markDirty();
+    setSyncFromServer(false);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -189,6 +147,31 @@ export default function StaffProgramming() {
     );
   }
 
+  async function handleSaveSection(idx: number) {
+    const wod = wods[idx];
+    const lib =
+      wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
+    if (!lib) {
+      toast.error("Select at least one track for this section.");
+      return;
+    }
+
+    setSavingSectionIdx(idx);
+    const { programmingId, error: saveError } = await saveWod(wod, wod.display_order ?? idx);
+    setSavingSectionIdx(null);
+
+    if (saveError) {
+      toast.error("Couldn't save section", { description: saveError });
+      return;
+    }
+
+    toast.success("Section saved");
+
+    setStashedDrafts(wods.filter((w, i) => i !== idx && !w.id));
+    setSyncFromServer(true);
+    refetch();
+  }
+
   async function handlePublishDay() {
     const { error, count } = await publishDay(date);
     if (error) {
@@ -196,8 +179,11 @@ export default function StaffProgramming() {
       return;
     }
     toast.success(
-      count > 0 ? `Published ${count} segment${count === 1 ? "" : "s"} for this day` : "Nothing new to publish for this day",
+      count > 0
+        ? `Published ${count} segment${count === 1 ? "" : "s"} for this day`
+        : "Nothing new to publish for this day",
     );
+    setSyncFromServer(true);
     refetch();
   }
 
@@ -208,67 +194,15 @@ export default function StaffProgramming() {
       return;
     }
     toast.success(
-      count > 0 ? `Published ${count} segment${count === 1 ? "" : "s"} this week` : "Nothing new to publish this week",
+      count > 0
+        ? `Published ${count} segment${count === 1 ? "" : "s"} this week`
+        : "Nothing new to publish this week",
     );
+    setSyncFromServer(true);
     refetch();
   }
 
-  async function copyFromDate(source: Date) {
-    if (!activeGymId) return;
-    setCopyBusy(true);
-    try {
-      const copied = await fetchProgrammingDayForCopy(activeGymId, source);
-      if (!copied.length) {
-        toast.error("No programming on that date to copy.");
-        return;
-      }
-      const baseOrder = wods.length;
-      const newWods: EditorWod[] = copied.map((w, idx) => {
-        const ids =
-          w.program_library_ids?.length > 0
-            ? w.program_library_ids
-            : viewTrackId
-              ? [viewTrackId]
-              : [];
-        return {
-          ...w,
-          _new: true,
-          display_order: baseOrder + idx,
-          program_library_ids: ids,
-          program_library_id: ids[0] ?? w.program_library_id ?? viewTrackId,
-        };
-      });
-      setWods((prev) => [...prev, ...newWods]);
-      markDirty();
-      setCopyOpen(false);
-      toast.success(
-        `Copied ${copied.length} segment${copied.length === 1 ? "" : "s"} from ${format(source, "MMM d")}`,
-      );
-    } catch (e) {
-      toast.error("Couldn't copy", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setCopyBusy(false);
-    }
-  }
-
-  async function handleSave() {
-    const { error: saveError } = await saveAll(wods);
-    if (saveError) {
-      toast.error("Couldn't save", { description: saveError });
-      return;
-    }
-    toast.success("Saved");
-    setDirty(false);
-    refetch();
-  }
-
-  const busy = saving || copyBusy || publishing;
-
-  function wodGlobalIndex(wod: EditorWod): number {
-    return wods.findIndex((w) => w === wod);
-  }
+  const busy = saving || publishing;
 
   return (
     <div className="space-y-6">
@@ -276,22 +210,13 @@ export default function StaffProgramming() {
         <p className="eyebrow">Programmer</p>
         <h1 className="text-3xl font-black tracking-tight md:text-4xl">Programming</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add segments with type-specific movements, publish to one or more tracks, then save.
+          Pick a day, add segments, save each section, then publish when the day is ready.
         </p>
       </header>
 
       {error && <ErrorBanner message={error} />}
 
-      <WodIntakePanel
-        date={date}
-        defaultLib={viewTrackId}
-        displayOrder={wods.length}
-        onCommitted={() => {
-          setDirty(false);
-          refetch();
-        }}
-      />
-
+      {/* Calendar */}
       <Card className="glass-card p-3">
         <div className="mb-2 flex items-center justify-between px-1">
           <Button size="icon" variant="ghost" onClick={() => setWeekStart(addDays(weekStart, -7))}>
@@ -311,6 +236,7 @@ export default function StaffProgramming() {
             return (
               <button
                 key={k}
+                type="button"
                 onClick={() => setDate(d)}
                 className={cn(
                   "flex flex-col items-center rounded-lg border px-1 py-2 text-center transition-colors",
@@ -329,99 +255,57 @@ export default function StaffProgramming() {
         </div>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Library className="h-4 w-4 text-muted-foreground" />
-          <Select value={viewTrackId ?? ""} onValueChange={(v) => setViewTrackId(v)}>
-            <SelectTrigger className="h-9 w-56">
-              <SelectValue placeholder="View track" />
-            </SelectTrigger>
-            <SelectContent>
-              {libraries.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => copyFromDate(addDays(date, -1))} disabled={busy}>
-            <Copy className="mr-1 h-3.5 w-3.5" /> Copy yesterday
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => copyFromDate(addDays(date, -7))} disabled={busy}>
-            <Copy className="mr-1 h-3.5 w-3.5" /> Last week
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCopyOpen(true)}>
-            <Sparkles className="mr-1 h-3.5 w-3.5" /> Copy from…
-          </Button>
-          <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
-            <Plus className="mr-1 h-3.5 w-3.5" /> Segment
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={busy || !wods.length}
-            size="sm"
-            variant="secondary"
-          >
-            <Save className="mr-1 h-3.5 w-3.5" /> {saving ? "Saving…" : "Save day"}
-          </Button>
-          <Button
-            onClick={handlePublishDay}
-            disabled={busy}
-            size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Send className="mr-1 h-3.5 w-3.5" /> Publish day
-          </Button>
-          <Button onClick={handlePublishWeek} disabled={busy} size="sm" variant="outline">
-            <Send className="mr-1 h-3.5 w-3.5" /> Publish week
-          </Button>
-        </div>
+      {/* Day actions */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Segment
+        </Button>
+        <Button
+          onClick={handlePublishDay}
+          disabled={busy}
+          size="sm"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Send className="mr-1 h-3.5 w-3.5" /> Publish day
+        </Button>
+        <Button onClick={handlePublishWeek} disabled={busy} size="sm" variant="outline">
+          <Send className="mr-1 h-3.5 w-3.5" /> Publish week
+        </Button>
       </div>
 
       {isLoading && <PageSkeleton rows={4} />}
       {!isLoading && !error && isEmpty && wods.length === 0 && (
         <EmptyState
           title="Nothing scheduled"
-          description={`${format(date, "EEE, MMM d")} is empty. Copy a previous day or add a segment.`}
+          description={`${format(date, "EEE, MMM d")} is empty. Click Segment to add or copy programming.`}
         />
       )}
-      {!isLoading && visibleWods.length > 0 && (
+      {!isLoading && wods.length > 0 && (
         <div className="space-y-4">
-          {visibleWods.map((w) => {
-            const idx = wodGlobalIndex(w);
-            return (
-              <SegmentEditorCard
-                key={w.id ?? `new-${idx}`}
-                wod={w}
-                libraries={libraries}
-                onUpdate={(patch) => updateWod(idx, patch)}
-                onRemove={() => removeWod(idx)}
-                onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
-                onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
-                onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
-                onAddMovement={() => setMovementPicker({ wodIdx: idx })}
-              />
-            );
-          })}
+          {wods.map((w, idx) => (
+            <SegmentEditorCard
+              key={w.id ?? `new-${idx}-${w.display_order}`}
+              wod={w}
+              libraries={libraries}
+              saving={savingSectionIdx === idx}
+              onUpdate={(patch) => updateWod(idx, patch)}
+              onRemove={() => removeWod(idx)}
+              onSaveSection={() => handleSaveSection(idx)}
+              onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
+              onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
+              onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
+              onAddMovement={() => setMovementPicker({ wodIdx: idx })}
+            />
+          ))}
         </div>
       )}
-      {!isLoading && wods.length > 0 && visibleWods.length === 0 && (
-        <EmptyState
-          title="No segments for this track"
-          description="Switch view track or add segments published to this library."
-        />
-      )}
-
-      <CopyFromDialog open={copyOpen} onOpenChange={setCopyOpen} onPick={(d) => copyFromDate(d)} />
 
       <SegmentAddDialog
         open={segmentAddOpen}
         onOpenChange={setSegmentAddOpen}
         activeGymId={activeGymId}
         libraries={libraries}
-        defaultLib={viewTrackId}
+        defaultLib={defaultLibId}
         displayOrder={wods.length}
         onAdd={addWod}
       />
@@ -437,35 +321,20 @@ export default function StaffProgramming() {
           }}
         />
       )}
-    </div>
-  );
-}
 
-function CopyFromDialog({
-  open,
-  onOpenChange,
-  onPick,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  onPick: (d: Date) => void;
-}) {
-  const [val, setVal] = useState<string>(format(addDays(new Date(), -1), "yyyy-MM-dd"));
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card">
-        <DialogHeader>
-          <DialogTitle>Copy programming from…</DialogTitle>
-          <DialogDescription>Pick any date with programming on it.</DialogDescription>
-        </DialogHeader>
-        <Input type="date" value={val} onChange={(e) => setVal(e.target.value)} />
-        <Button
-          onClick={() => onPick(new Date(val + "T00:00:00"))}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Copy className="mr-2 h-4 w-4" /> Copy this day
-        </Button>
-      </DialogContent>
-    </Dialog>
+      {/* Quick intake — secondary workflow */}
+      <div className="border-t border-border/60 pt-6">
+        <p className="eyebrow mb-3">Quick intake (optional)</p>
+        <WodIntakePanel
+          date={date}
+          defaultLib={defaultLibId}
+          displayOrder={wods.length}
+          onCommitted={() => {
+            setSyncFromServer(true);
+            refetch();
+          }}
+        />
+      </div>
+    </div>
   );
 }

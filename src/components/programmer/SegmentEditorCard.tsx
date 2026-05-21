@@ -1,4 +1,4 @@
-import { Trash2, Plus, Copy } from "lucide-react";
+import { Trash2, Plus, Copy, Save } from "lucide-react";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import type { ProgramLibrary } from "@/hooks/staff/types";
 import { Card } from "@/components/ui/card";
@@ -43,8 +43,10 @@ function resolveUiKey(wod: EditorWod): string {
 type Props = {
   wod: EditorWod;
   libraries: ProgramLibrary[];
+  saving?: boolean;
   onUpdate: (patch: Partial<EditorWod>) => void;
   onRemove: () => void;
+  onSaveSection: () => void;
   onUpdateItem: (itemIdx: number, patch: Partial<EditorLineItem>) => void;
   onRemoveItem: (itemIdx: number) => void;
   onCloneItem: (itemIdx: number) => void;
@@ -54,8 +56,10 @@ type Props = {
 export function SegmentEditorCard({
   wod,
   libraries,
+  saving,
   onUpdate,
   onRemove,
+  onSaveSection,
   onUpdateItem,
   onRemoveItem,
   onCloneItem,
@@ -92,10 +96,11 @@ export function SegmentEditorCard({
 
   return (
     <Card className="glass-card overflow-hidden p-0">
+      {/* Type, name, add movement */}
       <div className="space-y-3 border-b border-border/60 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={uiKey} onValueChange={setTypeUiKey}>
-            <SelectTrigger className="h-8 w-40">
+            <SelectTrigger className="h-9 w-40">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -111,7 +116,7 @@ export function SegmentEditorCard({
               value={wod.metcon_format ?? ""}
               onValueChange={(v) => onUpdate({ metcon_format: v || null })}
             >
-              <SelectTrigger className="h-8 w-36">
+              <SelectTrigger className="h-9 w-36">
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
               <SelectContent>
@@ -127,8 +132,31 @@ export function SegmentEditorCard({
             value={wod.name ?? ""}
             onChange={(e) => onUpdate({ name: e.target.value })}
             placeholder="Segment name *"
-            className="h-8 max-w-xs flex-1"
+            className="h-9 min-w-[10rem] flex-1"
           />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    onClick={onAddMovement}
+                    size="sm"
+                    variant="outline"
+                    disabled={!addEnabled}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add movement
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!addEnabled && (
+                <TooltipContent>
+                  {requiresMetconFormat(wod.programming_segment) && !wod.metcon_format
+                    ? "Select a format first."
+                    : "Select a programming type first."}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           {wod.published_at ? (
             <Badge variant="secondary" className="text-[10px]">
               Published
@@ -139,82 +167,58 @@ export function SegmentEditorCard({
             </Badge>
           )}
           <Button
+            size="sm"
+            onClick={onSaveSection}
+            disabled={saving}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Save className="mr-1 h-3.5 w-3.5" />
+            {saving ? "Saving…" : "Save section"}
+          </Button>
+          <Button
             size="icon"
             variant="ghost"
             onClick={onRemove}
             aria-label="Remove segment"
-            className="ml-auto text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Publish to tracks
-          </span>
-          {libraries.map((lib) => (
-            <label
-              key={lib.id}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/60 px-2 py-1 text-xs"
-            >
-              <Checkbox
-                checked={libIds.includes(lib.id)}
-                onCheckedChange={(c) => toggleLibrary(lib.id, c === true)}
-              />
-              {lib.name}
-            </label>
-          ))}
-        </div>
-
-        <Textarea
-          value={wod.description ?? ""}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          placeholder="Workout description (optional)…"
-          rows={2}
-          className="text-sm"
-        />
+        {libraries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Tracks
+            </span>
+            {libraries.map((lib) => (
+              <label
+                key={lib.id}
+                className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/60 px-2 py-1 text-xs"
+              >
+                <Checkbox
+                  checked={libIds.includes(lib.id)}
+                  onCheckedChange={(c) => toggleLibrary(lib.id, c === true)}
+                />
+                {lib.name}
+              </label>
+            ))}
+          </div>
+        )}
 
         {lineMode === "tracking_only" && (
           <p className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
-            Athletes log one workout score on this segment (time/reps). Movements below track what
-            was completed — they do not each have a separate score.
+            Athletes log one workout score on this segment (time/reps). Movements below are for
+            tracking only.
           </p>
         )}
-
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Coach&apos;s notes
-            </Label>
-            <Textarea
-              value={wod.coaches_notes ?? ""}
-              onChange={(e) => onUpdate({ coaches_notes: e.target.value })}
-              rows={2}
-              placeholder="Cues, demo focus…"
-              className="mt-1 text-sm"
-            />
-          </div>
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Athlete notes
-            </Label>
-            <Textarea
-              value={wod.athlete_notes ?? ""}
-              onChange={(e) => onUpdate({ athlete_notes: e.target.value })}
-              rows={2}
-              placeholder="Scaling options, intent…"
-              className="mt-1 text-sm"
-            />
-          </div>
-        </div>
       </div>
 
+      {/* Line items */}
       <div className="divide-y divide-border/60">
         {wod.items.length === 0 && (
           <p className="px-4 py-3 text-xs italic text-muted-foreground">
-            No movements yet. Set type{requiresMetconFormat(wod.programming_segment) ? " and format" : ""}{" "}
-            then add at least one line item.
+            No movements yet. Add at least one line item, then save this section.
           </p>
         )}
         {wod.items.map((it, j) => (
@@ -255,31 +259,47 @@ export function SegmentEditorCard({
             />
           </div>
         ))}
-        <div className="p-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block w-full">
-                  <Button
-                    onClick={onAddMovement}
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    disabled={!addEnabled}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Add movement
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!addEnabled && (
-                <TooltipContent>
-                  {requiresMetconFormat(wod.programming_segment) && !wod.metcon_format
-                    ? "Select a format (For Time, AMRAP, etc.) first."
-                    : "Select a programming type first."}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+      </div>
+
+      {/* Description and notes */}
+      <div className="space-y-3 border-t border-border/60 p-4">
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Workout description
+          </Label>
+          <Textarea
+            value={wod.description ?? ""}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            placeholder="Optional workout text…"
+            rows={2}
+            className="text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Coach&apos;s notes
+            </Label>
+            <Textarea
+              value={wod.coaches_notes ?? ""}
+              onChange={(e) => onUpdate({ coaches_notes: e.target.value })}
+              rows={2}
+              placeholder="Cues, demo focus…"
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Athlete notes
+            </Label>
+            <Textarea
+              value={wod.athlete_notes ?? ""}
+              onChange={(e) => onUpdate({ athlete_notes: e.target.value })}
+              rows={2}
+              placeholder="Scaling options, intent…"
+              className="text-sm"
+            />
+          </div>
         </div>
       </div>
     </Card>

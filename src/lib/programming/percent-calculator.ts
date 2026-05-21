@@ -14,9 +14,29 @@ export function percentRepMaxLabel(repCount: number | null | undefined): string 
   return opt?.label ?? (repCount ? `% ${repCount}RM` : "% RM");
 }
 
+/** Whole-number percent (0–100) from stored fraction (0–1). */
+export function percentWholeFromFraction(fraction: number | null | undefined): number | null {
+  if (fraction == null || Number.isNaN(fraction)) return null;
+  return Math.round(fraction * 100);
+}
+
+/** Stored fraction from whole-number percent input. */
+export function percentFractionFromWhole(whole: number | null | undefined): number | null {
+  if (whole == null || Number.isNaN(whole)) return null;
+  const w = Math.round(Number(whole));
+  if (w < 0 || w > 100) return null;
+  return w / 100;
+}
+
+/** Normalize a stored fraction to a whole-percent basis (avoids 0.799999… display). */
+export function normalizePercentFraction(fraction: number | null | undefined): number | null {
+  return percentFractionFromWhole(percentWholeFromFraction(fraction ?? null));
+}
+
 export function computeWeightFromPr(prWeight: number | null, percentage: number | null): number | null {
   if (prWeight == null || percentage == null) return null;
-  return Math.round(prWeight * percentage * 10) / 10;
+  const pct = normalizePercentFraction(percentage) ?? percentage;
+  return Math.round(prWeight * pct * 10) / 10;
 }
 
 export type BenchmarkDefinitionRow = {

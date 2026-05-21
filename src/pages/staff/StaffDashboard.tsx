@@ -51,7 +51,9 @@ export default function StaffDashboard() {
   const activeGym = memberships.find((m) => m.gym_id === activeGymId);
   const { data: stats, isLoading, error } = useStaffDashboardStats(activeGymId);
 
-  const tiles = ALL_TILES.filter((t) => t.personas.includes(activePersona));
+  const tiles = ALL_TILES.filter(
+    (t) => t.personas.includes(activePersona) && t.to !== "/staff/programming",
+  );
 
   return (
     <div className="space-y-6">

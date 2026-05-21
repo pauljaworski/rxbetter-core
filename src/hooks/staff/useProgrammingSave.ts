@@ -81,8 +81,15 @@ export async function saveWod(
   const validationErr = validateEditorWod(normalized);
   if (validationErr) return { programmingId: null, error: validationErr };
 
-  const lib = normalized.program_library_id ?? defaultLib;
-  const libraryIds = normalized.program_library_ids;
+  const lib =
+    normalized.program_library_ids[0] ??
+    normalized.program_library_id ??
+    defaultLib;
+  const libraryIds = normalized.program_library_ids.length
+    ? normalized.program_library_ids
+    : lib
+      ? [lib]
+      : [];
   let progId = normalized.id;
 
   try {
@@ -168,8 +175,14 @@ export function useProgrammingSave(
     if (!activeGymId) {
       return { error: "No active gym selected." };
     }
-    if (!defaultLib) {
-      return { error: "Pick a program library before saving." };
+    const hasLib = wods.some(
+      (w) =>
+        (w.program_library_ids?.length ?? 0) > 0 ||
+        w.program_library_id != null ||
+        defaultLib != null,
+    );
+    if (!hasLib) {
+      return { error: "Each section needs at least one track selected." };
     }
 
     setBusy(true);
