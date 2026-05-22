@@ -1364,6 +1364,14 @@ export type Database = {
         Args: { p_link_id: string; p_membership_offering_term_id: string }
         Returns: Json
       }
+      can_read_programming: {
+        Args: {
+          p_created_by_contact_id: string
+          p_gym_id: string
+          p_published_at: string
+        }
+        Returns: boolean
+      }
       get_fitness_track_link_public: {
         Args: { p_link_id: string }
         Returns: Json

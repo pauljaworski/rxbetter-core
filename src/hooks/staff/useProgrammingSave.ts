@@ -49,16 +49,36 @@ function resolveLineItemForSave(
 export type SaveWodResult = { programmingId: string | null; error: string | null };
 
 async function syncLibraryAssignments(programmingId: string, libraryIds: string[]): Promise<void> {
-  const { error: delErr } = await supabase
+  const desiredIds = Array.from(new Set(libraryIds));
+  const { data: existing, error: fetchErr } = await supabase
     .from("programming_library_assignment")
-    .delete()
+    .select("program_library_id")
     .eq("programming_id", programmingId);
-  if (delErr) throw new Error(delErr.message);
-  if (!libraryIds.length) return;
-  const { error: insErr } = await supabase.from("programming_library_assignment").insert(
-    libraryIds.map((program_library_id) => ({ programming_id: programmingId, program_library_id })),
-  );
-  if (insErr) throw new Error(insErr.message);
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const existingIds = new Set((existing ?? []).map((row) => row.program_library_id));
+  const idsToInsert = desiredIds.filter((id) => !existingIds.has(id));
+  if (idsToInsert.length) {
+    const { error: insErr } = await supabase.from("programming_library_assignment").upsert(
+      idsToInsert.map((program_library_id) => ({
+        programming_id: programmingId,
+        program_library_id,
+      })),
+      { onConflict: "programming_id,program_library_id", ignoreDuplicates: true },
+    );
+    if (insErr) throw new Error(insErr.message);
+  }
+
+  const desired = new Set(desiredIds);
+  const idsToDelete = Array.from(existingIds).filter((id) => !desired.has(id));
+  if (idsToDelete.length) {
+    const { error: delErr } = await supabase
+      .from("programming_library_assignment")
+      .delete()
+      .eq("programming_id", programmingId)
+      .in("program_library_id", idsToDelete);
+    if (delErr) throw new Error(delErr.message);
+  }
 }
 
 export async function saveWod(
