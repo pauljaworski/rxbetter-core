@@ -98,7 +98,7 @@ export function StrengthLiftRow({
     setLocalPerf(existing);
     setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
     setWeightTouched(false);
-  }, [item.id, existing?.id]);
+  }, [item.id, existing]);
 
   useEffect(() => {
     if (!weightTouched) {
@@ -111,7 +111,14 @@ export function StrengthLiftRow({
       }
     }
     setRpe(displayPerf?.rpe != null ? String(displayPerf.rpe) : "");
-  }, [item.id, displayPerf?.id, displayPerf?.weight_lifted, prescribedWeight, weightTouched]);
+  }, [
+    item.id,
+    displayPerf?.id,
+    displayPerf?.weight_lifted,
+    displayPerf?.rpe,
+    prescribedWeight,
+    weightTouched,
+  ]);
 
   async function refreshPr() {
     if (!contactId || !item.benchmark_definition_id) return;
