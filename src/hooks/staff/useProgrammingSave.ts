@@ -46,7 +46,11 @@ function resolveLineItemForSave(
   };
 }
 
-export type SaveWodResult = { programmingId: string | null; error: string | null };
+export type SaveWodResult = {
+  programmingId: string | null;
+  lineItemIds: string[];
+  error: string | null;
+};
 
 async function syncLibraryAssignments(programmingId: string, libraryIds: string[]): Promise<void> {
   const { error: delErr } = await supabase
@@ -59,6 +63,24 @@ async function syncLibraryAssignments(programmingId: string, libraryIds: string[
     libraryIds.map((program_library_id) => ({ programming_id: programmingId, program_library_id })),
   );
   if (insErr) throw new Error(insErr.message);
+}
+
+async function deleteRemovedLineItems(
+  programmingId: string,
+  keptLineItemIds: string[],
+): Promise<void> {
+  let query = supabase
+    .from("programming_line_item")
+    .delete()
+    .eq("programming_id", programmingId)
+    .is("contact_id", null);
+
+  if (keptLineItemIds.length > 0) {
+    query = query.not("id", "in", `(${keptLineItemIds.join(",")})`);
+  }
+
+  const { error } = await query;
+  if (error) throw new Error(error.message);
 }
 
 export async function saveWod(
@@ -79,7 +101,7 @@ export async function saveWod(
           : [defaultLib],
   });
   const validationErr = validateEditorWod(normalized);
-  if (validationErr) return { programmingId: null, error: validationErr };
+  if (validationErr) return { programmingId: null, lineItemIds: [], error: validationErr };
 
   const lib =
     normalized.program_library_ids[0] ??
@@ -91,6 +113,7 @@ export async function saveWod(
       ? [lib]
       : [];
   let progId = normalized.id;
+  const savedLineItemIds: string[] = [];
 
   try {
     if (normalized._new || !progId) {
@@ -128,7 +151,8 @@ export async function saveWod(
           display_order: displayOrder,
           program_library_id: lib,
         })
-        .eq("id", progId);
+        .eq("id", progId)
+        .eq("gym_id", activeGymId);
       if (error) throw new Error(error.message);
     }
 
@@ -142,24 +166,34 @@ export async function saveWod(
         contact_id: null,
       };
       if (it._new || !it.id) {
-        const { error } = await supabase.from("programming_line_item").insert({
-          programming_id: progId,
-          ...payload,
-        });
+        const { data, error } = await supabase
+          .from("programming_line_item")
+          .insert({
+            programming_id: progId,
+            ...payload,
+          })
+          .select("id")
+          .single();
         if (error) throw new Error(error.message);
+        savedLineItemIds.push(data.id);
       } else {
         const { error } = await supabase
           .from("programming_line_item")
           .update(payload)
-          .eq("id", it.id);
+          .eq("id", it.id)
+          .eq("programming_id", progId)
+          .is("contact_id", null);
         if (error) throw new Error(error.message);
+        savedLineItemIds.push(it.id);
       }
     }
 
-    return { programmingId: progId, error: null };
+    await deleteRemovedLineItems(progId!, savedLineItemIds);
+
+    return { programmingId: progId, lineItemIds: savedLineItemIds, error: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { programmingId: null, error: formatSupabaseError(msg) };
+    return { programmingId: null, lineItemIds: [], error: formatSupabaseError(msg) };
   }
 }
 
