@@ -157,7 +157,11 @@ export default function StaffProgramming() {
     }
 
     setSavingSectionIdx(idx);
-    const { programmingId, error: saveError } = await saveWod(wod, wod.display_order ?? idx);
+    const {
+      programmingId,
+      lineItemIds,
+      error: saveError,
+    } = await saveWod(wod, wod.display_order ?? idx);
     setSavingSectionIdx(null);
 
     if (saveError) {
@@ -166,6 +170,24 @@ export default function StaffProgramming() {
     }
 
     toast.success("Section saved");
+    if (programmingId) {
+      setWods((prev) =>
+        prev.map((w, i) =>
+          i === idx
+            ? {
+                ...w,
+                id: programmingId,
+                _new: undefined,
+                items: w.items.map((it, itemIdx) => ({
+                  ...it,
+                  id: lineItemIds[itemIdx] ?? it.id,
+                  _new: undefined,
+                })),
+              }
+            : w,
+        ),
+      );
+    }
 
     setStashedDrafts(wods.filter((w, i) => i !== idx && !w.id));
     setSyncFromServer(true);

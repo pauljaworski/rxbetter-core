@@ -41,6 +41,7 @@ export function StrengthLiftRow({
   const [prWeight, setPrWeight] = useState<number | null>(null);
   const [repCount, setRepCount] = useState(1);
   const [weight, setWeight] = useState("");
+  const [weightTouched, setWeightTouched] = useState(false);
   const [rpe, setRpe] = useState("");
   const [liftStatus, setLiftStatus] = useState<"completed" | "failed">("completed");
   const [localPerf, setLocalPerf] = useState<ExistingPerformance | null>(existing);
@@ -96,18 +97,21 @@ export function StrengthLiftRow({
   useEffect(() => {
     setLocalPerf(existing);
     setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
+    setWeightTouched(false);
   }, [item.id, existing?.id]);
 
   useEffect(() => {
-    if (displayPerf?.weight_lifted != null) {
-      setWeight(weightToInputValue(displayPerf.weight_lifted));
-    } else if (prescribedWeight != null) {
-      setWeight(formatWeightInputDefault(prescribedWeight));
-    } else {
-      setWeight("");
+    if (!weightTouched) {
+      if (displayPerf?.weight_lifted != null) {
+        setWeight(weightToInputValue(displayPerf.weight_lifted));
+      } else if (prescribedWeight != null) {
+        setWeight(formatWeightInputDefault(prescribedWeight));
+      } else {
+        setWeight("");
+      }
     }
     setRpe(displayPerf?.rpe != null ? String(displayPerf.rpe) : "");
-  }, [item.id, displayPerf?.id, displayPerf?.weight_lifted, prescribedWeight]);
+  }, [item.id, displayPerf?.id, displayPerf?.weight_lifted, prescribedWeight, weightTouched]);
 
   async function refreshPr() {
     if (!contactId || !item.benchmark_definition_id) return;
@@ -156,8 +160,8 @@ export function StrengthLiftRow({
       return;
     }
 
-    let isPr = displayPerf?.is_pr ?? false;
-    if (item.benchmark_definition_id && status === "completed") {
+    let isPr = false;
+    if (item.benchmark_definition_id) {
       const { error: prErr } = await recomputeBenchmarkSummary(
         contactId,
         item.benchmark_definition_id,
@@ -172,7 +176,7 @@ export function StrengthLiftRow({
           .eq("contact_id", contactId)
           .eq("benchmark_definition_id", item.benchmark_definition_id)
           .maybeSingle();
-        isPr = bench?.current_pr_weight === weightNum;
+        isPr = status === "completed" && bench?.current_pr_weight === weightNum;
       }
     }
 
@@ -256,7 +260,10 @@ export function StrengthLiftRow({
           <Input
             inputMode="decimal"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => {
+              setWeightTouched(true);
+              setWeight(e.target.value);
+            }}
             className="font-mono-num h-9"
           />
         </div>
