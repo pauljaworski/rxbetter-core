@@ -4,6 +4,12 @@ import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "../useAsyncState";
 import type { EditorWod } from "./types";
 
+type StaffProgrammingDayPayload = {
+  gymId: string | null;
+  dateKey: string;
+  wods: EditorWod[];
+};
+
 async function loadLibraryAssignments(
   programmingIds: string[],
 ): Promise<Map<string, string[]>> {
@@ -109,8 +115,8 @@ async function loadDefinitionRepCounts(defIds: string[]): Promise<Map<string, nu
 export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
   const dateKey = format(date, "yyyy-MM-dd");
 
-  const loader = useCallback(async (): Promise<EditorWod[]> => {
-    if (!activeGymId) return [];
+  const loader = useCallback(async (): Promise<StaffProgrammingDayPayload> => {
+    if (!activeGymId) return { gymId: activeGymId, dateKey, wods: [] };
 
     const { data: progs, error: progErr } = await supabase
       .from("programming")
@@ -124,7 +130,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     if (progErr) throw new Error(progErr.message);
 
     const ids = (progs ?? []).map((p) => p.id);
-    if (!ids.length) return [];
+    if (!ids.length) return { gymId: activeGymId, dateKey, wods: [] };
 
     const assignmentMap = await loadLibraryAssignments(ids);
 
@@ -151,10 +157,27 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const typeMap = new Map((types ?? []).map((t) => [t.id, t.name]));
     const defRepById = await loadDefinitionRepCounts(defIds);
 
-    return mapWodsFromRows(progs ?? [], items ?? [], typeMap, assignmentMap, defRepById);
+    return {
+      gymId: activeGymId,
+      dateKey,
+      wods: mapWodsFromRows(progs ?? [], items ?? [], typeMap, assignmentMap, defRepById),
+    };
   }, [activeGymId, dateKey]);
 
-  return useAsyncState(loader, [activeGymId, dateKey], [] as EditorWod[], (d) => d.length === 0);
+  const state = useAsyncState(
+    loader,
+    [activeGymId, dateKey],
+    { gymId: activeGymId, dateKey, wods: [] },
+    (d) => d.wods.length === 0,
+  );
+  const isCurrent = state.data.gymId === activeGymId && state.data.dateKey === dateKey;
+
+  return {
+    ...state,
+    data: isCurrent ? state.data.wods : [],
+    isLoading: state.isLoading || !isCurrent,
+    isEmpty: !state.isLoading && !state.error && isCurrent && state.data.wods.length === 0,
+  };
 }
 
 /** Fetch WODs from another date for duplicate/copy flows. */
