@@ -61,6 +61,24 @@ async function syncLibraryAssignments(programmingId: string, libraryIds: string[
   if (insErr) throw new Error(insErr.message);
 }
 
+async function deleteRemovedSharedLineItems(
+  programmingId: string,
+  keptLineItemIds: string[],
+): Promise<void> {
+  let query = supabase
+    .from("programming_line_item")
+    .delete()
+    .eq("programming_id", programmingId)
+    .is("contact_id", null);
+
+  if (keptLineItemIds.length) {
+    query = query.not("id", "in", `(${keptLineItemIds.join(",")})`);
+  }
+
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+}
+
 export async function saveWod(
   activeGymId: string,
   dateKey: string,
@@ -133,6 +151,10 @@ export async function saveWod(
     }
 
     await syncLibraryAssignments(progId!, libraryIds);
+    await deleteRemovedSharedLineItems(
+      progId!,
+      normalized.items.map((it) => it.id).filter(Boolean) as string[],
+    );
 
     for (let j = 0; j < normalized.items.length; j++) {
       const it = normalized.items[j];
@@ -151,7 +173,8 @@ export async function saveWod(
         const { error } = await supabase
           .from("programming_line_item")
           .update(payload)
-          .eq("id", it.id);
+          .eq("id", it.id)
+          .eq("programming_id", progId);
         if (error) throw new Error(error.message);
       }
     }

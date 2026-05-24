@@ -23,7 +23,10 @@ export function useAsyncState<T>(
   const [tick, setTick] = useState(0);
   const hasLoadedOnce = useRef(false);
 
-  const refetch = useCallback(() => setTick((n) => n + 1), []);
+  const refetch = useCallback(() => {
+    setIsLoading(true);
+    setTick((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -17,4 +17,24 @@ describe("pickBestPerformanceRow", () => {
     ]);
     expect(best?.id).toBe("b");
   });
+
+  it("ignores failed lift attempts", () => {
+    const best = pickBestPerformanceRow([
+      {
+        id: "failed-heavy",
+        weight_lifted: 300,
+        performance_date: "2026-03-01",
+        created_at: null,
+        status: "failed",
+      },
+      {
+        id: "completed",
+        weight_lifted: 250,
+        performance_date: "2026-02-01",
+        created_at: null,
+        status: "completed",
+      },
+    ]);
+    expect(best?.id).toBe("completed");
+  });
 });

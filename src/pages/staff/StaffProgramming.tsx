@@ -55,7 +55,13 @@ export default function StaffProgramming() {
 
   useEffect(() => {
     if (!isLoading && syncFromServer) {
-      setWods([...serverWods, ...stashedDrafts]);
+      const stashedById = new Map(
+        stashedDrafts
+          .filter((w): w is EditorWod & { id: string } => Boolean(w.id))
+          .map((w) => [w.id, w]),
+      );
+      const unsavedDrafts = stashedDrafts.filter((w) => !w.id);
+      setWods([...serverWods.map((w) => stashedById.get(w.id ?? "") ?? w), ...unsavedDrafts]);
       setStashedDrafts([]);
       setSyncFromServer(false);
     }
@@ -167,7 +173,7 @@ export default function StaffProgramming() {
 
     toast.success("Section saved");
 
-    setStashedDrafts(wods.filter((w, i) => i !== idx && !w.id));
+    setStashedDrafts(wods.filter((_, i) => i !== idx));
     setSyncFromServer(true);
     refetch();
   }
