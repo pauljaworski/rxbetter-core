@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
+import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
 
 export type SaveSegmentPerformanceInput = {
   contactId: string;
@@ -11,6 +12,7 @@ export type SaveSegmentPerformanceInput = {
   score: string;
   resultValue: number | null;
   workoutScale: WorkoutScale | null;
+  programmingSegment: string | null;
 };
 
 export function useSaveSegmentPerformance() {
@@ -54,6 +56,15 @@ export function useSaveSegmentPerformance() {
         .single();
       error = res.error;
       id = res.data?.id ?? id;
+    }
+
+    if (!error) {
+      await tryMarkProgrammingSegmentComplete(
+        input.contactId,
+        input.programmingId,
+        input.wodDate,
+        input.programmingSegment,
+      );
     }
 
     setSubmitting(false);

@@ -166,6 +166,51 @@ export type Database = {
           },
         ]
       }
+      athlete_segment_completion: {
+        Row: {
+          id: string
+          contact_id: string
+          programming_id: string | null
+          segment_group_id: string | null
+          performance_date: string
+          completed_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          programming_id?: string | null
+          segment_group_id?: string | null
+          performance_date: string
+          completed_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          programming_id?: string | null
+          segment_group_id?: string | null
+          performance_date?: string
+          completed_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_segment_completion_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_segment_completion_programming_id_fkey"
+            columns: ["programming_id"]
+            isOneToOne: false
+            referencedRelation: "programming"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_performance: {
         Row: {
           benchmark_definition_id: string | null
@@ -183,6 +228,7 @@ export type Database = {
           result_value: number | null
           rpe: number | null
           score: string | null
+          score_meta: Json
           status: string | null
           updated_at: string
           weight_lifted: number | null
@@ -204,6 +250,7 @@ export type Database = {
           result_value?: number | null
           rpe?: number | null
           score?: string | null
+          score_meta?: Json
           status?: string | null
           updated_at?: string
           weight_lifted?: number | null
@@ -225,6 +272,7 @@ export type Database = {
           result_value?: number | null
           rpe?: number | null
           score?: string | null
+          score_meta?: Json
           status?: string | null
           updated_at?: string
           weight_lifted?: number | null

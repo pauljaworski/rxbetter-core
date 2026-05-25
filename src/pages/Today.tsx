@@ -48,6 +48,7 @@ export default function Today() {
           perfByItem={data.perfByItem}
           perfBySegment={data.perfBySegment}
           perfByGroup={data.perfByGroup}
+          completions={data.completions}
           contactId={contactId}
           displayName={displayName}
           onLogged={refetch}

@@ -22,6 +22,7 @@ import {
   formatComplexMovementTitle,
   parseMovementComponents,
 } from "@/lib/programming/movement-components-schema";
+import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
 import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
 
 function weightToInputValue(lb: number): string {
@@ -200,6 +201,13 @@ export function StrengthLiftRow({
     if (isPr && !displayPerf?.is_pr) toast.success("New PR!");
     else if (status === "failed") toast.message("Marked failed");
     else toast.success(displayPerf ? "Lift updated" : "Lift logged");
+
+    await tryMarkProgrammingSegmentComplete(
+      contactId,
+      wod.id,
+      wod.wod_date,
+      wod.programming_segment,
+    );
 
     onLogged?.();
   }

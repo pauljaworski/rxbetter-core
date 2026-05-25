@@ -14,6 +14,7 @@ import {
   formatComplexMovementTitle,
   parseMovementComponents,
 } from "@/lib/programming/movement-components-schema";
+import { loadCompletionMaps, type CompletionMaps } from "@/lib/programming/segment-completion";
 
 export type WorkoutLineItem = LogLineItem & { programming_id: string; contact_id: string | null };
 
@@ -50,6 +51,7 @@ export type WorkoutDayResult = {
   perfByItem: Map<string, WorkoutPerformance>;
   perfBySegment: Map<string, SegmentPerformance>;
   perfByGroup: Map<string, SegmentPerformance>;
+  completions: CompletionMaps;
 };
 
 const EMPTY: WorkoutDayResult = {
@@ -58,6 +60,7 @@ const EMPTY: WorkoutDayResult = {
   perfByItem: new Map(),
   perfBySegment: new Map(),
   perfByGroup: new Map(),
+  completions: { completedProgramIds: new Set(), completedGroupIds: new Set() },
 };
 
 export function useWorkoutDay(activeGymId: string | null, contactId: string | null) {
@@ -94,6 +97,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
         perfByItem: new Map(),
         perfBySegment: new Map(),
         perfByGroup: new Map(),
+        completions: { completedProgramIds: new Set(), completedGroupIds: new Set() },
       };
     }
 
@@ -191,7 +195,12 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
       }
     }
 
-    return { wodDate: todayKey, wods, perfByItem, perfBySegment, perfByGroup };
+    const completions =
+      contactId && (ids.length || groupIds.length)
+        ? await loadCompletionMaps(contactId, todayKey, ids, groupIds)
+        : { completedProgramIds: new Set<string>(), completedGroupIds: new Set<string>() };
+
+    return { wodDate: todayKey, wods, perfByItem, perfBySegment, perfByGroup, completions };
   }, [activeGymId, contactId]);
 
   return useAsyncState(loader, [activeGymId, contactId], EMPTY, (d) => !d.wodDate || d.wods.length === 0);

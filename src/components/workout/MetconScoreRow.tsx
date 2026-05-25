@@ -61,6 +61,7 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
       score: score.trim(),
       resultValue: secs,
       workoutScale: workoutScale || null,
+      programmingSegment: wod.programming_segment,
     });
     if (error) {
       toast.error("Couldn't save", { description: error });

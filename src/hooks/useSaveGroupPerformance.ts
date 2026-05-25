@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
+import { tryMarkGroupBlockComplete } from "@/lib/programming/segment-completion";
 
 export type SaveGroupPerformanceInput = {
   contactId: string;
@@ -55,6 +56,10 @@ export function useSaveGroupPerformance() {
         .single();
       error = res.error;
       id = res.data?.id ?? id;
+    }
+
+    if (!error) {
+      await tryMarkGroupBlockComplete(input.contactId, input.segmentGroupId, input.wodDate);
     }
 
     setSubmitting(false);
