@@ -197,6 +197,7 @@ function GroupBlockCard({
         contactId={contactId}
         existing={groupPerf}
         prescribedScale={block.anchor.prescribed_scale}
+        workoutScheme={block.anchor.workout_scheme}
         onLogged={onLogged}
       />
     </Card>

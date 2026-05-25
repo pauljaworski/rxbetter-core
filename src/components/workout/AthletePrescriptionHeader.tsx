@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   movementName: string;
   repsPrescribed?: number | null;
+  prescriptionUnit?: string | null;
   prescribedPercentage?: number | null;
   repMaxCount?: number | null;
   prescribedWeight?: number | null;
@@ -16,6 +17,7 @@ type Props = {
 export function AthletePrescriptionHeader({
   movementName,
   repsPrescribed,
+  prescriptionUnit,
   prescribedPercentage,
   repMaxCount,
   prescribedWeight,
@@ -27,6 +29,7 @@ export function AthletePrescriptionHeader({
   const title = formatPrescriptionTitle({
     movementName,
     repsPrescribed,
+    prescriptionUnit,
     prescribedPercentage,
     repMaxCount,
     prescribedWeight,

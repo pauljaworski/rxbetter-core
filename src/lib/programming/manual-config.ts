@@ -50,6 +50,9 @@ export const METCON_FORMAT_OPTIONS: { value: MetconFormat; label: string }[] = [
   { value: "chipper", label: "Chipper" },
 ];
 
+/** Re-export detailed format templates for programmer UI. */
+export { WORKOUT_FORMAT_TEMPLATES } from "@/lib/programming/workout-scheme-schema";
+
 export type CatalogEntry = {
   id: string;
   name: string;

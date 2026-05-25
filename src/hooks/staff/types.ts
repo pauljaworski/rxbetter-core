@@ -1,4 +1,5 @@
 import type { WorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import type { PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import type { LineItemKind } from "@/lib/programming/line-item-kind";
 import type { MovementComponent } from "@/lib/programming/movement-components-schema";
 
@@ -60,6 +61,7 @@ export type StaffClassLineItem = {
   programming_id: string;
   sequence_number: number | null;
   reps_prescribed: number | null;
+  prescription_unit?: PrescriptionUnit | null;
   prescribed_weight: number | null;
   prescribed_percentage: number | null;
   prescribed_score: string | null;
@@ -95,6 +97,7 @@ export type EditorLineItem = {
   _new?: boolean;
   sequence_number: number;
   reps_prescribed: number | null;
+  prescription_unit?: PrescriptionUnit | null;
   prescribed_weight: number | null;
   prescribed_percentage: number | null;
   prescribed_score: string | null;

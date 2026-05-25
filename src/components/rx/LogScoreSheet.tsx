@@ -25,6 +25,7 @@ export type LogLineItem = {
   id: string;
   sequence_number: number | null;
   reps_prescribed: number | null;
+  prescription_unit?: string | null;
   prescribed_percentage: number | null;
   prescribed_weight: number | null;
   prescribed_score: string | null;

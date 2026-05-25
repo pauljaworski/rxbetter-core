@@ -37,6 +37,7 @@ function resolveLineItemForSave(
   prescribed_percentage: number | null;
   prescribed_score: string | null;
   reps_prescribed: number | null;
+  prescription_unit: string | null;
   line_item_kind: string;
   movement_components: Json;
 } {
@@ -58,6 +59,7 @@ function resolveLineItemForSave(
       : null;
   return {
     reps_prescribed: it.reps_prescribed,
+    prescription_unit: it.prescription_unit ?? null,
     prescribed_weight: it.prescribed_weight,
     prescribed_percentage: it.prescribed_percentage,
     prescribed_score: it.prescribed_score,

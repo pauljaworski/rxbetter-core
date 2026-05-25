@@ -15,6 +15,7 @@ export function MetconMovementList({ items }: Props) {
           <AthletePrescriptionHeader
             movementName={it.bench_name ?? "Movement"}
             repsPrescribed={it.reps_prescribed}
+            prescriptionUnit={it.prescription_unit}
             prescribedWeight={it.prescribed_weight}
             prescribedScore={it.prescribed_score}
             sequenceNumber={it.sequence_number}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,12 @@ import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WORKOUT_SCALE_OPTIONS, type WorkoutScale } from "@/lib/format";
-import { metconScorePlaceholder, parseScoreToSeconds } from "@/lib/programming/metcon-score";
+import {
+  effectiveScoreMetric,
+  metconScorePlaceholder,
+  parseScoreToSeconds,
+  scoreFieldLabel,
+} from "@/lib/programming/metcon-score";
 import {
   parseWorkoutScheme,
   schemeSummaryLabel,
@@ -31,13 +37,16 @@ type Props = {
 
 export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
   const [score, setScore] = useState("");
+  const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
   const scheme = parseWorkoutScheme(wod.workout_scheme);
   const schemeLabel = schemeSummaryLabel(scheme);
+  const scoreMetric = effectiveScoreMetric(scheme?.scoreMetric, scheme?.kind);
   const { save, submitting } = useSaveSegmentPerformance();
 
   useEffect(() => {
     setScore(existing?.score ?? "");
+    setCompleted(existing?.score?.toLowerCase() === "completed" || existing?.score === "Yes");
     setWorkoutScale(
       (existing?.workout_scale as WorkoutScale) ?? (wod.prescribed_scale as WorkoutScale) ?? "rx",
     );
@@ -48,17 +57,24 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
       toast.error("Sign in to log your score");
       return;
     }
-    if (!score.trim()) {
-      toast.error("Enter your score or time");
+    const value =
+      scoreMetric === "completion" ? (completed ? "Completed" : "") : score.trim();
+    if (!value) {
+      toast.error(
+        scoreMetric === "completion" ? "Mark completion when finished" : "Enter your score",
+      );
       return;
     }
-    const secs = parseScoreToSeconds(score);
+    const secs =
+      scoreMetric === "time" || scoreMetric === "sum_interval_times"
+        ? parseScoreToSeconds(value)
+        : null;
     const { error } = await save({
       contactId,
       programmingId: wod.id,
       wodDate: wod.wod_date,
       existingId: existing?.id,
-      score: score.trim(),
+      score: value,
       resultValue: secs,
       workoutScale: workoutScale || null,
       programmingSegment: wod.programming_segment,
@@ -71,15 +87,11 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
     onLogged?.();
   }
 
-  const isLogged = !!existing?.score;
+  const isLogged =
+    scoreMetric === "completion" ? completed || !!existing?.score : !!existing?.score;
 
   return (
-    <div
-      className={cn(
-        "space-y-4 p-4 md:p-5",
-        isLogged && "bg-primary/[0.04]",
-      )}
-    >
+    <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
         <p className="eyebrow">Your result</p>
         {schemeLabel && (
@@ -88,13 +100,20 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Label>Score / time</Label>
-          <Input
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder={metconScorePlaceholder(scheme?.kind)}
-            className="font-mono-num text-2xl"
-          />
+          <Label>{scoreFieldLabel(scoreMetric)}</Label>
+          {scoreMetric === "completion" ? (
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-3">
+              <Checkbox checked={completed} onCheckedChange={(c) => setCompleted(c === true)} />
+              <span className="text-sm font-medium">Completed</span>
+            </label>
+          ) : (
+            <Input
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              placeholder={metconScorePlaceholder(scoreMetric, scheme?.kind)}
+              className="font-mono-num text-2xl"
+            />
+          )}
         </div>
         <div className="space-y-2">
           <Label>Scale</Label>

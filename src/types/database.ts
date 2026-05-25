@@ -1266,6 +1266,7 @@ export type Database = {
           prescribed_percentage: number | null
           prescribed_score: string | null
           prescribed_weight: number | null
+          prescription_unit: string | null
           programming_id: string
           reps_prescribed: number | null
           sequence_number: number | null
@@ -1289,6 +1290,7 @@ export type Database = {
           prescribed_percentage?: number | null
           prescribed_score?: string | null
           prescribed_weight?: number | null
+          prescription_unit?: string | null
           programming_id: string
           reps_prescribed?: number | null
           sequence_number?: number | null
@@ -1312,6 +1314,7 @@ export type Database = {
           prescribed_percentage?: number | null
           prescribed_score?: string | null
           prescribed_weight?: number | null
+          prescription_unit?: string | null
           programming_id?: string
           reps_prescribed?: number | null
           sequence_number?: number | null

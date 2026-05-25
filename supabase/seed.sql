@@ -99,15 +99,38 @@ insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variati
   ('Amanda',      'metcon', null, '9-7-5 Muscle-Ups & Snatches'),
   ('Filthy Fifty','metcon', null, '50 reps each of 10 movements');
 
--- Skill movements
+-- Skill / gymnastics / aerobic movements
 insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variation) values
-  ('Muscle-Up',         'skill', 'pull',  'gymnastics'),
-  ('Bar Muscle-Up',     'skill', 'pull',  'gymnastics'),
-  ('Handstand Walk',    'skill', 'press', 'gymnastics'),
+  ('Muscle-Up', 'skill', 'pull', 'gymnastics'),
+  ('Bar Muscle-Up', 'skill', 'pull', 'gymnastics'),
+  ('Ring Muscle-Up', 'skill', 'pull', 'gymnastics'),
+  ('Pull-Up', 'skill', 'pull', 'gymnastics'),
+  ('Strict Pull-Up', 'skill', 'pull', 'gymnastics'),
+  ('Chest-to-Bar', 'skill', 'pull', 'gymnastics'),
+  ('Chest-to-Bar Pull-Up', 'skill', 'pull', 'gymnastics'),
+  ('Handstand Walk', 'skill', 'press', 'gymnastics'),
   ('Handstand Push-Up', 'skill', 'press', 'gymnastics'),
-  ('Rope Climb',        'skill', 'pull',  'gymnastics'),
-  ('Double Under',      'skill', null,    'conditioning'),
-  ('Toes-to-Bar',       'skill', 'pull',  'gymnastics');
+  ('Handstand Hold', 'skill', 'press', 'gymnastics'),
+  ('Rope Climb', 'skill', 'pull', 'gymnastics'),
+  ('Push-Up', 'skill', 'press', 'gymnastics'),
+  ('Ring Dip', 'skill', 'press', 'gymnastics'),
+  ('Burpee', 'skill', null, 'gymnastics'),
+  ('Box Jump', 'skill', 'squat', 'gymnastics'),
+  ('Box Jump Over', 'skill', 'squat', 'gymnastics'),
+  ('Wall Ball', 'strength', 'squat', 'wall ball'),
+  ('Wall Balls', 'strength', 'squat', 'wall ball'),
+  ('Sit-Up', 'skill', null, 'gymnastics'),
+  ('GHD Sit-Up', 'skill', null, 'gymnastics'),
+  ('Double Under', 'skill', null, 'conditioning'),
+  ('Single Under', 'skill', null, 'conditioning'),
+  ('Toes-to-Bar', 'skill', 'pull', 'gymnastics'),
+  ('Toes to Bar', 'skill', 'pull', 'gymnastics'),
+  ('Run', 'skill', 'mono', 'aerobic'),
+  ('Row', 'skill', 'mono', 'aerobic'),
+  ('Ski Erg', 'skill', 'mono', 'aerobic'),
+  ('Assault Bike', 'skill', 'mono', 'aerobic'),
+  ('Echo Bike', 'skill', 'mono', 'aerobic'),
+  ('Kettlebell Swing', 'strength', 'pull', 'kettlebell');
 
 -- ============================================================
 -- Benchmark Definitions — 1RM, 2RM, 3RM, 5RM, 10RM for all strength types

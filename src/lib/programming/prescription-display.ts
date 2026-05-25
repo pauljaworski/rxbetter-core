@@ -1,20 +1,29 @@
 import { percentWholeFromFraction, percentRepMaxLabel } from "@/lib/programming/percent-calculator";
+import {
+  formatPrescriptionAmount,
+  type PrescriptionUnit,
+} from "@/lib/programming/prescription-unit";
 
 export type PrescriptionDisplayInput = {
   movementName: string;
   repsPrescribed?: number | null;
+  prescriptionUnit?: PrescriptionUnit | string | null;
   prescribedPercentage?: number | null;
   repMaxCount?: number | null;
   prescribedWeight?: number | null;
   prescribedScore?: string | null;
 };
 
-/** e.g. "Snatch - 2 Reps - 70% 1RM" */
+/** e.g. "Snatch - 2 Reps - 70% 1RM" or "Run - 200m" */
 export function formatPrescriptionTitle(input: PrescriptionDisplayInput): string {
   const parts: string[] = [input.movementName.trim() || "Movement"];
 
   if (input.repsPrescribed != null) {
-    parts.push(`${input.repsPrescribed} ${input.repsPrescribed === 1 ? "Rep" : "Reps"}`);
+    const amount = formatPrescriptionAmount(
+      input.repsPrescribed,
+      input.prescriptionUnit ?? "reps",
+    );
+    if (amount) parts.push(amount);
   }
 
   const pct = percentWholeFromFraction(input.prescribedPercentage ?? null);

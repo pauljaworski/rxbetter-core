@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   MANUAL_PROGRAMMING_TYPES,
-  METCON_FORMAT_OPTIONS,
+  WORKOUT_FORMAT_TEMPLATES,
   canAddMovement,
   getLineItemMode,
   getTypeByUiKey,
@@ -36,14 +36,15 @@ import {
   isMetconSegment,
 } from "@/lib/programming/manual-config";
 import {
-  defaultSchemeForMetconFormat,
+  parseWorkoutScheme,
   schemeSummaryLabel,
+  type WorkoutScheme,
 } from "@/lib/programming/workout-scheme-schema";
 import {
   editorLineItemsFromMetconMovements,
   parseMetconMovements,
 } from "@/lib/programming/parse-metcon-movements";
-import { MetconSchemeFields } from "./MetconSchemeFields";
+import { applyWorkoutFormatKind, MetconSchemeFields } from "./MetconSchemeFields";
 import { LineItemFields } from "./LineItemFields";
 import { toast } from "sonner";
 
@@ -104,13 +105,12 @@ export function SegmentEditorCard({
     });
   }
 
-  function applyMetconFormat(format: string | null) {
-    const scheme = format ? defaultSchemeForMetconFormat(format) : null;
-    onUpdate({
-      metcon_format: format,
-      workout_scheme: scheme ?? null,
-    });
+  function applyWorkoutFormat(kind: WorkoutScheme["kind"]) {
+    onUpdate(applyWorkoutFormatKind(kind));
   }
+
+  const formatSelectValue =
+    parseWorkoutScheme(wod.workout_scheme)?.kind ?? wod.metcon_format ?? "";
 
   function parseBulkMovements() {
     const text = bulkPaste.trim() || (wod.description ?? "").trim();
@@ -129,7 +129,19 @@ export function SegmentEditorCard({
     const patch: Partial<EditorWod> = { items };
     if (parsed.metconFormat) {
       patch.metcon_format = parsed.metconFormat;
-      patch.workout_scheme = parsed.scheme ?? defaultSchemeForMetconFormat(parsed.metconFormat);
+      patch.workout_scheme =
+        parsed.scheme ??
+        (parsed.metconFormat
+          ? applyWorkoutFormatKind(
+              parsed.metconFormat === "amrap"
+                ? "amrap"
+                : parsed.metconFormat === "emom"
+                  ? "emom"
+                  : parsed.metconFormat === "chipper"
+                    ? "chipper"
+                    : "for_time",
+            ).workout_scheme
+          : null);
     } else if (parsed.scheme) {
       patch.workout_scheme = parsed.scheme;
     }
@@ -175,15 +187,15 @@ export function SegmentEditorCard({
           </Select>
           {requiresMetconFormat(wod.programming_segment) && (
             <Select
-              value={wod.metcon_format ?? ""}
-              onValueChange={(v) => applyMetconFormat(v || null)}
+              value={formatSelectValue}
+              onValueChange={(v) => applyWorkoutFormat(v as WorkoutScheme["kind"])}
             >
-              <SelectTrigger className="h-9 w-36">
+              <SelectTrigger className="h-9 min-w-[10rem]">
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
               <SelectContent>
-                {METCON_FORMAT_OPTIONS.map((f) => (
-                  <SelectItem key={f.value} value={f.value}>
+                {WORKOUT_FORMAT_TEMPLATES.map((f) => (
+                  <SelectItem key={f.kind} value={f.kind}>
                     {f.label}
                   </SelectItem>
                 ))}

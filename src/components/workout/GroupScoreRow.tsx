@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,13 @@ import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WORKOUT_SCALE_OPTIONS, type WorkoutScale } from "@/lib/format";
-import { metconScorePlaceholder, parseScoreToSeconds } from "@/lib/programming/metcon-score";
+import {
+  effectiveScoreMetric,
+  metconScorePlaceholder,
+  parseScoreToSeconds,
+  scoreFieldLabel,
+} from "@/lib/programming/metcon-score";
+import { parseWorkoutScheme, schemeSummaryLabel } from "@/lib/programming/workout-scheme-schema";
 import { useSaveGroupPerformance } from "@/hooks/useSaveGroupPerformance";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
@@ -24,6 +31,7 @@ type Props = {
   contactId: string | null;
   existing: SegmentPerformance | null;
   prescribedScale?: string | null;
+  workoutScheme?: unknown;
   onLogged?: () => void;
 };
 
@@ -34,14 +42,20 @@ export function GroupScoreRow({
   contactId,
   existing,
   prescribedScale,
+  workoutScheme,
   onLogged,
 }: Props) {
   const [score, setScore] = useState("");
+  const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
+  const scheme = parseWorkoutScheme(workoutScheme);
+  const schemeLabel = schemeSummaryLabel(scheme);
+  const scoreMetric = effectiveScoreMetric(scheme?.scoreMetric, scheme?.kind);
   const { save, submitting } = useSaveGroupPerformance();
 
   useEffect(() => {
     setScore(existing?.score ?? "");
+    setCompleted(existing?.score?.toLowerCase() === "completed" || existing?.score === "Yes");
     setWorkoutScale(
       (existing?.workout_scale as WorkoutScale) ?? (prescribedScale as WorkoutScale) ?? "rx",
     );
@@ -52,17 +66,24 @@ export function GroupScoreRow({
       toast.error("Sign in to log your score");
       return;
     }
-    if (!score.trim()) {
-      toast.error("Enter your total time");
+    const value =
+      scoreMetric === "completion" ? (completed ? "Completed" : "") : score.trim();
+    if (!value) {
+      toast.error(
+        scoreMetric === "completion" ? "Mark completion when finished" : "Enter your score",
+      );
       return;
     }
-    const secs = parseScoreToSeconds(score);
+    const secs =
+      scoreMetric === "time" || scoreMetric === "sum_interval_times"
+        ? parseScoreToSeconds(value)
+        : null;
     const { error } = await save({
       contactId,
       segmentGroupId: groupId,
       wodDate,
       existingId: existing?.id,
-      score: score.trim(),
+      score: value,
       resultValue: secs,
       workoutScale: workoutScale || null,
     });
@@ -74,25 +95,33 @@ export function GroupScoreRow({
     onLogged?.();
   }
 
-  const isLogged = !!existing?.score;
+  const isLogged =
+    scoreMetric === "completion" ? completed || !!existing?.score : !!existing?.score;
+
+  const headline = schemeLabel ?? `Block · ${partCount} parts`;
 
   return (
     <div className={cn("space-y-4 border-t border-border/60 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
         <p className="eyebrow">Workout block result</p>
-        <p className="mt-1 text-lg font-black tracking-tight text-primary">
-          Total time · {partCount} parts
-        </p>
+        <p className="mt-1 text-lg font-black tracking-tight text-primary">{headline}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Label>Total time</Label>
-          <Input
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder={metconScorePlaceholder("for_time")}
-            className="font-mono-num text-2xl"
-          />
+          <Label>{scoreFieldLabel(scoreMetric)}</Label>
+          {scoreMetric === "completion" ? (
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-3">
+              <Checkbox checked={completed} onCheckedChange={(c) => setCompleted(c === true)} />
+              <span className="text-sm font-medium">Completed</span>
+            </label>
+          ) : (
+            <Input
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              placeholder={metconScorePlaceholder(scoreMetric, scheme?.kind)}
+              className="font-mono-num text-2xl"
+            />
+          )}
         </div>
         <div className="space-y-2">
           <Label>Scale</Label>

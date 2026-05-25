@@ -1,3 +1,5 @@
+import type { ScoreMetric } from "@/lib/programming/workout-scheme-schema";
+
 /** Parse mm:ss or h:mm:ss to seconds for result_value storage. */
 export function parseScoreToSeconds(score: string): number | null {
   const s = score.trim();
@@ -9,11 +11,47 @@ export function parseScoreToSeconds(score: string): number | null {
   return null;
 }
 
-export function metconScorePlaceholder(schemeKind: string | undefined): string {
-  switch (schemeKind) {
-    case "amrap":
+export function effectiveScoreMetric(
+  metric: ScoreMetric | undefined,
+  schemeKind?: string,
+): ScoreMetric {
+  if (metric) return metric;
+  if (schemeKind === "amrap" || schemeKind === "amrap_repeat" || schemeKind === "tabata") {
+    return "rounds_reps";
+  }
+  if (schemeKind === "emom_completion") return "completion";
+  if (schemeKind === "interval_series") return "sum_interval_times";
+  return "time";
+}
+
+export function scoreFieldLabel(metric: ScoreMetric): string {
+  switch (metric) {
+    case "rounds_reps":
+      return "Rounds + reps";
+    case "reps":
+      return "Total reps";
+    case "completion":
+      return "Completion";
+    case "sum_interval_times":
+      return "Total time";
+    default:
+      return "Time";
+  }
+}
+
+export function metconScorePlaceholder(
+  metric: ScoreMetric | undefined,
+  schemeKind?: string,
+): string {
+  const m = effectiveScoreMetric(metric, schemeKind);
+  switch (m) {
+    case "rounds_reps":
       return "e.g. 12 rounds + 5";
-    case "interval_series":
+    case "reps":
+      return "e.g. 287";
+    case "completion":
+      return "Mark when finished";
+    case "sum_interval_times":
       return "e.g. 25:56 total";
     default:
       return "e.g. 16:48";

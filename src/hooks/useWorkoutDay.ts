@@ -107,7 +107,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label, line_item_kind, movement_components",
+        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label, line_item_kind, movement_components",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
