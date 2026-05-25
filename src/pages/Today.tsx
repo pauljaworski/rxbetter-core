@@ -46,6 +46,8 @@ export default function Today() {
           wodDate={data.wodDate}
           wods={data.wods}
           perfByItem={data.perfByItem}
+          perfBySegment={data.perfBySegment}
+          perfByGroup={data.perfByGroup}
           contactId={contactId}
           displayName={displayName}
           onLogged={refetch}

@@ -178,6 +178,7 @@ export type Database = {
           prescribed_percentage: number | null
           programming_id: string | null
           programming_line_item_id: string | null
+          segment_group_id: string | null
           reps_prescribed: number | null
           result_value: number | null
           rpe: number | null
@@ -198,6 +199,7 @@ export type Database = {
           prescribed_percentage?: number | null
           programming_id?: string | null
           programming_line_item_id?: string | null
+          segment_group_id?: string | null
           reps_prescribed?: number | null
           result_value?: number | null
           rpe?: number | null
@@ -218,6 +220,7 @@ export type Database = {
           prescribed_percentage?: number | null
           programming_id?: string | null
           programming_line_item_id?: string | null
+          segment_group_id?: string | null
           reps_prescribed?: number | null
           result_value?: number | null
           rpe?: number | null
@@ -990,6 +993,7 @@ export type Database = {
           created_by_contact_id: string | null
           description: string | null
           display_order: number | null
+          group_score_anchor: boolean
           gym_id: string | null
           id: string
           is_completed: boolean
@@ -998,10 +1002,13 @@ export type Database = {
           prescribed_scale: Database["public"]["Enums"]["workout_scale"]
           program_library_id: string | null
           programming_segment: string | null
+          programming_subtype: string | null
           published_at: string | null
+          segment_group_id: string | null
           source: string
           updated_at: string
           wod_date: string
+          workout_scheme: Json
         }
         Insert: {
           athlete_notes?: string | null
@@ -1010,6 +1017,7 @@ export type Database = {
           created_by_contact_id?: string | null
           description?: string | null
           display_order?: number | null
+          group_score_anchor?: boolean
           gym_id?: string | null
           id?: string
           is_completed?: boolean
@@ -1018,10 +1026,13 @@ export type Database = {
           prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
+          programming_subtype?: string | null
           published_at?: string | null
+          segment_group_id?: string | null
           source?: string
           updated_at?: string
           wod_date: string
+          workout_scheme?: Json
         }
         Update: {
           athlete_notes?: string | null
@@ -1030,6 +1041,7 @@ export type Database = {
           created_by_contact_id?: string | null
           description?: string | null
           display_order?: number | null
+          group_score_anchor?: boolean
           gym_id?: string | null
           id?: string
           is_completed?: boolean
@@ -1038,10 +1050,13 @@ export type Database = {
           prescribed_scale?: Database["public"]["Enums"]["workout_scale"]
           program_library_id?: string | null
           programming_segment?: string | null
+          programming_subtype?: string | null
           published_at?: string | null
+          segment_group_id?: string | null
           source?: string
           updated_at?: string
           wod_date?: string
+          workout_scheme?: Json
         }
         Relationships: [
           {
@@ -1197,6 +1212,8 @@ export type Database = {
           created_at: string
           id: string
           intensity_percentage: number | null
+          line_item_kind: string
+          movement_components: Json
           movement_label: string | null
           prescribed_percentage: number | null
           prescribed_score: string | null
@@ -1218,6 +1235,8 @@ export type Database = {
           created_at?: string
           id?: string
           intensity_percentage?: number | null
+          line_item_kind?: string
+          movement_components?: Json
           movement_label?: string | null
           prescribed_percentage?: number | null
           prescribed_score?: string | null
@@ -1239,6 +1258,8 @@ export type Database = {
           created_at?: string
           id?: string
           intensity_percentage?: number | null
+          line_item_kind?: string
+          movement_components?: Json
           movement_label?: string | null
           prescribed_percentage?: number | null
           prescribed_score?: string | null

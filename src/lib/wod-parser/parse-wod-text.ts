@@ -10,6 +10,11 @@ import {
   STRENGTH_SETS_REPS_PCT,
 } from "./regex-patterns";
 import type { ParseWodOptions, ParseWodResult } from "./types";
+import {
+  editorLineItemsFromMetconMovements,
+  parseMetconMovements,
+} from "@/lib/programming/parse-metcon-movements";
+import { schemeSummaryLabel } from "@/lib/programming/workout-scheme-schema";
 
 function emptySegment(libId: string | null, order: number): EditorWod {
   return {
@@ -235,20 +240,26 @@ export function parseWodText(options: ParseWodOptions): ParseWodResult {
   const { segment, metconFormat } = detectSegment(options.rawText);
 
   if (segment === "metcon") {
+    const parsed = parseMetconMovements(options.rawText, options.catalog);
+    const lineItems = editorLineItemsFromMetconMovements(parsed.movements);
+    const format = parsed.metconFormat ?? metconFormat;
+    const schemeLabel = parsed.scheme ? schemeSummaryLabel(parsed.scheme) : null;
     const draft = {
       segment: {
         ...emptySegment(options.defaultLibraryId, options.displayOrder ?? 0),
-        name: "Metcon",
+        name: schemeLabel ?? "Metcon",
         description: options.rawText.trim(),
         programming_segment: "metcon",
-        metcon_format: metconFormat,
+        metcon_format: format,
+        workout_scheme: parsed.scheme,
       },
-      lineItems: [] as EditorLineItem[],
-      warnings: [] as string[],
+      lineItems,
+      warnings: parsed.warnings,
     };
+    const needsLlmFallback = lineItems.length === 0;
     return {
       draft,
-      needsLlmFallback: true,
+      needsLlmFallback,
       latencyMs: Math.round(performance.now() - start),
     };
   }

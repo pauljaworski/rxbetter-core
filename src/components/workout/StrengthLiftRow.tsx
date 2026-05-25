@@ -18,6 +18,10 @@ import { useSavePerformance } from "@/hooks/useSavePerformance";
 import type { WorkoutScale } from "@/lib/format";
 import type { LogLineItem, LogWodContext, ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
+import {
+  formatComplexMovementTitle,
+  parseMovementComponents,
+} from "@/lib/programming/movement-components-schema";
 import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
 
 function weightToInputValue(lb: number): string {
@@ -61,6 +65,12 @@ export function StrengthLiftRow({
   }, [item.prescribed_weight, prescribedFromPr]);
 
   const displayPrWeight = roundWeightLb(prWeight);
+
+  const movementName = useMemo(() => {
+    const components = parseMovementComponents(item.movement_components);
+    if (components.length) return formatComplexMovementTitle(components);
+    return item.bench_name ?? "Lift";
+  }, [item.bench_name, item.movement_components]);
 
   const needsPr =
     contactId != null && item.benchmark_definition_id != null && displayPrWeight == null;
@@ -204,7 +214,7 @@ export function StrengthLiftRow({
     <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <AthletePrescriptionHeader
-          movementName={item.bench_name ?? "Lift"}
+          movementName={movementName}
           repsPrescribed={item.reps_prescribed}
           prescribedPercentage={item.prescribed_percentage}
           repMaxCount={repCount}

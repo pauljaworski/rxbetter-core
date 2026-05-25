@@ -1,3 +1,7 @@
+import type { WorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import type { LineItemKind } from "@/lib/programming/line-item-kind";
+import type { MovementComponent } from "@/lib/programming/movement-components-schema";
+
 export type ProgramLibrary = { id: string; name: string };
 
 export type StaffDashboardStats = {
@@ -101,6 +105,8 @@ export type EditorLineItem = {
   bench_name?: string;
   /** Custom movement name when benchmark_type_id is null. */
   movement_label?: string | null;
+  line_item_kind?: LineItemKind;
+  movement_components?: MovementComponent[];
 };
 
 export type EditorWod = {
@@ -110,6 +116,11 @@ export type EditorWod = {
   description: string | null;
   programming_segment: string;
   metcon_format: string | null;
+  /** Structured metcon prescription (rounds, caps, intervals). */
+  workout_scheme?: WorkoutScheme | null;
+  segment_group_id?: string | null;
+  group_score_anchor?: boolean;
+  programming_subtype?: string | null;
   athlete_notes: string | null;
   coaches_notes: string | null;
   display_order: number;

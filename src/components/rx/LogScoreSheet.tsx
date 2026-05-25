@@ -33,6 +33,8 @@ export type LogLineItem = {
   benchmark_type_id: string | null;
   bench_name?: string;
   stimulus?: string;
+  line_item_kind?: string | null;
+  movement_components?: unknown;
 };
 
 export type LogWodContext = {

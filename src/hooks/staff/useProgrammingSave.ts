@@ -3,12 +3,19 @@ import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import { normalizeEditorWodFields, validateEditorWod } from "@/lib/programming/manual-config";
+import { normalizeWorkoutSchemeForSave } from "@/lib/programming/workout-scheme-schema";
 import {
   buildDefinitionMap,
   resolveDefinitionId,
   type BenchmarkDefinitionRow,
 } from "@/lib/programming/percent-calculator";
 import type { EditorLineItem, EditorWod } from "./types";
+import type { Json } from "@/types/database";
+import {
+  formatComplexMovementTitle,
+  movementComponentsForSave,
+} from "@/lib/programming/movement-components-schema";
+import { defaultLineItemKindForSegment, isLineItemKind } from "@/lib/programming/line-item-kind";
 
 export async function loadDefinitionMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase
@@ -21,6 +28,7 @@ export async function loadDefinitionMap(): Promise<Map<string, string>> {
 function resolveLineItemForSave(
   it: EditorLineItem,
   defMap: Map<string, string>,
+  programmingSegment: string,
 ): {
   benchmark_definition_id: string | null;
   benchmark_type_id: string | null;
@@ -29,20 +37,40 @@ function resolveLineItemForSave(
   prescribed_percentage: number | null;
   prescribed_score: string | null;
   reps_prescribed: number | null;
+  line_item_kind: string;
+  movement_components: Json;
 } {
+  const kind = isLineItemKind(it.line_item_kind ?? "")
+    ? it.line_item_kind
+    : defaultLineItemKindForSegment(programmingSegment);
+  const components = movementComponentsForSave(kind, it.movement_components);
   const repMax = it.percent_rep_max ?? 1;
+  const prTypeId =
+    kind === "complex_set" && components.length
+      ? (components.find((c) => c.benchmark_type_id)?.benchmark_type_id ??
+        it.benchmark_type_id)
+      : it.benchmark_type_id;
   const defId =
-    resolveDefinitionId(defMap, it.benchmark_type_id, repMax) ??
-    it.benchmark_definition_id ??
-    null;
+    resolveDefinitionId(defMap, prTypeId, repMax) ?? it.benchmark_definition_id ?? null;
+  const complexLabel =
+    kind === "complex_set" && components.length
+      ? formatComplexMovementTitle(components)
+      : null;
   return {
     reps_prescribed: it.reps_prescribed,
     prescribed_weight: it.prescribed_weight,
     prescribed_percentage: it.prescribed_percentage,
     prescribed_score: it.prescribed_score,
-    benchmark_type_id: it.benchmark_type_id,
+    benchmark_type_id: prTypeId,
     benchmark_definition_id: defId,
-    movement_label: it.benchmark_type_id ? null : (it.movement_label ?? it.bench_name ?? null),
+    movement_label:
+      kind === "complex_set"
+        ? complexLabel
+        : prTypeId
+          ? null
+          : (it.movement_label ?? it.bench_name ?? null),
+    line_item_kind: kind,
+    movement_components: components as unknown as Json,
   };
 }
 
@@ -104,6 +132,13 @@ export async function saveWod(
           description: normalized.description,
           programming_segment: normalized.programming_segment,
           metcon_format: normalized.metcon_format,
+          workout_scheme: normalizeWorkoutSchemeForSave(
+            normalized.workout_scheme,
+            normalized.metcon_format,
+          ) as Json,
+          segment_group_id: normalized.segment_group_id ?? null,
+          group_score_anchor: normalized.group_score_anchor ?? false,
+          programming_subtype: normalized.programming_subtype ?? null,
           athlete_notes: normalized.athlete_notes,
           coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
@@ -123,6 +158,13 @@ export async function saveWod(
           description: normalized.description,
           programming_segment: normalized.programming_segment,
           metcon_format: normalized.metcon_format,
+          workout_scheme: normalizeWorkoutSchemeForSave(
+            normalized.workout_scheme,
+            normalized.metcon_format,
+          ) as Json,
+          segment_group_id: normalized.segment_group_id ?? null,
+          group_score_anchor: normalized.group_score_anchor ?? false,
+          programming_subtype: normalized.programming_subtype ?? null,
           athlete_notes: normalized.athlete_notes,
           coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
@@ -138,7 +180,7 @@ export async function saveWod(
       const it = normalized.items[j];
       const payload = {
         sequence_number: j + 1,
-        ...resolveLineItemForSave(it, defMap),
+        ...resolveLineItemForSave(it, defMap, normalized.programming_segment),
         contact_id: null,
       };
       if (it._new || !it.id) {

@@ -1,6 +1,8 @@
-import { Trash2, Plus, Copy, Save } from "lucide-react";
+import { useState } from "react";
+import { Trash2, Plus, Copy, Save, Sparkles } from "lucide-react";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import type { ProgramLibrary } from "@/hooks/staff/types";
+import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +31,27 @@ import {
   getTypeByUiKey,
   movementDisplayName,
   requiresMetconFormat,
+  isMetconSegment,
 } from "@/lib/programming/manual-config";
+import {
+  defaultSchemeForMetconFormat,
+  schemeSummaryLabel,
+} from "@/lib/programming/workout-scheme-schema";
+import {
+  editorLineItemsFromMetconMovements,
+  parseMetconMovements,
+} from "@/lib/programming/parse-metcon-movements";
+import { MetconSchemeFields } from "./MetconSchemeFields";
 import { LineItemFields } from "./LineItemFields";
+import { toast } from "sonner";
 
 function resolveUiKey(wod: EditorWod): string {
+  if (wod.programming_subtype === "hiit") return "hiit";
   const match = MANUAL_PROGRAMMING_TYPES.find(
-    (t) => t.dbSegment === wod.programming_segment && (!t.requiresFormat || wod.metcon_format),
+    (t) =>
+      t.dbSegment === wod.programming_segment &&
+      t.uiKey !== "hiit" &&
+      (!t.requiresFormat || wod.metcon_format),
   );
   if (wod.programming_segment === "metcon" && !match) return "metcon";
   return match?.uiKey ?? wod.programming_segment;
@@ -42,6 +59,8 @@ function resolveUiKey(wod: EditorWod): string {
 
 type Props = {
   wod: EditorWod;
+  wodIndex: number;
+  allWods: EditorWod[];
   libraries: ProgramLibrary[];
   saving?: boolean;
   onUpdate: (patch: Partial<EditorWod>) => void;
@@ -51,6 +70,7 @@ type Props = {
   onRemoveItem: (itemIdx: number) => void;
   onCloneItem: (itemIdx: number) => void;
   onAddMovement: () => void;
+  onOpenComplexEditor: () => void;
 };
 
 export function SegmentEditorCard({
@@ -64,10 +84,20 @@ export function SegmentEditorCard({
   onRemoveItem,
   onCloneItem,
   onAddMovement,
+  wodIndex,
+  allWods,
+  onOpenComplexEditor,
 }: Props) {
+  const { data: catalog } = useBenchmarkCatalog();
+  const [bulkPaste, setBulkPaste] = useState("");
   const uiKey = resolveUiKey(wod);
   const lineMode = getLineItemMode(wod.programming_segment);
   const addEnabled = canAddMovement(wod);
+  const metcon = isMetconSegment(wod.programming_segment);
+  const isStrength =
+    wod.programming_segment === "weightlifting" || wod.programming_segment === "strength";
+  const priorGroupId =
+    wodIndex > 0 ? allWods[wodIndex - 1]?.segment_group_id ?? null : null;
   const libIds = wod.program_library_ids?.length
     ? wod.program_library_ids
     : wod.program_library_id
@@ -80,7 +110,49 @@ export function SegmentEditorCard({
     onUpdate({
       programming_segment: t.dbSegment,
       metcon_format: t.requiresFormat ? wod.metcon_format : null,
+      programming_subtype: key === "hiit" ? "hiit" : null,
     });
+  }
+
+  function applyMetconFormat(format: string | null) {
+    const scheme = format ? defaultSchemeForMetconFormat(format) : null;
+    onUpdate({
+      metcon_format: format,
+      workout_scheme: scheme ?? null,
+    });
+  }
+
+  function parseBulkMovements() {
+    const text = bulkPaste.trim() || (wod.description ?? "").trim();
+    if (!text) {
+      toast.error("Paste workout text first");
+      return;
+    }
+    const parsed = parseMetconMovements(text, catalog);
+    const items = editorLineItemsFromMetconMovements(parsed.movements);
+    if (!items.length) {
+      toast.error("No movements recognized", {
+        description: parsed.warnings[0] ?? "Try lines like: 10 Wall Balls, 15 Pull-ups",
+      });
+      return;
+    }
+    const patch: Partial<EditorWod> = { items };
+    if (parsed.metconFormat) {
+      patch.metcon_format = parsed.metconFormat;
+      patch.workout_scheme = parsed.scheme ?? defaultSchemeForMetconFormat(parsed.metconFormat);
+    } else if (parsed.scheme) {
+      patch.workout_scheme = parsed.scheme;
+    }
+    if (parsed.scheme && !wod.name?.trim()) {
+      patch.name = schemeSummaryLabel(parsed.scheme) ?? wod.name;
+    }
+    onUpdate(patch);
+    if (parsed.warnings.length) {
+      toast.message("Parsed with warnings", { description: parsed.warnings.join(" · ") });
+    } else {
+      toast.success(`Added ${items.length} movement${items.length === 1 ? "" : "s"}`);
+    }
+    setBulkPaste("");
   }
 
   function toggleLibrary(libId: string, checked: boolean) {
@@ -114,7 +186,7 @@ export function SegmentEditorCard({
           {requiresMetconFormat(wod.programming_segment) && (
             <Select
               value={wod.metcon_format ?? ""}
-              onValueChange={(v) => onUpdate({ metcon_format: v || null })}
+              onValueChange={(v) => applyMetconFormat(v || null)}
             >
               <SelectTrigger className="h-9 w-36">
                 <SelectValue placeholder="Format" />
@@ -134,6 +206,11 @@ export function SegmentEditorCard({
             placeholder="Segment name *"
             className="h-9 min-w-[10rem] flex-1"
           />
+          {isStrength && (
+            <Button size="sm" variant="outline" onClick={onOpenComplexEditor}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Complex set
+            </Button>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -211,6 +288,97 @@ export function SegmentEditorCard({
             Athletes log one workout score on this segment (time/reps). Movements below are for
             tracking only.
           </p>
+        )}
+
+        {(metcon || wod.segment_group_id) && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border/80 p-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Multi-part block
+            </span>
+            {wod.segment_group_id ? (
+              <>
+                <Badge variant="secondary" className="font-mono text-[10px]">
+                  {wod.segment_group_id.slice(0, 8)}…
+                </Badge>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={wod.group_score_anchor ?? false}
+                    onCheckedChange={(c) =>
+                      onUpdate({ group_score_anchor: c === true })
+                    }
+                  />
+                  Total score anchor
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    onUpdate({ segment_group_id: null, group_score_anchor: false })
+                  }
+                >
+                  Leave block
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    onUpdate({
+                      segment_group_id: crypto.randomUUID(),
+                      group_score_anchor: true,
+                    })
+                  }
+                >
+                  Start block
+                </Button>
+                {priorGroupId && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() =>
+                      onUpdate({
+                        segment_group_id: priorGroupId,
+                        group_score_anchor: false,
+                      })
+                    }
+                  >
+                    Join previous block
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {metcon && wod.metcon_format && (
+          <MetconSchemeFields wod={wod} onUpdate={onUpdate} />
+        )}
+
+        {metcon && (
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Bulk paste movements
+            </Label>
+            <Textarea
+              value={bulkPaste}
+              onChange={(e) => setBulkPaste(e.target.value)}
+              placeholder={'e.g. 3 RFT: 400m Run, 20 Wall Balls, 15 T2B\nor AMRAP 12 — one movement per line'}
+              rows={3}
+              className="text-sm font-mono"
+            />
+            <Button type="button" size="sm" variant="secondary" onClick={parseBulkMovements}>
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+              Parse into movements
+            </Button>
+          </div>
         )}
       </div>
 

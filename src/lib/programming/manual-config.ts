@@ -1,6 +1,12 @@
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import { normalizePercentFraction } from "@/lib/programming/percent-calculator";
 import {
+  defaultSchemeForMetconFormat,
+  normalizeWorkoutSchemeForSave,
+  parseWorkoutScheme,
+} from "@/lib/programming/workout-scheme-schema";
+import { formatComplexMovementTitle } from "@/lib/programming/movement-components-schema";
+import {
   METCON_FORMATS,
   normalizeMetconFormat,
   normalizeProgrammingSegment,
@@ -138,6 +144,9 @@ export function canAddMovement(wod: Pick<EditorWod, "programming_segment" | "met
 }
 
 export function movementDisplayName(item: EditorLineItem): string {
+  if (item.line_item_kind === "complex_set" && item.movement_components?.length) {
+    return formatComplexMovementTitle(item.movement_components);
+  }
   return item.bench_name ?? item.movement_label ?? "Movement";
 }
 
@@ -166,6 +175,10 @@ export function validateEditorWod(wod: EditorWod): string | null {
   return null;
 }
 
+export function isMetconSegment(programmingSegment: string): boolean {
+  return normalizeProgrammingSegment(programmingSegment) === "metcon";
+}
+
 /** Normalize segment + format before save. */
 export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
   const segment = normalizeProgrammingSegment(wod.programming_segment);
@@ -184,10 +197,16 @@ export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
       : wod.program_library_id
         ? [wod.program_library_id]
         : [];
+  let workout_scheme = wod.workout_scheme ?? null;
+  if (requiresMetconFormat(segment) && !workout_scheme && format) {
+    workout_scheme = defaultSchemeForMetconFormat(format);
+  }
   return {
     ...wod,
     programming_segment: segment,
     metcon_format: format,
+    workout_scheme,
+    programming_subtype: wod.programming_subtype ?? null,
     program_library_ids: ids,
     program_library_id: ids[0] ?? wod.program_library_id,
     items,

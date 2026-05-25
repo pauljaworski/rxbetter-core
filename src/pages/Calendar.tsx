@@ -86,7 +86,7 @@ export default function CalendarPage() {
   const [openClass, setOpenClass] = useState<{ date: Date; slot: ClassSlot } | null>(null);
 
   const { data, isLoading, error, refetch } = useProgrammingWeek(activeGymId, contactId, weekStart);
-  const { wods, itemsByWod, perfByItem, athletes } = data;
+  const { wods, itemsByWod, perfByItem, perfBySegment, athletes } = data;
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -273,10 +273,12 @@ export default function CalendarPage() {
                             wod_date: w.wod_date,
                             programming_segment: w.programming_segment,
                             prescribed_scale: w.prescribed_scale,
+                            workout_scheme: w.workout_scheme,
                           }}
                           items={itemsByWod.get(w.id) ?? []}
                           contactId={contactId}
                           perfByItem={perfByItem}
+                          segmentPerf={perfBySegment.get(w.id) ?? null}
                           onLogged={refetch}
                         />
                       </div>

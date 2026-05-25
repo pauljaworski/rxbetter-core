@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgramLibraries } from "@/hooks/useProgramLibraries";
@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
 import { WodIntakePanel } from "@/components/programmer/WodIntakePanel";
 import { SegmentAddDialog } from "@/components/programmer/SegmentAddDialog";
 import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
+import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
+import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
+import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import {
   MovementPickerDialog,
   type MovementPick,
@@ -30,6 +33,12 @@ export default function StaffProgramming() {
   const [syncFromServer, setSyncFromServer] = useState(true);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
+  const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
+  const { data: benchmarkCatalog } = useBenchmarkCatalog();
+  const strengthCatalog = useMemo(
+    () => filterBenchmarkCatalog(benchmarkCatalog, "weightlifting"),
+    [benchmarkCatalog],
+  );
   const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
   const [stashedDrafts, setStashedDrafts] = useState<EditorWod[]>([]);
 
@@ -97,12 +106,16 @@ export default function StaffProgramming() {
                 bench_name: pick.bench.name,
                 movement_label: null,
                 percent_rep_max: 1,
+                line_item_kind: "strength_set",
+                movement_components: [],
               }
             : {
                 ...base,
                 benchmark_type_id: null,
                 bench_name: pick.label,
                 movement_label: pick.label,
+                line_item_kind: "strength_set",
+                movement_components: [],
               };
         return { ...w, items: [...w.items, item] };
       }),
@@ -126,6 +139,20 @@ export default function StaffProgramming() {
       prev.map((w, i) =>
         i === wodIdx ? { ...w, items: w.items.filter((_, j) => j !== itemIdx) } : w,
       ),
+    );
+  }
+
+  function addComplexItems(wodIdx: number, items: EditorLineItem[]) {
+    setSyncFromServer(false);
+    setWods((prev) =>
+      prev.map((w, i) => {
+        if (i !== wodIdx) return w;
+        const next = items.map((it, j) => ({
+          ...it,
+          sequence_number: w.items.length + j + 1,
+        }));
+        return { ...w, items: [...w.items, ...next] };
+      }),
     );
   }
 
@@ -286,6 +313,8 @@ export default function StaffProgramming() {
             <SegmentEditorCard
               key={w.id ?? `new-${idx}-${w.display_order}`}
               wod={w}
+              wodIndex={idx}
+              allWods={wods}
               libraries={libraries}
               saving={savingSectionIdx === idx}
               onUpdate={(patch) => updateWod(idx, patch)}
@@ -295,6 +324,7 @@ export default function StaffProgramming() {
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
               onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
+              onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
             />
           ))}
         </div>
@@ -321,6 +351,16 @@ export default function StaffProgramming() {
           }}
         />
       )}
+
+      <ComplexSetEditor
+        open={complexEditor != null}
+        onOpenChange={(o) => !o && setComplexEditor(null)}
+        catalog={strengthCatalog}
+        onSave={(items) => {
+          if (complexEditor) addComplexItems(complexEditor.wodIdx, items);
+          setComplexEditor(null);
+        }}
+      />
 
       {/* Quick intake — secondary workflow */}
       <div className="border-t border-border/60 pt-6">

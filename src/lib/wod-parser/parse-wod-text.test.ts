@@ -5,6 +5,8 @@ import type { BenchmarkCatalogEntry } from "./types";
 const catalog: BenchmarkCatalogEntry[] = [
   { id: "bt-squat", name: "Back Squat", stimulus: "strength" },
   { id: "bt-dead", name: "Deadlift", stimulus: "strength" },
+  { id: "bt-thr", name: "Thruster", stimulus: "metcon" },
+  { id: "bt-pu", name: "Pull-up", stimulus: "metcon" },
 ];
 
 describe("parseWodText", () => {
@@ -72,13 +74,29 @@ describe("parseWodText", () => {
     expect(r.draft?.lineItems).toHaveLength(5);
   });
 
-  it("marks complex metcon for LLM fallback", () => {
+  it("parses AMRAP metcon with movements deterministically", () => {
     const r = parseWodText({
-      rawText: "AMRAP 12\n10 thrusters\n15 pull-ups",
+      rawText: "AMRAP 12\n10 Thrusters\n15 Pull-ups",
       catalog,
       defaultLibraryId: "lib-1",
     });
-    expect(r.needsLlmFallback).toBe(true);
+    expect(r.needsLlmFallback).toBe(false);
     expect(r.draft?.segment.programming_segment).toBe("metcon");
+    expect(r.draft?.segment.metcon_format).toBe("amrap");
+    expect(r.draft?.lineItems.length).toBeGreaterThanOrEqual(1);
+    expect(r.draft?.segment.workout_scheme).toMatchObject({ kind: "amrap", timeCapMin: 12 });
+  });
+
+  it("parses 3 RFT header with scheme", () => {
+    const r = parseWodText({
+      rawText: "3 RFT: 20 Wall Balls, 15 Pull-ups",
+      catalog: [
+        ...catalog,
+        { id: "bt-wb", name: "Wall Ball", stimulus: "metcon" },
+      ],
+      defaultLibraryId: "lib-1",
+    });
+    expect(r.needsLlmFallback).toBe(false);
+    expect(r.draft?.segment.workout_scheme).toMatchObject({ kind: "rft", rounds: 3 });
   });
 });

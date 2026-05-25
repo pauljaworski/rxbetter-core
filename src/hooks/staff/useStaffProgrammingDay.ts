@@ -3,6 +3,16 @@ import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "../useAsyncState";
 import type { EditorWod } from "./types";
+import { parseWorkoutScheme, type WorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import {
+  formatComplexMovementTitle,
+  parseMovementComponents,
+} from "@/lib/programming/movement-components-schema";
+import {
+  defaultLineItemKindForSegment,
+  isLineItemKind,
+  type LineItemKind,
+} from "@/lib/programming/line-item-kind";
 
 async function loadLibraryAssignments(
   programmingIds: string[],
@@ -34,6 +44,10 @@ function mapWodsFromRows(
     display_order: number | null;
     program_library_id: string | null;
     published_at: string | null;
+    workout_scheme: unknown;
+    segment_group_id: string | null;
+    group_score_anchor: boolean;
+    programming_subtype: string | null;
   }>,
   items: Array<{
     id: string;
@@ -46,6 +60,8 @@ function mapWodsFromRows(
     benchmark_type_id: string | null;
     benchmark_definition_id: string | null;
     movement_label: string | null;
+    line_item_kind: string | null;
+    movement_components: unknown;
   }>,
   typeMap: Map<string, string>,
   assignmentMap: Map<string, string[]>,
@@ -66,6 +82,10 @@ function mapWodsFromRows(
       description: p.description,
       programming_segment: p.programming_segment ?? "metcon",
       metcon_format: p.metcon_format,
+      workout_scheme: parseWorkoutScheme(p.workout_scheme),
+      segment_group_id: p.segment_group_id,
+      group_score_anchor: p.group_score_anchor ?? false,
+      programming_subtype: p.programming_subtype,
       athlete_notes: p.athlete_notes,
       coaches_notes: p.coaches_notes,
       display_order: p.display_order ?? 0,
@@ -74,23 +94,38 @@ function mapWodsFromRows(
       published_at: p.published_at,
       items: items
         .filter((i) => i.programming_id === p.id)
-        .map((i, idx) => ({
-          ...(markNew ? { _new: true as const } : { id: i.id }),
-          sequence_number: i.sequence_number ?? idx + 1,
-          reps_prescribed: i.reps_prescribed,
-          prescribed_weight: i.prescribed_weight,
-          prescribed_percentage: i.prescribed_percentage,
-          prescribed_score: i.prescribed_score,
-          benchmark_type_id: i.benchmark_type_id,
-          benchmark_definition_id: i.benchmark_definition_id,
-          percent_rep_max: i.benchmark_definition_id
-            ? (defRepById.get(i.benchmark_definition_id) ?? 1)
-            : 1,
-          movement_label: i.movement_label,
-          bench_name: i.benchmark_type_id
-            ? typeMap.get(i.benchmark_type_id)
-            : (i.movement_label ?? undefined),
-        })),
+        .map((i, idx) => {
+          const rawKind = i.line_item_kind ?? "";
+          const kind: LineItemKind = isLineItemKind(rawKind)
+            ? rawKind
+            : defaultLineItemKindForSegment(p.programming_segment ?? "weightlifting");
+          const components = parseMovementComponents(i.movement_components);
+          const complexTitle =
+            kind === "complex_set" && components.length
+              ? formatComplexMovementTitle(components)
+              : null;
+          return {
+            ...(markNew ? { _new: true as const } : { id: i.id }),
+            sequence_number: i.sequence_number ?? idx + 1,
+            reps_prescribed: i.reps_prescribed,
+            prescribed_weight: i.prescribed_weight,
+            prescribed_percentage: i.prescribed_percentage,
+            prescribed_score: i.prescribed_score,
+            benchmark_type_id: i.benchmark_type_id,
+            benchmark_definition_id: i.benchmark_definition_id,
+            percent_rep_max: i.benchmark_definition_id
+              ? (defRepById.get(i.benchmark_definition_id) ?? 1)
+              : 1,
+            movement_label: i.movement_label,
+            line_item_kind: kind,
+            movement_components: components,
+            bench_name: complexTitle
+              ? complexTitle
+              : i.benchmark_type_id
+                ? typeMap.get(i.benchmark_type_id)
+                : (i.movement_label ?? undefined),
+          };
+        }),
     };
   });
 }
@@ -115,7 +150,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, programming_segment, metcon_format, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
+        "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
       )
       .eq("gym_id", activeGymId)
       .eq("wod_date", dateKey)
@@ -131,7 +166,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label",
+        "id, programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
@@ -166,7 +201,7 @@ export async function fetchProgrammingDayForCopy(
   const { data: progs, error } = await supabase
     .from("programming")
     .select(
-      "id, name, description, programming_segment, metcon_format, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
+      "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
     )
     .eq("gym_id", activeGymId)
     .eq("wod_date", srcKey)
@@ -181,7 +216,7 @@ export async function fetchProgrammingDayForCopy(
   const { data: items } = await supabase
     .from("programming_line_item")
     .select(
-      "id, programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label",
+      "id, programming_id, sequence_number, reps_prescribed, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components",
     )
     .in("programming_id", srcIds)
     .is("contact_id", null)
