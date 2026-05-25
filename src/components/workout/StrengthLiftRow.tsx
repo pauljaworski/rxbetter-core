@@ -156,8 +156,8 @@ export function StrengthLiftRow({
       return;
     }
 
-    let isPr = displayPerf?.is_pr ?? false;
-    if (item.benchmark_definition_id && status === "completed") {
+    let isPr = false;
+    if (item.benchmark_definition_id) {
       const { error: prErr } = await recomputeBenchmarkSummary(
         contactId,
         item.benchmark_definition_id,
@@ -172,7 +172,7 @@ export function StrengthLiftRow({
           .eq("contact_id", contactId)
           .eq("benchmark_definition_id", item.benchmark_definition_id)
           .maybeSingle();
-        isPr = bench?.current_pr_weight === weightNum;
+        isPr = status === "completed" && bench?.current_pr_weight === weightNum;
       }
     }
 
