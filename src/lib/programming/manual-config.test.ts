@@ -4,6 +4,7 @@ import {
   getLineItemMode,
   isNamedBenchmarkWod,
   normalizeEditorWodFields,
+  resolveProgrammingUiKey,
   validateEditorWod,
 } from "./manual-config";
 import type { EditorWod } from "@/hooks/staff/types";
@@ -61,6 +62,23 @@ describe("manual-config", () => {
     expect(
       validateEditorWod(baseWod({ program_library_ids: [], program_library_id: null })),
     ).toMatch(/track/i);
+  });
+
+  it("resolveProgrammingUiKey keeps weightlifting vs strength distinct", () => {
+    expect(
+      resolveProgrammingUiKey({
+        programming_segment: "weightlifting",
+        metcon_format: null,
+        programming_subtype: "weightlifting",
+      }),
+    ).toBe("weightlifting");
+    expect(
+      resolveProgrammingUiKey({
+        programming_segment: "weightlifting",
+        metcon_format: null,
+        programming_subtype: "strength",
+      }),
+    ).toBe("strength");
   });
 
   it("normalizeEditorWodFields clears prescribed_score for metcon", () => {

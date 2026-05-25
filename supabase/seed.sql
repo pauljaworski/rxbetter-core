@@ -12,9 +12,10 @@ insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variati
 
 -- Strength — Pull variations
 insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variation) values
-  ('Deadlift',          'strength', 'pull',     null),
-  ('Sumo Deadlift',     'strength', 'pull',     'variation'),
-  ('Romanian Deadlift', 'strength', 'pull',     'variation');
+  ('Deadlift',              'strength', 'pull', null),
+  ('Sumo Deadlift',         'strength', 'pull', 'variation'),
+  ('Romanian Deadlift',     'strength', 'pull', 'variation'),
+  ('Snatch Grip Deadlift',  'strength', 'pull', 'snatch grip');
 
 -- Strength — Clean variations
 insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variation) values
@@ -22,7 +23,15 @@ insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variati
   ('Power Clean',       'strength', 'clean',    'power'),
   ('Hang Clean',        'strength', 'clean',    'hang'),
   ('Hang Power Clean',  'strength', 'clean',    'hang power'),
-  ('Squat Clean',       'strength', 'clean',    'squat');
+  ('Squat Clean',       'strength', 'clean',    'squat'),
+  ('Clean Pull',        'strength', 'pull',     'clean'),
+  ('Clean Deadlift',    'strength', 'pull',     'clean'),
+  ('Clean High Pull',   'strength', 'pull',     'clean'),
+  ('Clean Balance',     'strength', 'clean',    'balance'),
+  ('Split Clean',       'strength', 'clean',    'split'),
+  ('Tall Clean',        'strength', 'clean',    'tall'),
+  ('Deficit Clean',     'strength', 'clean',    'deficit'),
+  ('Block Clean',       'strength', 'clean',    'block');
 
 -- Strength — Snatch variations
 insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variation) values
@@ -30,12 +39,21 @@ insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variati
   ('Power Snatch',      'strength', 'snatch',   'power'),
   ('Hang Snatch',       'strength', 'snatch',   'hang'),
   ('Hang Power Snatch', 'strength', 'snatch',   'hang power'),
-  ('Squat Snatch',      'strength', 'snatch',   'squat');
+  ('Squat Snatch',      'strength', 'snatch',   'squat'),
+  ('Snatch Pull',       'strength', 'pull',     'snatch'),
+  ('Muscle Snatch',     'strength', 'snatch',   'muscle'),
+  ('Snatch Deadlift',   'strength', 'pull',     'snatch'),
+  ('Snatch High Pull',  'strength', 'pull',     'snatch'),
+  ('Snatch Balance',    'strength', 'snatch',   'balance'),
+  ('Tall Snatch',       'strength', 'snatch',   'tall'),
+  ('Deficit Snatch',    'strength', 'snatch',   'deficit'),
+  ('Block Snatch',      'strength', 'snatch',   'block');
 
 -- Strength — Jerk variations
 insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variation) values
   ('Jerk',              'strength', 'jerk',     null),
   ('Push Jerk',         'strength', 'jerk',     'push'),
+  ('Power Jerk',        'strength', 'jerk',     'power'),
   ('Split Jerk',        'strength', 'jerk',     'split');
 
 -- Strength — Combined

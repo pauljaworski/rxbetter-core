@@ -19,6 +19,7 @@ function wod(
     workout_scheme: {},
     segment_group_id: group ?? null,
     group_score_anchor: anchor,
+    programming_subtype: null,
     display_order: order,
     wod_date: "2026-05-21",
     prescribed_scale: "rx",

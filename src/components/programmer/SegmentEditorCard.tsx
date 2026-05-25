@@ -30,7 +30,9 @@ import {
   getLineItemMode,
   getTypeByUiKey,
   movementDisplayName,
+  programmingSubtypeForUiKey,
   requiresMetconFormat,
+  resolveProgrammingUiKey,
   isMetconSegment,
 } from "@/lib/programming/manual-config";
 import {
@@ -44,18 +46,6 @@ import {
 import { MetconSchemeFields } from "./MetconSchemeFields";
 import { LineItemFields } from "./LineItemFields";
 import { toast } from "sonner";
-
-function resolveUiKey(wod: EditorWod): string {
-  if (wod.programming_subtype === "hiit") return "hiit";
-  const match = MANUAL_PROGRAMMING_TYPES.find(
-    (t) =>
-      t.dbSegment === wod.programming_segment &&
-      t.uiKey !== "hiit" &&
-      (!t.requiresFormat || wod.metcon_format),
-  );
-  if (wod.programming_segment === "metcon" && !match) return "metcon";
-  return match?.uiKey ?? wod.programming_segment;
-}
 
 type Props = {
   wod: EditorWod;
@@ -90,7 +80,7 @@ export function SegmentEditorCard({
 }: Props) {
   const { data: catalog } = useBenchmarkCatalog();
   const [bulkPaste, setBulkPaste] = useState("");
-  const uiKey = resolveUiKey(wod);
+  const uiKey = resolveProgrammingUiKey(wod);
   const lineMode = getLineItemMode(wod.programming_segment);
   const addEnabled = canAddMovement(wod);
   const metcon = isMetconSegment(wod.programming_segment);
@@ -110,7 +100,7 @@ export function SegmentEditorCard({
     onUpdate({
       programming_segment: t.dbSegment,
       metcon_format: t.requiresFormat ? wod.metcon_format : null,
-      programming_subtype: key === "hiit" ? "hiit" : null,
+      programming_subtype: programmingSubtypeForUiKey(key),
     });
   }
 

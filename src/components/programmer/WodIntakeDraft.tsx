@@ -19,7 +19,9 @@ import {
   filterBenchmarkCatalog,
   getLineItemMode,
   getTypeByUiKey,
+  programmingSubtypeForUiKey,
   requiresMetconFormat,
+  resolveProgrammingUiKey,
 } from "@/lib/programming/manual-config";
 import { LineItemFields } from "./LineItemFields";
 
@@ -31,9 +33,11 @@ type Props = {
 
 export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
   const { segment, lineItems, warnings } = draft;
-  const uiKey =
-    MANUAL_PROGRAMMING_TYPES.find((t) => t.dbSegment === segment.programming_segment)?.uiKey ??
-    segment.programming_segment;
+  const uiKey = resolveProgrammingUiKey({
+    programming_segment: segment.programming_segment,
+    metcon_format: segment.metcon_format,
+    programming_subtype: segment.programming_subtype ?? null,
+  });
   const filteredCatalog = filterBenchmarkCatalog(catalog, segment.programming_segment);
   const lineMode = getLineItemMode(segment.programming_segment);
 
@@ -52,6 +56,7 @@ export function WodIntakeDraft({ draft, catalog, onChange }: Props) {
     patchSegment({
       programming_segment: t.dbSegment,
       metcon_format: t.requiresFormat ? segment.metcon_format : null,
+      programming_subtype: programmingSubtypeForUiKey(key),
     });
   }
 

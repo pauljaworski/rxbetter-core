@@ -10,7 +10,10 @@ export function fmtWeight(w?: number | null): string {
   return `${Math.round(Number(w))}`;
 }
 
-export function segmentLabel(seg?: string | null): string {
+export function segmentLabel(seg?: string | null, subtype?: string | null): string {
+  if (subtype === "strength") return "Strength";
+  if (subtype === "weightlifting") return "Weightlifting";
+  if (subtype === "hiit") return "HIIT";
   if (!seg) return "Block";
   return seg.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }

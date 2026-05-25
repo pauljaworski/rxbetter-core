@@ -89,8 +89,37 @@ export function getTypeByUiKey(uiKey: string): ManualProgrammingType | undefined
   return MANUAL_PROGRAMMING_TYPES.find((t) => t.uiKey === uiKey);
 }
 
+/** Persist Strength vs Weightlifting UI choice (both map to DB segment weightlifting). */
+export function programmingSubtypeForUiKey(uiKey: string): string | null {
+  if (uiKey === "hiit") return "hiit";
+  if (uiKey === "strength") return "strength";
+  if (uiKey === "weightlifting") return "weightlifting";
+  return null;
+}
+
+export function resolveProgrammingUiKey(
+  wod: Pick<EditorWod, "programming_segment" | "metcon_format" | "programming_subtype">,
+): string {
+  const subtype = wod.programming_subtype;
+  if (subtype === "hiit") return "hiit";
+  if (subtype === "strength") return "strength";
+  if (subtype === "weightlifting") return "weightlifting";
+
+  if (wod.programming_segment === "metcon") {
+    const match = MANUAL_PROGRAMMING_TYPES.find(
+      (t) => t.dbSegment === "metcon" && t.uiKey !== "hiit" && (!t.requiresFormat || wod.metcon_format),
+    );
+    return match?.uiKey ?? "metcon";
+  }
+
+  return getTypeByDbSegment(wod.programming_segment)?.uiKey ?? wod.programming_segment;
+}
+
 export function getTypeByDbSegment(segment: string): ManualProgrammingType | undefined {
   const db = normalizeProgrammingSegment(segment);
+  if (db === "weightlifting") {
+    return MANUAL_PROGRAMMING_TYPES.find((t) => t.uiKey === "weightlifting");
+  }
   return (
     MANUAL_PROGRAMMING_TYPES.find((t) => t.dbSegment === db && t.uiKey === db) ??
     MANUAL_PROGRAMMING_TYPES.find((t) => t.dbSegment === db)
@@ -206,7 +235,11 @@ export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
     programming_segment: segment,
     metcon_format: format,
     workout_scheme,
-    programming_subtype: wod.programming_subtype ?? null,
+    programming_subtype:
+      wod.programming_subtype ??
+      (normalizeProgrammingSegment(wod.programming_segment) === "weightlifting"
+        ? "weightlifting"
+        : null),
     program_library_ids: ids,
     program_library_id: ids[0] ?? wod.program_library_id,
     items,

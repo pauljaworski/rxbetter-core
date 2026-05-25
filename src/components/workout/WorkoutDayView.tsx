@@ -233,7 +233,7 @@ function WodCard({
           </div>
           <div>
             <p className="eyebrow">
-              {segmentLabel(wod.programming_segment)}
+              {segmentLabel(wod.programming_segment, wod.programming_subtype)}
               {wod.metcon_format ? ` · ${wod.metcon_format.toUpperCase()}` : ""}
               {wod.prescribed_scale ? ` · ${wod.prescribed_scale.replace("_", " ")}` : ""}
             </p>

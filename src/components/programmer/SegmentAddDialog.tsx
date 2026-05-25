@@ -26,6 +26,7 @@ import {
   MANUAL_PROGRAMMING_TYPES,
   METCON_FORMAT_OPTIONS,
   getTypeByUiKey,
+  programmingSubtypeForUiKey,
 } from "@/lib/programming/manual-config";
 
 type Mode = "choose" | "new" | "copy";
@@ -113,6 +114,7 @@ export function SegmentAddDialog({
       description: "",
       programming_segment: t.dbSegment,
       metcon_format: t.requiresFormat ? metconFormat : null,
+      programming_subtype: programmingSubtypeForUiKey(uiKey),
       athlete_notes: null,
       coaches_notes: null,
       display_order: displayOrder,

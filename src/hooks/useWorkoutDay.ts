@@ -34,6 +34,7 @@ export type WorkoutDayProgramming = {
   workout_scheme: unknown;
   segment_group_id: string | null;
   group_score_anchor: boolean;
+  programming_subtype: string | null;
   display_order: number | null;
   wod_date: string;
   prescribed_scale: string | null;
@@ -74,7 +75,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
     const { data: dayProgs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, display_order, wod_date, prescribed_scale, program_library_id, published_at",
       )
       .eq("gym_id", activeGymId)
       .eq("source", "gym")
