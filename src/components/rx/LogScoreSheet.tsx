@@ -143,7 +143,6 @@ export function LogScoreRow({
     let becamePr = false;
     if (
       !isMetcon &&
-      liftStatus === "completed" &&
       weightNum != null &&
       item.benchmark_definition_id
     ) {
@@ -160,7 +159,7 @@ export function LogScoreRow({
           .eq("contact_id", contactId)
           .eq("benchmark_definition_id", item.benchmark_definition_id)
           .maybeSingle();
-        becamePr = bench?.current_pr_weight === weightNum;
+        becamePr = liftStatus === "completed" && bench?.current_pr_weight === weightNum;
       }
     }
 
