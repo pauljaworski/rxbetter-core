@@ -125,11 +125,11 @@ insert into public.benchmark_type (name, stimulus, sub_stimulus, purpose_variati
   ('Single Under', 'skill', null, 'conditioning'),
   ('Toes-to-Bar', 'skill', 'pull', 'gymnastics'),
   ('Toes to Bar', 'skill', 'pull', 'gymnastics'),
-  ('Run', 'skill', 'mono', 'aerobic'),
-  ('Row', 'skill', 'mono', 'aerobic'),
-  ('Ski Erg', 'skill', 'mono', 'aerobic'),
-  ('Assault Bike', 'skill', 'mono', 'aerobic'),
-  ('Echo Bike', 'skill', 'mono', 'aerobic'),
+  ('Run', 'skill', null, 'aerobic'),
+  ('Row', 'skill', null, 'aerobic'),
+  ('Ski Erg', 'skill', null, 'aerobic'),
+  ('Assault Bike', 'skill', null, 'aerobic'),
+  ('Echo Bike', 'skill', null, 'aerobic'),
   ('Kettlebell Swing', 'strength', 'pull', 'kettlebell');
 
 -- ============================================================

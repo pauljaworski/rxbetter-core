@@ -4,7 +4,7 @@ import { parseMetconMovements } from "./parse-metcon-movements";
 const catalog = [
   { id: "bt-wb", name: "Wall Ball", stimulus: "strength", sub_stimulus: "squat", purpose_variation: null },
   { id: "bt-c2b", name: "Chest-to-Bar", stimulus: "skill", sub_stimulus: "pull", purpose_variation: "gymnastics" },
-  { id: "bt-run", name: "Run", stimulus: "skill", sub_stimulus: "mono", purpose_variation: "aerobic" },
+  { id: "bt-run", name: "Run", stimulus: "skill", sub_stimulus: null, purpose_variation: "aerobic" },
   { id: "bt-t2b", name: "Toes to Bar", stimulus: "skill", sub_stimulus: "pull", purpose_variation: "gymnastics" },
 ];
 
