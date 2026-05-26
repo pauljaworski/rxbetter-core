@@ -1469,6 +1469,14 @@ export type Database = {
         Returns: boolean
       }
       is_gym_admin_scoped: { Args: { p_gym_id: string }; Returns: boolean }
+      delete_gym_programming_segment: {
+        Args: { p_programming_id: string }
+        Returns: undefined
+      }
+      sync_programming_library_assignments: {
+        Args: { p_programming_id: string; p_library_ids: string[] }
+        Returns: undefined
+      }
       user_contact_id: { Args: never; Returns: string }
       user_gym_ids: { Args: never; Returns: string[] }
     }

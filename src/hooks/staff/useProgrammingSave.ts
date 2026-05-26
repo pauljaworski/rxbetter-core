@@ -174,6 +174,7 @@ export async function saveWod(
 
     await syncLibraryAssignments(progId!, libraryIds);
 
+    const keptIds: string[] = [];
     for (let j = 0; j < normalized.items.length; j++) {
       const it = normalized.items[j];
       const payload = {
@@ -182,21 +183,26 @@ export async function saveWod(
         contact_id: null,
       };
       if (it._new || !it.id) {
-        const { error } = await supabase.from("programming_line_item").insert({
-          programming_id: progId,
-          ...payload,
-        });
+        const { data, error } = await supabase
+          .from("programming_line_item")
+          .insert({
+            programming_id: progId,
+            ...payload,
+          })
+          .select("id")
+          .single();
         if (error) throw new Error(error.message);
+        if (data?.id) keptIds.push(data.id);
       } else {
         const { error } = await supabase
           .from("programming_line_item")
           .update(payload)
           .eq("id", it.id);
         if (error) throw new Error(error.message);
+        keptIds.push(it.id);
       }
     }
 
-    const keptIds = normalized.items.map((it) => it.id).filter((id): id is string => !!id);
     const { error: syncErr } = await syncDeletedLineItems(progId!, keptIds);
     if (syncErr) throw new Error(syncErr);
 

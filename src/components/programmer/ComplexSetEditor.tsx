@@ -70,13 +70,15 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
       }))
       .filter((c) => c.label.length > 0);
     if (normalized.length < 2) return;
-    const title = formatComplexMovementTitle(normalized);
+    const componentsCopy = normalized.map((c) => ({ ...c }));
+    const title = formatComplexMovementTitle(componentsCopy);
     const prId =
-      prTypeId ?? normalized.find((c) => c.benchmark_type_id)?.benchmark_type_id ?? null;
-    const base: EditorLineItem = {
+      prTypeId ?? componentsCopy.find((c) => c.benchmark_type_id)?.benchmark_type_id ?? null;
+    const setCount = Math.max(1, sets);
+    const item: EditorLineItem = {
       _new: true,
       sequence_number: 0,
-      reps_prescribed: 1,
+      reps_prescribed: setCount,
       prescribed_weight: null,
       prescribed_percentage: pct != null ? pct / 100 : null,
       prescribed_score: null,
@@ -86,10 +88,9 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
       bench_name: title,
       movement_label: title,
       line_item_kind: "complex_set",
-      movement_components: normalized,
+      movement_components: componentsCopy,
     };
-    const items = Array.from({ length: Math.max(1, sets) }, () => ({ ...base, _new: true as const }));
-    onSave(items);
+    onSave([item]);
     onOpenChange(false);
   }
 
