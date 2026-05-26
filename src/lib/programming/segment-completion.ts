@@ -37,6 +37,7 @@ export async function tryMarkProgrammingSegmentComplete(
       .select("id, score")
       .eq("contact_id", contactId)
       .eq("programming_id", programmingId)
+    .eq("performance_date", wodDate)
       .is("programming_line_item_id", null)
       .maybeSingle();
     if (!segPerf?.score) return;
@@ -53,6 +54,7 @@ export async function tryMarkProgrammingSegmentComplete(
       .from("athlete_performance")
       .select("programming_line_item_id, weight_lifted, status")
       .eq("contact_id", contactId)
+    .eq("performance_date", wodDate)
       .in("programming_line_item_id", itemIds);
 
     const logged = new Set(
@@ -82,6 +84,7 @@ export async function tryMarkGroupBlockComplete(
     .select("id, score")
     .eq("contact_id", contactId)
     .eq("segment_group_id", segmentGroupId)
+    .eq("performance_date", wodDate)
     .is("programming_id", null)
     .maybeSingle();
 
