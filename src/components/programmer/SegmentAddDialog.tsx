@@ -28,6 +28,7 @@ import {
   getTypeByUiKey,
   programmingSubtypeForUiKey,
 } from "@/lib/programming/manual-config";
+import { cloneEditorWodForCopy } from "@/lib/programming/copy-editor-wod";
 
 type Mode = "choose" | "new" | "copy";
 
@@ -128,25 +129,7 @@ export function SegmentAddDialog({
   function confirmCopy() {
     if (selectedCopyIdx == null || !copySegments[selectedCopyIdx]) return;
     const src = copySegments[selectedCopyIdx];
-    const ids =
-      src.program_library_ids?.length > 0
-        ? src.program_library_ids
-        : defaultLib
-          ? [defaultLib]
-          : [];
-    onAdd({
-      ...src,
-      _new: true,
-      display_order: displayOrder,
-      program_library_id: ids[0] ?? src.program_library_id,
-      program_library_ids: ids,
-      items: src.items.map((it, j) => ({
-        ...it,
-        _new: true,
-        id: undefined,
-        sequence_number: j + 1,
-      })),
-    });
+    onAdd(cloneEditorWodForCopy(src, displayOrder, defaultLib));
     onOpenChange(false);
   }
 

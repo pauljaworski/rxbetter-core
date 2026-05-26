@@ -147,7 +147,9 @@ export function useProgrammingWeek(
           .select(
             "id, programming_id, programming_line_item_id, segment_group_id, score, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
           )
-          .eq("contact_id", contactId);
+          .eq("contact_id", contactId)
+          .gte("performance_date", start)
+          .lte("performance_date", end);
         if (progIds.length && groupIds.length) {
           perfQuery = perfQuery.or(
             `programming_id.in.(${progIds.join(",")}),segment_group_id.in.(${groupIds.join(",")})`,
