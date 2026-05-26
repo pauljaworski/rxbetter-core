@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import type { GymAthlete } from "@/hooks/useProgrammingWeek";
 
@@ -229,13 +230,17 @@ export default function CalendarPage() {
           )}
           {!isLoading && !error && selectedWods.length > 0 && (
             <div className="grid grid-cols-1 gap-2">
-              {selectedWods.map((w) => (
+              {selectedWods.map((w) => {
+                const items = itemsByWod.get(w.id) ?? [];
+                const summary = summarizeSegmentPrescription(w, items);
+                const isOpen = expanded.has(w.id);
+                return (
                 <Card key={w.id} className="glass-card overflow-hidden p-0">
                   <button
                     type="button"
                     onClick={() => toggleExpanded(w.id)}
                     className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
-                    aria-expanded={expanded.has(w.id)}
+                    aria-expanded={isOpen}
                   >
                     <div>
                       <p className="eyebrow">
@@ -245,20 +250,32 @@ export default function CalendarPage() {
                       <h3 className="mt-1 text-base font-bold leading-tight">
                         {w.name ?? "Untitled"}
                       </h3>
-                      {w.description && !expanded.has(w.id) && (
-                        <p className="mt-2 line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
-                          {w.description}
-                        </p>
+                      {!isOpen && (
+                        <div className="mt-2 space-y-0.5">
+                          {summary.lines.map((line, i) => (
+                            <p key={i} className="text-xs text-muted-foreground">
+                              {line}
+                            </p>
+                          ))}
+                          {summary.footer && (
+                            <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
+                          )}
+                          {w.description && (
+                            <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
+                              {w.description}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                     <ChevronDown
                       className={cn(
                         "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                        expanded.has(w.id) && "rotate-180",
+                        isOpen && "rotate-180",
                       )}
                     />
                   </button>
-                  {expanded.has(w.id) && (
+                  {isOpen && (
                     <div className="border-t border-border/60">
                       {w.description && (
                         <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
@@ -275,7 +292,7 @@ export default function CalendarPage() {
                             prescribed_scale: w.prescribed_scale,
                             workout_scheme: w.workout_scheme,
                           }}
-                          items={itemsByWod.get(w.id) ?? []}
+                          items={items}
                           contactId={contactId}
                           perfByItem={perfByItem}
                           segmentPerf={perfBySegment.get(w.id) ?? null}
@@ -285,7 +302,8 @@ export default function CalendarPage() {
                     </div>
                   )}
                 </Card>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>

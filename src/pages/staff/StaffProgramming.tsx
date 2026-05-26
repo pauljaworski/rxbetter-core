@@ -20,6 +20,7 @@ import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
 import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
+import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   MovementPickerDialog,
   type MovementPick,
@@ -80,9 +81,27 @@ export default function StaffProgramming() {
     setWods((prev) => prev.map((w, i) => (i === idx ? { ...w, ...patch } : w)));
   }
 
-  function removeWod(idx: number) {
+  async function handleRemoveWod(idx: number) {
+    const wod = wods[idx];
+    if (wod.id) {
+      const msg = wod.published_at
+        ? `Remove "${wod.name ?? "this segment"}"? It is published — athletes will no longer see it on Today or Calendar.`
+        : `Delete "${wod.name ?? "this segment"}" permanently?`;
+      if (!window.confirm(msg)) return;
+
+      const { error } = await deleteProgrammingSegment(wod.id);
+      if (error) {
+        toast.error("Couldn't remove segment", { description: error });
+        return;
+      }
+      toast.success(wod.published_at ? "Removed from athletes" : "Segment deleted");
+    }
     setSyncFromServer(false);
     setWods((prev) => prev.filter((_, i) => i !== idx));
+    if (wod.id) {
+      setSyncFromServer(true);
+      refetch();
+    }
   }
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
@@ -318,7 +337,7 @@ export default function StaffProgramming() {
               libraries={libraries}
               saving={savingSectionIdx === idx}
               onUpdate={(patch) => updateWod(idx, patch)}
-              onRemove={() => removeWod(idx)}
+              onRemove={() => void handleRemoveWod(idx)}
               onSaveSection={() => handleSaveSection(idx)}
               onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}

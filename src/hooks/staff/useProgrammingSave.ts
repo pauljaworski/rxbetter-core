@@ -16,6 +16,7 @@ import {
   movementComponentsForSave,
 } from "@/lib/programming/movement-components-schema";
 import { defaultLineItemKindForSegment, isLineItemKind } from "@/lib/programming/line-item-kind";
+import { syncDeletedLineItems } from "@/lib/programming/programming-delete";
 
 export async function loadDefinitionMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase
@@ -199,6 +200,10 @@ export async function saveWod(
         if (error) throw new Error(error.message);
       }
     }
+
+    const keptIds = normalized.items.map((it) => it.id).filter((id): id is string => !!id);
+    const { error: syncErr } = await syncDeletedLineItems(progId!, keptIds);
+    if (syncErr) throw new Error(syncErr);
 
     return { programmingId: progId, error: null };
   } catch (e) {
