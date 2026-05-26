@@ -1,25 +1,27 @@
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 
-/** Remove a programming segment and its gym-wide line items from the database. */
+const DELETE_DENIED =
+  "Segment could not be deleted. Confirm you have programmer access for this track, then try again.";
+
+/** Remove a programming segment (line items cascade from parent). */
 export async function deleteProgrammingSegment(
   programmingId: string,
 ): Promise<{ error: string | null }> {
-  const { error: assignErr } = await supabase
-    .from("programming_library_assignment")
-    .delete()
-    .eq("programming_id", programmingId);
-  if (assignErr) return { error: formatSupabaseError(assignErr.message) };
+  // Unpublish first so athletes stop seeing it even if a later step fails.
+  await supabase
+    .from("programming")
+    .update({ published_at: null })
+    .eq("id", programmingId);
 
-  const { error: pliErr } = await supabase
-    .from("programming_line_item")
+  const { data: deleted, error: progErr } = await supabase
+    .from("programming")
     .delete()
-    .eq("programming_id", programmingId)
-    .is("contact_id", null);
-  if (pliErr) return { error: formatSupabaseError(pliErr.message) };
+    .eq("id", programmingId)
+    .select("id");
 
-  const { error: progErr } = await supabase.from("programming").delete().eq("id", programmingId);
   if (progErr) return { error: formatSupabaseError(progErr.message) };
+  if (!deleted?.length) return { error: DELETE_DENIED };
 
   return { error: null };
 }
@@ -40,10 +42,17 @@ export async function syncDeletedLineItems(
   const toDelete = (existing ?? []).map((r) => r.id).filter((id) => !kept.has(id));
   if (!toDelete.length) return { error: null };
 
-  const { error: delErr } = await supabase
+  const { data: removed, error: delErr } = await supabase
     .from("programming_line_item")
     .delete()
-    .in("id", toDelete);
+    .in("id", toDelete)
+    .select("id");
+
   if (delErr) return { error: formatSupabaseError(delErr.message) };
+  if (removed?.length !== toDelete.length) {
+    return {
+      error: "Some removed movements could not be deleted from the database. Save again or contact support.",
+    };
+  }
   return { error: null };
 }
