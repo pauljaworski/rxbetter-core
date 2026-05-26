@@ -18,6 +18,7 @@ import { useSavePerformance } from "@/hooks/useSavePerformance";
 import type { WorkoutScale } from "@/lib/format";
 import type { LogLineItem, LogWodContext, ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
+import { prescriptionUnitForLineItem } from "@/lib/programming/complex-set-prescription";
 import {
   formatComplexMovementTitle,
   parseMovementComponents,
@@ -224,6 +225,7 @@ export function StrengthLiftRow({
         <AthletePrescriptionHeader
           movementName={movementName}
           repsPrescribed={item.reps_prescribed}
+          prescriptionUnit={prescriptionUnitForLineItem(item)}
           prescribedPercentage={item.prescribed_percentage}
           repMaxCount={repCount}
           prescribedWeight={item.prescribed_weight}

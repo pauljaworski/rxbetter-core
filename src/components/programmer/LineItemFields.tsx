@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { EditorLineItem } from "@/hooks/staff/types";
+import { isComplexSetLineItem } from "@/lib/programming/complex-set-prescription";
 import type { LineItemMode } from "@/lib/programming/manual-config";
 import {
   PERCENT_REP_MAX_OPTIONS,
@@ -100,14 +101,21 @@ export function LineItemFields({ mode, item, onChange }: Props) {
 
   const repMax = item.percent_rep_max ?? 1;
   const pctDisplay = percentWholeFromFraction(item.prescribed_percentage);
+  const complexSet = isComplexSetLineItem(item);
 
   return (
     <div className="space-y-2 pl-8">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <NumInput
-          label="reps"
+          label={complexSet ? "Sets" : "reps"}
           value={item.reps_prescribed}
-          onChange={(v) => onChange({ reps_prescribed: v })}
+          onChange={(v) =>
+            onChange(
+              complexSet
+                ? { reps_prescribed: v, prescription_unit: "sets" }
+                : { reps_prescribed: v },
+            )
+          }
         />
         <div className="space-y-1">
           <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
@@ -142,8 +150,9 @@ export function LineItemFields({ mode, item, onChange }: Props) {
         />
       </div>
       <p className="text-[10px] text-muted-foreground">
-        Athletes see prescribed weight from their {repMax}RM PR × percent. Override weight (lb) for
-        a fixed load instead.
+        {complexSet
+          ? "Reps per movement come from the complex definition above (e.g. 2 Snatch Pull + 1 Power Snatch)."
+          : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
       </p>
     </div>
   );

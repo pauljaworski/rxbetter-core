@@ -110,7 +110,9 @@ function mapWodsFromRows(
             sequence_number: i.sequence_number ?? idx + 1,
             reps_prescribed: i.reps_prescribed,
             prescription_unit:
-              (i.prescription_unit as EditorLineItem["prescription_unit"]) ?? "reps",
+              kind === "complex_set"
+                ? "sets"
+                : ((i.prescription_unit as EditorLineItem["prescription_unit"]) ?? "reps"),
             prescribed_weight: i.prescribed_weight,
             prescribed_percentage: i.prescribed_percentage,
             prescribed_score: i.prescribed_score,

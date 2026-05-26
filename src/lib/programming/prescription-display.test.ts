@@ -12,4 +12,14 @@ describe("formatPrescriptionTitle", () => {
       }),
     ).toBe("Snatch - 2 Reps - 70% 1RM");
   });
+
+  it("formats sets for complexes", () => {
+    expect(
+      formatPrescriptionTitle({
+        movementName: "2 Snatch Pull + 1 Power Snatch",
+        repsPrescribed: 5,
+        prescriptionUnit: "sets",
+      }),
+    ).toBe("2 Snatch Pull + 1 Power Snatch - 5 sets");
+  });
 });

@@ -61,7 +61,8 @@ export type StaffClassLineItem = {
   programming_id: string;
   sequence_number: number | null;
   reps_prescribed: number | null;
-  prescription_unit?: PrescriptionUnit | null;
+  /** `sets` is used for complex_set rows (reps_prescribed = set count). */
+  prescription_unit?: PrescriptionUnit | "sets" | null;
   prescribed_weight: number | null;
   prescribed_percentage: number | null;
   prescribed_score: string | null;
@@ -97,7 +98,8 @@ export type EditorLineItem = {
   _new?: boolean;
   sequence_number: number;
   reps_prescribed: number | null;
-  prescription_unit?: PrescriptionUnit | null;
+  /** `sets` is used for complex_set rows (reps_prescribed = set count). */
+  prescription_unit?: PrescriptionUnit | "sets" | null;
   prescribed_weight: number | null;
   prescribed_percentage: number | null;
   prescribed_score: string | null;

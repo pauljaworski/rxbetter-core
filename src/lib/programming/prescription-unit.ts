@@ -19,6 +19,8 @@ export function formatPrescriptionAmount(
       return `${amount} cal`;
     case "feet":
       return `${amount} ft`;
+    case "sets":
+      return `${amount} ${amount === 1 ? "set" : "sets"}`;
     default:
       return `${amount} ${amount === 1 ? "Rep" : "Reps"}`;
   }

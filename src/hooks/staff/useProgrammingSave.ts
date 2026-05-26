@@ -63,7 +63,8 @@ function resolveLineItemForSave(
       : null;
   return {
     reps_prescribed: it.reps_prescribed,
-    prescription_unit: it.prescription_unit ?? null,
+    prescription_unit:
+      kind === "complex_set" ? "sets" : (it.prescription_unit ?? null),
     prescribed_weight: it.prescribed_weight,
     prescribed_percentage: it.prescribed_percentage,
     prescribed_score: it.prescribed_score,

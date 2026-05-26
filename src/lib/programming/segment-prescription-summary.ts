@@ -4,10 +4,8 @@ import {
   parseMovementComponents,
 } from "@/lib/programming/movement-components-schema";
 import { isMetconSegment } from "@/lib/programming/manual-config";
-import {
-  formatPrescriptionAmount,
-  type PrescriptionUnit,
-} from "@/lib/programming/prescription-unit";
+import { prescriptionUnitForLineItem } from "@/lib/programming/complex-set-prescription";
+import { formatPrescriptionAmount } from "@/lib/programming/prescription-unit";
 import {
   percentRepMaxLabel,
   percentWholeFromFraction,
@@ -39,15 +37,15 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
   const kind = item.line_item_kind ?? "strength_set";
   const parts: string[] = [name];
 
-  if (kind === "complex_set" && item.reps_prescribed != null) {
-    const n = item.reps_prescribed;
-    parts.unshift(`${n} ${n === 1 ? "set" : "sets"}`);
-  } else if (item.reps_prescribed != null) {
+  if (item.reps_prescribed != null) {
     const amount = formatPrescriptionAmount(
       item.reps_prescribed,
-      (item.prescription_unit as PrescriptionUnit) ?? "reps",
+      prescriptionUnitForLineItem(item),
     );
-    if (amount) parts.push(amount);
+    if (amount) {
+      if (kind === "complex_set") parts.unshift(amount);
+      else parts.push(amount);
+    }
   }
 
   const pct = percentSuffix(item);

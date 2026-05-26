@@ -79,6 +79,7 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
       _new: true,
       sequence_number: 0,
       reps_prescribed: setCount,
+      prescription_unit: "sets",
       prescribed_weight: null,
       prescribed_percentage: pct != null ? pct / 100 : null,
       prescribed_score: null,
