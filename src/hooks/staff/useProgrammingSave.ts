@@ -16,7 +16,10 @@ import {
   movementComponentsForSave,
 } from "@/lib/programming/movement-components-schema";
 import { defaultLineItemKindForSegment, isLineItemKind } from "@/lib/programming/line-item-kind";
-import { syncDeletedLineItems } from "@/lib/programming/programming-delete";
+import {
+  syncDeletedLineItems,
+  syncProgrammingLibraryAssignments,
+} from "@/lib/programming/programming-delete";
 
 export async function loadDefinitionMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase
@@ -80,16 +83,8 @@ function resolveLineItemForSave(
 export type SaveWodResult = { programmingId: string | null; error: string | null };
 
 async function syncLibraryAssignments(programmingId: string, libraryIds: string[]): Promise<void> {
-  const { error: delErr } = await supabase
-    .from("programming_library_assignment")
-    .delete()
-    .eq("programming_id", programmingId);
-  if (delErr) throw new Error(delErr.message);
-  if (!libraryIds.length) return;
-  const { error: insErr } = await supabase.from("programming_library_assignment").insert(
-    libraryIds.map((program_library_id) => ({ programming_id: programmingId, program_library_id })),
-  );
-  if (insErr) throw new Error(insErr.message);
+  const { error } = await syncProgrammingLibraryAssignments(programmingId, libraryIds);
+  if (error) throw new Error(error);
 }
 
 export async function saveWod(

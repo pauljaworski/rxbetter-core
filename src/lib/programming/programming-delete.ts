@@ -4,25 +4,34 @@ import { formatSupabaseError } from "@/lib/format";
 const DELETE_DENIED =
   "Segment could not be deleted. Confirm you have programmer access for this track, then try again.";
 
-/** Remove a programming segment (line items cascade from parent). */
+/** Remove a programming segment via security-definer RPC (bypasses child-table RLS). */
 export async function deleteProgrammingSegment(
   programmingId: string,
 ): Promise<{ error: string | null }> {
-  // Unpublish first so athletes stop seeing it even if a later step fails.
-  await supabase
-    .from("programming")
-    .update({ published_at: null })
-    .eq("id", programmingId);
+  const { error } = await supabase.rpc("delete_gym_programming_segment", {
+    p_programming_id: programmingId,
+  });
 
-  const { data: deleted, error: progErr } = await supabase
-    .from("programming")
-    .delete()
-    .eq("id", programmingId)
-    .select("id");
+  if (error) {
+    const msg = formatSupabaseError(error.message);
+    if (/not allowed/i.test(msg)) return { error: DELETE_DENIED };
+    return { error: msg };
+  }
 
-  if (progErr) return { error: formatSupabaseError(progErr.message) };
-  if (!deleted?.length) return { error: DELETE_DENIED };
+  return { error: null };
+}
 
+/** Replace track assignments for a segment (save section). */
+export async function syncProgrammingLibraryAssignments(
+  programmingId: string,
+  libraryIds: string[],
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("sync_programming_library_assignments", {
+    p_programming_id: programmingId,
+    p_library_ids: libraryIds,
+  });
+
+  if (error) return { error: formatSupabaseError(error.message) };
   return { error: null };
 }
 
