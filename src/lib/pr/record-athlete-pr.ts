@@ -6,12 +6,14 @@ export type PerformanceWeightRow = {
   weight_lifted: number | null;
   performance_date: string | null;
   created_at: string | null;
+  status?: string | null;
 };
 
 /** Pick heaviest lift; ties go to the latest performance_date. */
 export function pickBestPerformanceRow(rows: PerformanceWeightRow[]): PerformanceWeightRow | null {
   let best: PerformanceWeightRow | null = null;
   for (const row of rows) {
+    if (row.status && row.status !== "completed") continue;
     const w = Number(row.weight_lifted);
     if (!Number.isFinite(w) || w <= 0) continue;
     if (!best) {
@@ -32,7 +34,7 @@ export async function recomputeBenchmarkSummary(
 ): Promise<{ error: string | null }> {
   const { data: perfs, error: fetchErr } = await supabase
     .from("athlete_performance")
-    .select("id, weight_lifted, performance_date, created_at")
+    .select("id, weight_lifted, performance_date, created_at, status")
     .eq("contact_id", contactId)
     .eq("benchmark_definition_id", benchmarkDefinitionId)
     .not("weight_lifted", "is", null);
@@ -41,6 +43,13 @@ export async function recomputeBenchmarkSummary(
 
   const best = pickBestPerformanceRow((perfs ?? []) as PerformanceWeightRow[]);
   if (!best) {
+    const { error: flagErr } = await supabase
+      .from("athlete_performance")
+      .update({ is_pr: false })
+      .eq("contact_id", contactId)
+      .eq("benchmark_definition_id", benchmarkDefinitionId);
+    if (flagErr) return { error: formatSupabaseError(flagErr.message) };
+
     const { error: delErr } = await supabase
       .from("athlete_benchmark_summary")
       .delete()
