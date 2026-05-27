@@ -1469,9 +1469,39 @@ export type Database = {
         Returns: boolean
       }
       is_gym_admin_scoped: { Args: { p_gym_id: string }; Returns: boolean }
+      athlete_can_access_programming: {
+        Args: { p_programming_id: string }
+        Returns: boolean
+      }
+      athlete_can_log_performance: {
+        Args: {
+          p_contact_id: string
+          p_programming_id: string | null
+          p_segment_group_id: string | null
+          p_performance_date: string | null
+        }
+        Returns: boolean
+      }
+      athlete_can_mark_segment_completion: {
+        Args: {
+          p_contact_id: string
+          p_programming_id: string | null
+          p_segment_group_id: string | null
+          p_performance_date: string
+        }
+        Returns: boolean
+      }
+      can_select_programming: {
+        Args: { p_programming_id: string }
+        Returns: boolean
+      }
       delete_gym_programming_segment: {
         Args: { p_programming_id: string }
         Returns: undefined
+      }
+      staff_can_manage_programming: {
+        Args: { p_programming_id: string }
+        Returns: boolean
       }
       sync_programming_library_assignments: {
         Args: { p_programming_id: string; p_library_ids: string[] }

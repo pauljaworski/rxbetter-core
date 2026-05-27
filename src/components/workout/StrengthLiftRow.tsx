@@ -168,8 +168,8 @@ export function StrengthLiftRow({
       return;
     }
 
-    let isPr = displayPerf?.is_pr ?? false;
-    if (item.benchmark_definition_id && status === "completed") {
+    let isPr = false;
+    if (item.benchmark_definition_id) {
       const { error: prErr } = await recomputeBenchmarkSummary(
         contactId,
         item.benchmark_definition_id,
@@ -178,13 +178,15 @@ export function StrengthLiftRow({
         toast.error("Lift saved but PR vault didn't update", { description: prErr });
       } else {
         await refreshPr();
-        const { data: bench } = await supabase
-          .from("athlete_benchmark_summary")
-          .select("current_pr_weight")
-          .eq("contact_id", contactId)
-          .eq("benchmark_definition_id", item.benchmark_definition_id)
-          .maybeSingle();
-        isPr = bench?.current_pr_weight === weightNum;
+        if (status === "completed") {
+          const { data: bench } = await supabase
+            .from("athlete_benchmark_summary")
+            .select("current_pr_weight")
+            .eq("contact_id", contactId)
+            .eq("benchmark_definition_id", item.benchmark_definition_id)
+            .maybeSingle();
+          isPr = bench?.current_pr_weight === weightNum;
+        }
       }
     }
 

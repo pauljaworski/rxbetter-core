@@ -144,12 +144,7 @@ export function LogScoreRow({
     }
 
     let becamePr = false;
-    if (
-      !isMetcon &&
-      liftStatus === "completed" &&
-      weightNum != null &&
-      item.benchmark_definition_id
-    ) {
+    if (!isMetcon && weightNum != null && item.benchmark_definition_id) {
       const { error: prErr } = await recomputeBenchmarkSummary(
         contactId,
         item.benchmark_definition_id,
@@ -163,7 +158,7 @@ export function LogScoreRow({
           .eq("contact_id", contactId)
           .eq("benchmark_definition_id", item.benchmark_definition_id)
           .maybeSingle();
-        becamePr = bench?.current_pr_weight === weightNum;
+        becamePr = liftStatus === "completed" && bench?.current_pr_weight === weightNum;
       }
     }
 
@@ -187,6 +182,15 @@ export function LogScoreRow({
     const { error } = await removePerformance(existing.id);
     if (error) toast.error(error);
     else {
+      if (!isMetcon && item.benchmark_definition_id && contactId) {
+        const { error: prErr } = await recomputeBenchmarkSummary(
+          contactId,
+          item.benchmark_definition_id,
+        );
+        if (prErr) {
+          toast.error("Result cleared but PR vault didn't update", { description: prErr });
+        }
+      }
       toast.message("Segment marked N/A");
       setOpen(false);
       onLogged?.();
