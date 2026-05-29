@@ -48,13 +48,16 @@ describe("programming track-scope migration", () => {
   );
 
   it("checks every existing and requested track before replacing assignments", () => {
-    const authCheck = sql.indexOf(
+    const syncSql = sql.slice(
+      sql.indexOf("create or replace function public.sync_programming_library_assignments"),
+    );
+    const authCheck = syncSql.indexOf(
       "if not public.staff_can_manage_programming_libraries(v_gym, v_affected) then",
     );
-    const assignmentDelete = sql.indexOf("delete from public.programming_library_assignment");
+    const assignmentDelete = syncSql.indexOf("delete from public.programming_library_assignment");
 
-    expect(sql).toContain("select pla.program_library_id");
-    expect(sql).toContain("where pla.programming_id = p_programming_id");
+    expect(syncSql).toContain("select pla.program_library_id");
+    expect(syncSql).toContain("where pla.programming_id = p_programming_id");
     expect(authCheck).toBeGreaterThan(-1);
     expect(assignmentDelete).toBeGreaterThan(authCheck);
   });
