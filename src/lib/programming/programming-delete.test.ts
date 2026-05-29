@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const mockRpc = vi.fn();
 
@@ -39,9 +40,9 @@ describe("deleteProgrammingSegment", () => {
 
 describe("programming track-scope migration", () => {
   const sql = readFileSync(
-    new URL(
-      "../../../supabase/migrations/20260529130500_lock_programming_track_scope_and_history.sql",
-      import.meta.url,
+    path.join(
+      process.cwd(),
+      "supabase/migrations/20260529130500_lock_programming_track_scope_and_history.sql",
     ),
     "utf8",
   );
