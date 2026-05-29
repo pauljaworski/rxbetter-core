@@ -1468,6 +1468,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      staff_can_manage_programming_libraries: {
+        Args: { p_gym_id: string; p_library_ids: string[] }
+        Returns: boolean
+      }
+      staff_can_manage_programming: {
+        Args: { p_programming_id: string }
+        Returns: boolean
+      }
+      staff_can_delete_programming: {
+        Args: { p_programming_id: string }
+        Returns: boolean
+      }
       is_gym_admin_scoped: { Args: { p_gym_id: string }; Returns: boolean }
       delete_gym_programming_segment: {
         Args: { p_programming_id: string }
