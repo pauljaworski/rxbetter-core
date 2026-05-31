@@ -15,12 +15,15 @@ describe("programming delete/sync migration guardrails", () => {
   });
 
   it("validates requested assignment scope before deleting existing assignments", () => {
-    const validationIndex = migration.indexOf("foreach v_lib in array v_requested_library_ids loop");
-    const deleteIndex = migration.indexOf("delete from public.programming_library_assignment");
+    const syncStart = migration.indexOf("create or replace function public.sync_programming_library_assignments");
+    const syncBody = migration.slice(syncStart);
+    const validationIndex = syncBody.indexOf("foreach v_lib in array v_requested_library_ids loop");
+    const deleteIndex = syncBody.indexOf("delete from public.programming_library_assignment");
 
+    expect(syncStart).toBeGreaterThan(-1);
     expect(validationIndex).toBeGreaterThan(-1);
     expect(deleteIndex).toBeGreaterThan(validationIndex);
-    expect(migration).toContain("raise exception 'Not allowed to assign library %'");
+    expect(syncBody).toContain("raise exception 'Not allowed to assign library %'");
   });
 
   it("unpublishes published or history-bearing segments instead of hard deleting them", () => {
