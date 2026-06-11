@@ -76,6 +76,7 @@ export function useProgrammingWeek(
       .eq("source", "gym")
       .gte("wod_date", start)
       .lte("wod_date", end)
+      .order("wod_date", { ascending: true })
       .order("display_order", { ascending: true });
 
     if (progErr) throw new Error(progErr.message);

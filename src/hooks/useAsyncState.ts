@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type AsyncState<T> = {
   data: T;
   isLoading: boolean;
+  /** True while re-fetching after the first successful load. */
+  isRefreshing: boolean;
   error: string | null;
   isEmpty: boolean;
   refetch: () => void;
@@ -19,6 +21,7 @@ export function useAsyncState<T>(
 ): AsyncState<T> {
   const [data, setData] = useState<T>(initial);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const hasLoadedOnce = useRef(false);
@@ -27,8 +30,9 @@ export function useAsyncState<T>(
 
   useEffect(() => {
     let cancelled = false;
-    const showLoading = !hasLoadedOnce.current;
-    if (showLoading) setIsLoading(true);
+    const initialLoad = !hasLoadedOnce.current;
+    if (initialLoad) setIsLoading(true);
+    else setIsRefreshing(true);
     setError(null);
     (async () => {
       try {
@@ -42,6 +46,7 @@ export function useAsyncState<T>(
         if (!cancelled) {
           hasLoadedOnce.current = true;
           setIsLoading(false);
+          setIsRefreshing(false);
         }
       }
     })();
@@ -54,6 +59,7 @@ export function useAsyncState<T>(
   return {
     data,
     isLoading,
+    isRefreshing,
     error,
     isEmpty: !isLoading && !error && isEmpty(data),
     refetch,

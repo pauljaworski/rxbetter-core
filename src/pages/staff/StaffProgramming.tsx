@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgramLibraries } from "@/hooks/useProgramLibraries";
@@ -21,27 +21,27 @@ import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
+import { isSegmentUnsaved } from "@/lib/programming/staff-programming-state";
 import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
+
+type ServerSyncMode = "date" | "save" | null;
 
 export default function StaffProgramming() {
   const { activeGymId } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [wods, setWods] = useState<EditorWod[]>([]);
-  const [syncFromServer, setSyncFromServer] = useState(true);
+  const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
+  const pendingDraftsRef = useRef<EditorWod[]>([]);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
   const { data: benchmarkCatalog } = useBenchmarkCatalog();
-  const strengthCatalog = useMemo(
-    () => filterBenchmarkCatalog(benchmarkCatalog, "weightlifting"),
-    [benchmarkCatalog],
-  );
+  const strengthCatalog = filterBenchmarkCatalog(benchmarkCatalog, "weightlifting");
   const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
-  const [stashedDrafts, setStashedDrafts] = useState<EditorWod[]>([]);
 
   const dateKey = format(date, "yyyy-MM-dd");
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -49,6 +49,7 @@ export default function StaffProgramming() {
   const {
     data: serverWods,
     isLoading,
+    isRefreshing,
     error,
     isEmpty,
     refetch,
@@ -59,25 +60,41 @@ export default function StaffProgramming() {
   const { publishDay, publishWeek, busy: publishing } = useProgrammingPublish(activeGymId);
 
   useEffect(() => {
-    setSyncFromServer(true);
-    setStashedDrafts([]);
+    setServerSyncMode("date");
+    pendingDraftsRef.current = [];
   }, [dateKey]);
 
   useEffect(() => {
-    if (!isLoading && syncFromServer) {
-      setWods([...serverWods, ...stashedDrafts]);
-      setStashedDrafts([]);
-      setSyncFromServer(false);
+    if (isLoading || isRefreshing || !serverSyncMode) return;
+    if (serverSyncMode === "date") {
+      setWods(serverWods);
+    } else if (serverSyncMode === "save") {
+      setWods([...serverWods, ...pendingDraftsRef.current]);
+      pendingDraftsRef.current = [];
     }
-  }, [serverWods, isLoading, syncFromServer, stashedDrafts]);
+    setServerSyncMode(null);
+  }, [serverWods, isLoading, isRefreshing, serverSyncMode]);
+
+  function selectDate(next: Date) {
+    const nextKey = format(next, "yyyy-MM-dd");
+    if (nextKey === dateKey) return;
+    const unsaved = wods.filter(isSegmentUnsaved);
+    if (unsaved.length) {
+      const ok = window.confirm(
+        `You have ${unsaved.length} unsaved segment${unsaved.length === 1 ? "" : "s"} on ${format(date, "MMM d")}. Switch days anyway? Unsaved work will be lost.`,
+      );
+      if (!ok) return;
+    }
+    setDate(next);
+  }
 
   function addWod(wod: EditorWod) {
-    setSyncFromServer(false);
-    setWods((prev) => [...prev, wod]);
+    setServerSyncMode(null);
+    setWods((prev) => [...prev, { ...wod, display_order: prev.length }]);
   }
 
   function updateWod(idx: number, patch: Partial<EditorWod>) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) => prev.map((w, i) => (i === idx ? { ...w, ...patch } : w)));
   }
 
@@ -96,16 +113,16 @@ export default function StaffProgramming() {
       }
       toast.success(wod.published_at ? "Removed from athletes" : "Segment deleted");
     }
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) => prev.filter((_, i) => i !== idx));
     if (wod.id) {
-      setSyncFromServer(true);
+      setServerSyncMode("date");
       refetch();
     }
   }
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -142,7 +159,7 @@ export default function StaffProgramming() {
   }
 
   function updateItem(wodIdx: number, itemIdx: number, patch: Partial<EditorLineItem>) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx
@@ -153,7 +170,7 @@ export default function StaffProgramming() {
   }
 
   function removeItem(wodIdx: number, itemIdx: number) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) =>
       prev.map((w, i) =>
         i === wodIdx ? { ...w, items: w.items.filter((_, j) => j !== itemIdx) } : w,
@@ -162,7 +179,7 @@ export default function StaffProgramming() {
   }
 
   function addComplexItems(wodIdx: number, items: EditorLineItem[]) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -176,7 +193,7 @@ export default function StaffProgramming() {
   }
 
   function cloneItem(wodIdx: number, itemIdx: number) {
-    setSyncFromServer(false);
+    setServerSyncMode(null);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -193,17 +210,37 @@ export default function StaffProgramming() {
     );
   }
 
+  async function saveAllUnsavedSections(): Promise<{ error: string | null; saved: number }> {
+    let saved = 0;
+    for (let i = 0; i < wods.length; i++) {
+      const wod = wods[i];
+      if (!isSegmentUnsaved(wod)) continue;
+      const lib = wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
+      if (!lib) {
+        return {
+          error: `"${wod.name ?? "Segment"}" needs at least one track before it can be saved.`,
+          saved,
+        };
+      }
+      const { error: saveError } = await saveWod(wod, i);
+      if (saveError) {
+        return { error: saveError, saved };
+      }
+      saved++;
+    }
+    return { error: null, saved };
+  }
+
   async function handleSaveSection(idx: number) {
     const wod = wods[idx];
-    const lib =
-      wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
+    const lib = wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
     if (!lib) {
       toast.error("Select at least one track for this section.");
       return;
     }
 
     setSavingSectionIdx(idx);
-    const { programmingId, error: saveError } = await saveWod(wod, wod.display_order ?? idx);
+    const { error: saveError } = await saveWod(wod, idx);
     setSavingSectionIdx(null);
 
     if (saveError) {
@@ -212,24 +249,38 @@ export default function StaffProgramming() {
     }
 
     toast.success("Section saved");
-
-    setStashedDrafts(wods.filter((w, i) => i !== idx && !w.id));
-    setSyncFromServer(true);
+    pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
+    setServerSyncMode("save");
     refetch();
   }
 
   async function handlePublishDay() {
+    const { error: saveError, saved } = await saveAllUnsavedSections();
+    if (saveError) {
+      toast.error("Couldn't save before publish", { description: saveError });
+      return;
+    }
+
     const { error, count } = await publishDay(date);
     if (error) {
       toast.error("Couldn't publish", { description: error });
       return;
     }
+
+    if (saved > 0) {
+      toast.message(
+        `Saved ${saved} unsaved segment${saved === 1 ? "" : "s"} before publishing`,
+      );
+    }
     toast.success(
       count > 0
         ? `Published ${count} segment${count === 1 ? "" : "s"} for this day`
-        : "Nothing new to publish for this day",
+        : saved > 0
+          ? "All saved segments were already published"
+          : "Nothing new to publish for this day",
     );
-    setSyncFromServer(true);
+    pendingDraftsRef.current = [];
+    setServerSyncMode("date");
     refetch();
   }
 
@@ -244,11 +295,12 @@ export default function StaffProgramming() {
         ? `Published ${count} segment${count === 1 ? "" : "s"} this week`
         : "Nothing new to publish this week",
     );
-    setSyncFromServer(true);
+    setServerSyncMode("date");
     refetch();
   }
 
-  const busy = saving || publishing;
+  const busy = saving || publishing || isRefreshing;
+  const unsavedCount = wods.filter(isSegmentUnsaved).length;
 
   return (
     <div className="space-y-6">
@@ -256,8 +308,15 @@ export default function StaffProgramming() {
         <p className="eyebrow">Programmer</p>
         <h1 className="text-3xl font-black tracking-tight md:text-4xl">Programming</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick a day, add segments, save each section, then publish when the day is ready.
+          Pick a day, add multiple segments, save each section (or publish day to save and publish
+          together).
         </p>
+        {unsavedCount > 0 && (
+          <p className="mt-2 text-xs font-medium text-amber-600">
+            {unsavedCount} unsaved segment{unsavedCount === 1 ? "" : "s"} on this day — save or use
+            Publish day before switching dates.
+          </p>
+        )}
       </header>
 
       {error && <ErrorBanner message={error} />}
@@ -283,7 +342,7 @@ export default function StaffProgramming() {
               <button
                 key={k}
                 type="button"
-                onClick={() => setDate(d)}
+                onClick={() => selectDate(d)}
                 className={cn(
                   "flex flex-col items-center rounded-lg border px-1 py-2 text-center transition-colors",
                   isSel
@@ -307,14 +366,14 @@ export default function StaffProgramming() {
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
         <Button
-          onClick={handlePublishDay}
+          onClick={() => void handlePublishDay()}
           disabled={busy}
           size="sm"
           className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Send className="mr-1 h-3.5 w-3.5" /> Publish day
         </Button>
-        <Button onClick={handlePublishWeek} disabled={busy} size="sm" variant="outline">
+        <Button onClick={() => void handlePublishWeek()} disabled={busy} size="sm" variant="outline">
           <Send className="mr-1 h-3.5 w-3.5" /> Publish week
         </Button>
       </div>
@@ -338,7 +397,7 @@ export default function StaffProgramming() {
               saving={savingSectionIdx === idx}
               onUpdate={(patch) => updateWod(idx, patch)}
               onRemove={() => void handleRemoveWod(idx)}
-              onSaveSection={() => handleSaveSection(idx)}
+              onSaveSection={() => void handleSaveSection(idx)}
               onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
               onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
@@ -389,7 +448,7 @@ export default function StaffProgramming() {
           defaultLib={defaultLibId}
           displayOrder={wods.length}
           onCommitted={() => {
-            setSyncFromServer(true);
+            setServerSyncMode("date");
             refetch();
           }}
         />

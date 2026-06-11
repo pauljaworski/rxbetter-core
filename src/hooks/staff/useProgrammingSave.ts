@@ -153,6 +153,7 @@ export async function saveWod(
       const { error } = await supabase
         .from("programming")
         .update({
+          wod_date: dateKey,
           name: normalized.name,
           description: normalized.description,
           programming_segment: normalized.programming_segment,

@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { isSegmentUnsaved } from "@/lib/programming/staff-programming-state";
 import {
   MANUAL_PROGRAMMING_TYPES,
   WORKOUT_FORMAT_TEMPLATES,
@@ -236,13 +237,17 @@ export function SegmentEditorCard({
               )}
             </Tooltip>
           </TooltipProvider>
-          {wod.published_at ? (
+          {isSegmentUnsaved(wod) ? (
+            <Badge variant="outline" className="text-[10px] text-amber-600">
+              Unsaved
+            </Badge>
+          ) : wod.published_at ? (
             <Badge variant="secondary" className="text-[10px]">
               Published
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-[10px] text-amber-600">
-              Draft
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              Saved · not published
             </Badge>
           )}
           <Button
