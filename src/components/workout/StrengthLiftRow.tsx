@@ -244,6 +244,10 @@ export function StrengthLiftRow({
           repsPrescribed={resolvedRx.reps_prescribed ?? item.reps_prescribed}
           prescriptionUnit={resolvedRx.prescription_unit ?? prescriptionUnitForLineItem(item)}
           dualAmountLabel={resolvedRx.dual_amount_label}
+          dualModifierLabel={resolvedRx.dual_modifier_label}
+          loadLabel={resolvedRx.load_label}
+          heightLabel={resolvedRx.height_label}
+          prescribedScore={resolvedRx.prescribed_score}
           prescribedPercentage={item.prescribed_percentage}
           repMaxCount={repCount}
           prescribedWeight={item.prescribed_weight}

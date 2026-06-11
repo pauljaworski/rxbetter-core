@@ -23,6 +23,9 @@ export function MetconMovementList({ items, rxGender = null }: Props) {
               prescribedWeight={rx.prescribed_weight}
               prescribedScore={rx.prescribed_score}
               dualAmountLabel={rx.dual_amount_label}
+              dualModifierLabel={rx.dual_modifier_label}
+              loadLabel={rx.load_label}
+              heightLabel={rx.height_label}
               sequenceNumber={it.sequence_number}
               compact
             />

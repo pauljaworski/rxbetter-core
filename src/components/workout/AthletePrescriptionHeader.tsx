@@ -10,6 +10,9 @@ type Props = {
   prescribedWeight?: number | null;
   prescribedScore?: string | null;
   dualAmountLabel?: string | null;
+  dualModifierLabel?: string | null;
+  loadLabel?: string | null;
+  heightLabel?: string | null;
   sequenceNumber?: number | null;
   className?: string;
   compact?: boolean;
@@ -24,6 +27,9 @@ export function AthletePrescriptionHeader({
   prescribedWeight,
   prescribedScore,
   dualAmountLabel,
+  dualModifierLabel,
+  loadLabel,
+  heightLabel,
   sequenceNumber,
   className,
   compact,
@@ -37,6 +43,9 @@ export function AthletePrescriptionHeader({
     prescribedWeight,
     prescribedScore,
     dualAmountLabel,
+    dualModifierLabel,
+    loadLabel,
+    heightLabel,
   });
 
   return (

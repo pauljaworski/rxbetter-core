@@ -180,19 +180,34 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
                       onChange={(weight_lb) => patchVariant(gender, { weight_lb })}
                     />
                   ) : (
-                    <div className="space-y-1">
-                      <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                        Rx load
-                      </Label>
-                      <Input
-                        value={v.load_label ?? ""}
-                        onChange={(e) =>
-                          patchVariant(gender, { load_label: e.target.value || null })
-                        }
-                        placeholder="e.g. 30 lb"
-                        className="h-8 text-xs"
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                          Load
+                        </Label>
+                        <Input
+                          value={v.load_label ?? ""}
+                          onChange={(e) =>
+                            patchVariant(gender, { load_label: e.target.value || null })
+                          }
+                          placeholder="e.g. 20 lb"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                          Height
+                        </Label>
+                        <Input
+                          value={v.height_label ?? ""}
+                          onChange={(e) =>
+                            patchVariant(gender, { height_label: e.target.value || null })
+                          }
+                          placeholder="e.g. 10 ft"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               );
@@ -200,7 +215,7 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
           </div>
           <p className="text-[10px] text-muted-foreground">
             {alwaysSplit
-              ? "Set different amounts per gender (e.g. 15 / 12 cal Ski). Leave Female blank if same as Male."
+              ? "Amount, load, and height per gender (e.g. 80 reps, 20/14 lb, 10/9 ft). Leave Female blank if same as Male."
               : "Both tiers are Rx. Athletes see their profile gender; otherwise 15/12-style notation."}
           </p>
         </div>

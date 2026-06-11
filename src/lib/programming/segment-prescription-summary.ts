@@ -4,18 +4,13 @@ import {
   parseMovementComponents,
 } from "@/lib/programming/movement-components-schema";
 import { isMetconSegment } from "@/lib/programming/manual-config";
-import { prescriptionUnitForLineItem } from "@/lib/programming/complex-set-prescription";
-import { formatPrescriptionAmount } from "@/lib/programming/prescription-unit";
 import {
   percentRepMaxLabel,
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
 import { schemeSummaryLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
-import {
-  formatRxVariantsCompact,
-  hasRxVariants,
-  parseRxVariants,
-} from "@/lib/programming/rx-variants-schema";
+import { formatPrescriptionFromResolved } from "@/lib/programming/prescription-display";
+import { resolvePrescriptionForAthlete } from "@/lib/programming/rx-variants-schema";
 
 export type SegmentSummaryInput = {
   programming_segment: string;
@@ -39,29 +34,16 @@ function percentSuffix(item: LogLineItem): string | null {
 /** One-line summary for a prescription line item (strength / complex / accessory). */
 export function summarizeLineItemBrief(item: LogLineItem): string {
   const name = loadLabel(item);
-  const parts: string[] = [name];
-
-  const variants = parseRxVariants(item.rx_variants);
-  const dualRx = hasRxVariants(variants)
-    ? formatRxVariantsCompact(variants, item.prescription_unit)
-    : null;
-
-  if (dualRx) {
-    parts.push(dualRx);
-  } else if (item.reps_prescribed != null) {
-    const amount = formatPrescriptionAmount(
-      item.reps_prescribed,
-      prescriptionUnitForLineItem(item),
-    );
-    if (amount) parts.push(amount);
+  const resolved = resolvePrescriptionForAthlete(item, null);
+  const rxTitle = formatPrescriptionFromResolved(name, resolved, {
+    prescribedPercentage: item.prescribed_percentage,
+  });
+  if (rxTitle === name) {
+    const pct = percentSuffix(item);
+    if (pct) return `${name} · ${pct}`;
+    if (item.prescribed_weight != null) return `${name} · ${item.prescribed_weight} lb`;
   }
-
-  const pct = percentSuffix(item);
-  if (pct) parts.push(pct);
-  else if (!dualRx && item.prescribed_weight != null) parts.push(`${item.prescribed_weight} lb`);
-  else if (!dualRx && item.prescribed_score?.trim()) parts.push(item.prescribed_score.trim());
-
-  return parts.length > 1 ? parts.join(" · ") : name;
+  return rxTitle;
 }
 
 export function summarizeSegmentPrescription(

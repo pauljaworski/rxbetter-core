@@ -24,6 +24,50 @@ describe("segment-prescription-summary", () => {
     expect(line).toContain("70%");
   });
 
+  it("does not duplicate distance unit for run", () => {
+    const line = summarizeLineItemBrief({
+      id: "3",
+      sequence_number: 1,
+      reps_prescribed: 400,
+      prescription_unit: "meters",
+      prescribed_percentage: null,
+      prescribed_weight: null,
+      prescribed_score: "400m",
+      status: null,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+      bench_name: "Run",
+      rx_variants: {
+        male: { reps: 400, prescription_unit: "meters" },
+        female: { reps: 400, prescription_unit: "meters" },
+      },
+    });
+    expect(line).toBe("Run - 400m");
+  });
+
+  it("summarizes wall ball with load and height", () => {
+    const line = summarizeLineItemBrief({
+      id: "4",
+      sequence_number: 1,
+      reps_prescribed: 80,
+      prescription_unit: "reps",
+      prescribed_percentage: null,
+      prescribed_weight: null,
+      prescribed_score: "20/14 lb · 10/9 ft",
+      status: null,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+      bench_name: "Wall Ball",
+      rx_variants: {
+        male: { reps: 80, load_label: "20 lb", height_label: "10 ft" },
+        female: { reps: 80, load_label: "14 lb", height_label: "9 ft" },
+      },
+    });
+    expect(line).toContain("80 Reps");
+    expect(line).toContain("20/14 lb");
+    expect(line).toContain("10/9 ft");
+  });
+
   it("summarizes gender-specific reps", () => {
     const line = summarizeLineItemBrief({
       id: "2",
