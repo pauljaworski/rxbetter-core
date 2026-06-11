@@ -1,3 +1,4 @@
+import type { PrescribedLevel } from "@/lib/format";
 import type { WorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import type { PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import type { LineItemKind } from "@/lib/programming/line-item-kind";
@@ -135,6 +136,8 @@ export type EditorWod = {
   program_library_ids: string[];
   /** Set when published to athletes. */
   published_at?: string | null;
+  /** Rx+ / Rx / Fx / Scaled / N/A — prescribed tier for this segment. */
+  prescribed_scale?: PrescribedLevel;
   items: EditorLineItem[];
 };
 

@@ -159,7 +159,10 @@ export function StrengthLiftRow({
       rpe: rpe ? Number(rpe) : null,
       isPr: false,
       status,
-      workoutScale: (wod.prescribed_scale as WorkoutScale | null) ?? "rx",
+      workoutScale:
+        wod.prescribed_scale && wod.prescribed_scale !== "na"
+          ? (wod.prescribed_scale as WorkoutScale)
+          : "rx",
       isMetcon: false,
     });
 

@@ -142,7 +142,7 @@ export async function saveWod(
           coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
           source: "gym",
-          prescribed_scale: "rx",
+          prescribed_scale: normalized.prescribed_scale ?? "rx",
           created_by_contact_id: null,
         })
         .select("id")
@@ -169,6 +169,7 @@ export async function saveWod(
           coaches_notes: normalized.coaches_notes,
           display_order: displayOrder,
           program_library_id: lib,
+          prescribed_scale: normalized.prescribed_scale ?? "rx",
         })
         .eq("id", progId);
       if (error) throw new Error(error.message);

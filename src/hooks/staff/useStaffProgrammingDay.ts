@@ -48,6 +48,7 @@ function mapWodsFromRows(
     segment_group_id: string | null;
     group_score_anchor: boolean;
     programming_subtype: string | null;
+    prescribed_scale: string | null;
   }>,
   items: Array<{
     id: string;
@@ -93,6 +94,7 @@ function mapWodsFromRows(
       program_library_id: libIds[0] ?? p.program_library_id,
       program_library_ids: libIds,
       published_at: p.published_at,
+      prescribed_scale: (p.prescribed_scale as EditorWod["prescribed_scale"]) ?? "rx",
       items: items
         .filter((i) => i.programming_id === p.id)
         .map((i, idx) => {
@@ -155,7 +157,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
+        "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at, prescribed_scale",
       )
       .eq("gym_id", activeGymId)
       .eq("wod_date", dateKey)
@@ -206,7 +208,7 @@ export async function fetchProgrammingDayForCopy(
   const { data: progs, error } = await supabase
     .from("programming")
     .select(
-      "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at",
+      "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at, prescribed_scale",
     )
     .eq("gym_id", activeGymId)
     .eq("wod_date", srcKey)

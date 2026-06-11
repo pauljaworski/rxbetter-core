@@ -1481,7 +1481,7 @@ export type Database = {
       user_gym_ids: { Args: never; Returns: string[] }
     }
     Enums: {
-      workout_scale: "rx_plus" | "rx" | "fx" | "scaled"
+      workout_scale: "rx_plus" | "rx" | "fx" | "scaled" | "na"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1609,7 +1609,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      workout_scale: ["rx_plus", "rx", "fx", "scaled"],
+      workout_scale: ["rx_plus", "rx", "fx", "scaled", "na"],
     },
   },
 } as const

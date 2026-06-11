@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import {
   defaultSchemeForKind,
-  parseWorkoutScheme,
+  resolveEditorWorkoutScheme,
   SCORE_METRIC_OPTIONS,
   schemeSummaryLabel,
   WORKOUT_INTENT_OPTIONS,
@@ -25,7 +25,7 @@ type Props = {
 };
 
 function effectiveScheme(wod: EditorWod): WorkoutScheme | null {
-  return parseWorkoutScheme(wod.workout_scheme);
+  return resolveEditorWorkoutScheme(wod);
 }
 
 function withMetric<T extends WorkoutScheme>(

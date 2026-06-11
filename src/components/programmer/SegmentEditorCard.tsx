@@ -36,8 +36,10 @@ import {
   resolveProgrammingUiKey,
   isMetconSegment,
 } from "@/lib/programming/manual-config";
+import { PRESCRIBED_LEVEL_OPTIONS, type PrescribedLevel } from "@/lib/format";
 import {
   parseWorkoutScheme,
+  resolveEditorWorkoutScheme,
   schemeSummaryLabel,
   type WorkoutScheme,
 } from "@/lib/programming/workout-scheme-schema";
@@ -110,8 +112,23 @@ export function SegmentEditorCard({
     onUpdate(applyWorkoutFormatKind(kind));
   }
 
-  const formatSelectValue =
-    parseWorkoutScheme(wod.workout_scheme)?.kind ?? wod.metcon_format ?? "";
+  const editorScheme = resolveEditorWorkoutScheme(wod);
+  const formatSelectValue = editorScheme?.kind ?? wod.metcon_format ?? "";
+
+  function setAmrapMinutes(minutes: number) {
+    const scheme = resolveEditorWorkoutScheme(wod);
+    const timeCapMin = Math.max(1, minutes);
+    if (scheme?.kind === "amrap") {
+      onUpdate({ workout_scheme: { ...scheme, timeCapMin } });
+    } else if (scheme?.kind === "amrap_repeat") {
+      onUpdate({ workout_scheme: { ...scheme, timeCapMin } });
+    } else {
+      onUpdate({
+        metcon_format: "amrap",
+        workout_scheme: { kind: "amrap", timeCapMin, scoreMetric: "rounds_reps" },
+      });
+    }
+  }
 
   function parseBulkMovements() {
     const text = bulkPaste.trim() || (wod.description ?? "").trim();
@@ -203,6 +220,41 @@ export function SegmentEditorCard({
               </SelectContent>
             </Select>
           )}
+          {(editorScheme?.kind === "amrap" || editorScheme?.kind === "amrap_repeat") && (
+            <div className="flex items-center gap-1.5">
+              <Label className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                {editorScheme.kind === "amrap_repeat" ? "AMRAP min" : "Minutes"}
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={editorScheme.kind === "amrap_repeat" ? 60 : 120}
+                className="h-9 w-16 font-mono-num"
+                value={editorScheme.timeCapMin}
+                onChange={(e) => setAmrapMinutes(Number(e.target.value) || 12)}
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <Label className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+              Level
+            </Label>
+            <Select
+              value={wod.prescribed_scale ?? "rx"}
+              onValueChange={(v) => onUpdate({ prescribed_scale: v as PrescribedLevel })}
+            >
+              <SelectTrigger className="h-9 w-[5.5rem]">
+                <SelectValue placeholder="Rx" />
+              </SelectTrigger>
+            <SelectContent>
+              {PRESCRIBED_LEVEL_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+            </Select>
+          </div>
           <Input
             value={wod.name ?? ""}
             onChange={(e) => onUpdate({ name: e.target.value })}

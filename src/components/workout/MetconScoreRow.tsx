@@ -47,9 +47,10 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
   useEffect(() => {
     setScore(existing?.score ?? "");
     setCompleted(existing?.score?.toLowerCase() === "completed" || existing?.score === "Yes");
-    setWorkoutScale(
-      (existing?.workout_scale as WorkoutScale) ?? (wod.prescribed_scale as WorkoutScale) ?? "rx",
-    );
+    const prescribed = wod.prescribed_scale as WorkoutScale | "na" | null;
+    const defaultScale =
+      prescribed && prescribed !== "na" ? (prescribed as WorkoutScale) : "";
+    setWorkoutScale((existing?.workout_scale as WorkoutScale) ?? defaultScale);
   }, [existing?.id, existing?.score, wod.prescribed_scale]);
 
   async function submit() {

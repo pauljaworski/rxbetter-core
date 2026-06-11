@@ -27,6 +27,20 @@ export const WORKOUT_SCALE_OPTIONS = [
 
 export type WorkoutScale = (typeof WORKOUT_SCALE_OPTIONS)[number]["value"];
 
+/** Prescribed segment level (programming.prescribed_scale). */
+export const PRESCRIBED_LEVEL_OPTIONS = [
+  ...WORKOUT_SCALE_OPTIONS,
+  { value: "na", label: "N/A" },
+] as const;
+
+export type PrescribedLevel = (typeof PRESCRIBED_LEVEL_OPTIONS)[number]["value"];
+
+export function prescribedLevelLabel(scale: string | null | undefined): string | null {
+  if (!scale) return null;
+  const hit = PRESCRIBED_LEVEL_OPTIONS.find((o) => o.value === scale);
+  return hit?.label ?? null;
+}
+
 export function seededHash(input: string): number {
   let h = 2166136261;
   for (let i = 0; i < input.length; i++) {

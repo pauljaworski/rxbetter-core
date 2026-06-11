@@ -28,6 +28,7 @@ import {
   getTypeByUiKey,
   programmingSubtypeForUiKey,
 } from "@/lib/programming/manual-config";
+import { defaultSchemeForMetconFormat } from "@/lib/programming/workout-scheme-schema";
 
 type Mode = "choose" | "new" | "copy";
 
@@ -108,18 +109,21 @@ export function SegmentAddDialog({
     if (!t) return;
     const segmentName = name.trim() || t.label;
     const ids = libIds.length ? libIds : defaultLib ? [defaultLib] : [];
+    const format = t.requiresFormat ? metconFormat : null;
     onAdd({
       _new: true,
       name: segmentName,
       description: "",
       programming_segment: t.dbSegment,
-      metcon_format: t.requiresFormat ? metconFormat : null,
+      metcon_format: format,
+      workout_scheme: format ? defaultSchemeForMetconFormat(format) : null,
       programming_subtype: programmingSubtypeForUiKey(uiKey),
       athlete_notes: null,
       coaches_notes: null,
       display_order: displayOrder,
       program_library_id: ids[0] ?? null,
       program_library_ids: ids,
+      prescribed_scale: "rx",
       items: [],
     });
     onOpenChange(false);

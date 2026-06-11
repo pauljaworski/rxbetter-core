@@ -238,6 +238,7 @@ export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
     programming_segment: segment,
     metcon_format: format,
     workout_scheme,
+    prescribed_scale: wod.prescribed_scale ?? "rx",
     programming_subtype:
       wod.programming_subtype ??
       (normalizeProgrammingSegment(wod.programming_segment) === "weightlifting"
