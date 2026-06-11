@@ -56,54 +56,9 @@ export function LineItemFields({ mode, item, onChange }: Props) {
   const genderRx = hasRxVariants(parseRxVariants(item.rx_variants));
 
   if (mode === "tracking_only") {
-    const unit = item.prescription_unit ?? "reps";
-    const amountLabel =
-      unit === "meters"
-        ? "meters"
-        : unit === "calories"
-          ? "calories"
-          : unit === "feet"
-            ? "feet"
-            : "reps";
     return (
       <div className="space-y-2 pl-8">
-        {!genderRx && (
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            <div className="space-y-1">
-              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Unit</Label>
-              <Select
-                value={unit}
-                onValueChange={(v) => onChange({ prescription_unit: v as PrescriptionUnit })}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRESCRIPTION_UNITS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <NumInput
-              label={amountLabel}
-              value={item.reps_prescribed}
-              onChange={(v) => onChange({ reps_prescribed: v })}
-            />
-            <div className="space-y-1">
-              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Rx load</Label>
-              <Input
-                value={item.prescribed_score ?? ""}
-                onChange={(e) => onChange({ prescribed_score: e.target.value || null })}
-                placeholder="e.g. 30 lb"
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
-        )}
-        <GenderRxFields item={item} mode="tracking_only" onChange={onChange} />
+        <GenderRxFields item={item} mode="tracking_only" onChange={onChange} alwaysSplit />
       </div>
     );
   }

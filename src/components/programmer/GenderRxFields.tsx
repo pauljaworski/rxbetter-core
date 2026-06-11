@@ -6,6 +6,7 @@ import {
   emptyRxVariants,
   hasRxVariants,
   parseRxVariants,
+  syncLegacyFieldsFromVariants,
   type RxVariant,
   type RxVariants,
 } from "@/lib/programming/rx-variants-schema";
@@ -40,6 +41,8 @@ type Props = {
   item: EditorLineItem;
   mode: "tracking_only" | "strength";
   onChange: (patch: Partial<EditorLineItem>) => void;
+  /** Metcon: always show Male / Female columns (no opt-in checkbox). */
+  alwaysSplit?: boolean;
 };
 
 function seedVariant(item: EditorLineItem): RxVariant {
@@ -54,6 +57,13 @@ function seedVariant(item: EditorLineItem): RxVariant {
   };
 }
 
+/** Editor display: persisted variants or legacy columns seeded into Male. */
+function displayVariants(item: EditorLineItem): RxVariants {
+  const parsed = parseRxVariants(item.rx_variants);
+  if (hasRxVariants(parsed)) return parsed;
+  return { male: seedVariant(item), female: {} };
+}
+
 function updateVariant(
   variants: RxVariants,
   gender: "male" | "female",
@@ -66,9 +76,26 @@ function updateVariant(
   };
 }
 
-export function GenderRxFields({ item, mode, onChange }: Props) {
-  const variants = parseRxVariants(item.rx_variants);
-  const enabled = hasRxVariants(variants);
+function commitVariants(
+  item: EditorLineItem,
+  variants: RxVariants,
+  onChange: (patch: Partial<EditorLineItem>) => void,
+) {
+  const merged = { ...item, rx_variants: variants };
+  const legacy = syncLegacyFieldsFromVariants(merged);
+  onChange({
+    rx_variants: variants,
+    reps_prescribed: legacy.reps_prescribed,
+    prescription_unit: legacy.prescription_unit as PrescriptionUnit | null | undefined,
+    prescribed_weight: legacy.prescribed_weight,
+    prescribed_score: legacy.prescribed_score,
+  });
+}
+
+export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Props) {
+  const persisted = parseRxVariants(item.rx_variants);
+  const enabled = alwaysSplit || hasRxVariants(persisted);
+  const variants = displayVariants(item);
   const unit =
     variants.male?.prescription_unit ??
     variants.female?.prescription_unit ??
@@ -82,27 +109,35 @@ export function GenderRxFields({ item, mode, onChange }: Props) {
       return;
     }
     const seed = seedVariant(item);
-    onChange({
-      rx_variants: { male: { ...seed }, female: { ...seed } },
-    });
+    commitVariants(item, { male: { ...seed }, female: { ...seed } }, onChange);
   }
 
   function setUnit(next: PrescriptionUnit) {
-    onChange({
-      prescription_unit: next,
-      rx_variants: {
-        male: { ...variants.male, prescription_unit: next },
-        female: { ...variants.female, prescription_unit: next },
-      },
-    });
+    const nextVariants: RxVariants = {
+      male: { ...variants.male, prescription_unit: next },
+      female: { ...variants.female, prescription_unit: next },
+    };
+    commitVariants(item, nextVariants, onChange);
+  }
+
+  function patchVariant(gender: "male" | "female", patch: Partial<RxVariant>) {
+    commitVariants(item, updateVariant(variants, gender, patch), onChange);
   }
 
   return (
     <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-2">
-      <label className="flex cursor-pointer items-center gap-2 text-xs">
-        <Checkbox checked={enabled} onCheckedChange={(c) => toggleEnabled(c === true)} />
-        <span className="font-medium">Gender-specific Rx (M / F)</span>
-      </label>
+      {!alwaysSplit && (
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <Checkbox checked={enabled} onCheckedChange={(c) => toggleEnabled(c === true)} />
+          <span className="font-medium">Gender-specific Rx (M / F)</span>
+        </label>
+      )}
+
+      {alwaysSplit && (
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Rx by gender
+        </p>
+      )}
 
       {enabled && (
         <div className="space-y-2">
@@ -136,21 +171,13 @@ export function GenderRxFields({ item, mode, onChange }: Props) {
                   <NumInput
                     label={mode === "tracking_only" ? "Amount" : "Reps"}
                     value={v.reps ?? null}
-                    onChange={(reps) =>
-                      onChange({
-                        rx_variants: updateVariant(variants, gender, { reps }),
-                      })
-                    }
+                    onChange={(reps) => patchVariant(gender, { reps })}
                   />
                   {mode === "strength" ? (
                     <NumInput
                       label="Weight (lb)"
                       value={v.weight_lb ?? null}
-                      onChange={(weight_lb) =>
-                        onChange({
-                          rx_variants: updateVariant(variants, gender, { weight_lb }),
-                        })
-                      }
+                      onChange={(weight_lb) => patchVariant(gender, { weight_lb })}
                     />
                   ) : (
                     <div className="space-y-1">
@@ -160,11 +187,7 @@ export function GenderRxFields({ item, mode, onChange }: Props) {
                       <Input
                         value={v.load_label ?? ""}
                         onChange={(e) =>
-                          onChange({
-                            rx_variants: updateVariant(variants, gender, {
-                              load_label: e.target.value || null,
-                            }),
-                          })
+                          patchVariant(gender, { load_label: e.target.value || null })
                         }
                         placeholder="e.g. 30 lb"
                         className="h-8 text-xs"
@@ -176,7 +199,9 @@ export function GenderRxFields({ item, mode, onChange }: Props) {
             })}
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Both tiers are Rx. Athletes see their profile gender; otherwise 15/12-style notation.
+            {alwaysSplit
+              ? "Set different amounts per gender (e.g. 15 / 12 cal Ski). Leave Female blank if same as Male."
+              : "Both tiers are Rx. Athletes see their profile gender; otherwise 15/12-style notation."}
           </p>
         </div>
       )}
