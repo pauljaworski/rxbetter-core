@@ -13,6 +13,7 @@ import {
   isLineItemKind,
   type LineItemKind,
 } from "@/lib/programming/line-item-kind";
+import { expandComplexSetLineItems } from "@/lib/programming/complex-set-prescription";
 import { parseRxVariants } from "@/lib/programming/rx-variants-schema";
 
 async function loadLibraryAssignments(
@@ -97,45 +98,45 @@ function mapWodsFromRows(
       program_library_ids: libIds,
       published_at: p.published_at,
       prescribed_scale: (p.prescribed_scale as EditorWod["prescribed_scale"]) ?? "rx",
-      items: items
-        .filter((i) => i.programming_id === p.id)
-        .map((i, idx) => {
-          const rawKind = i.line_item_kind ?? "";
-          const kind: LineItemKind = isLineItemKind(rawKind)
-            ? rawKind
-            : defaultLineItemKindForSegment(p.programming_segment ?? "weightlifting");
-          const components = parseMovementComponents(i.movement_components);
-          const complexTitle =
-            kind === "complex_set" && components.length
-              ? formatComplexMovementTitle(components)
-              : null;
-          return {
-            ...(markNew ? { _new: true as const } : { id: i.id }),
-            sequence_number: i.sequence_number ?? idx + 1,
-            reps_prescribed: i.reps_prescribed,
-            prescription_unit:
-              kind === "complex_set"
-                ? "sets"
-                : ((i.prescription_unit as EditorLineItem["prescription_unit"]) ?? "reps"),
-            prescribed_weight: i.prescribed_weight,
-            prescribed_percentage: i.prescribed_percentage,
-            prescribed_score: i.prescribed_score,
-            benchmark_type_id: i.benchmark_type_id,
-            benchmark_definition_id: i.benchmark_definition_id,
-            percent_rep_max: i.benchmark_definition_id
-              ? (defRepById.get(i.benchmark_definition_id) ?? 1)
-              : 1,
-            movement_label: i.movement_label,
-            line_item_kind: kind,
-            movement_components: components,
-            bench_name: complexTitle
-              ? complexTitle
-              : i.benchmark_type_id
-                ? typeMap.get(i.benchmark_type_id)
-                : (i.movement_label ?? undefined),
-            rx_variants: parseRxVariants(i.rx_variants),
-          };
-        }),
+      items: expandComplexSetLineItems(
+        items
+          .filter((i) => i.programming_id === p.id)
+          .map((i, idx) => {
+            const rawKind = i.line_item_kind ?? "";
+            const kind: LineItemKind = isLineItemKind(rawKind)
+              ? rawKind
+              : defaultLineItemKindForSegment(p.programming_segment ?? "weightlifting");
+            const components = parseMovementComponents(i.movement_components);
+            const complexTitle =
+              kind === "complex_set" && components.length
+                ? formatComplexMovementTitle(components)
+                : null;
+            return {
+              ...(markNew ? { _new: true as const } : { id: i.id }),
+              sequence_number: i.sequence_number ?? idx + 1,
+              reps_prescribed: i.reps_prescribed,
+              prescription_unit:
+                (i.prescription_unit as EditorLineItem["prescription_unit"]) ?? null,
+              prescribed_weight: i.prescribed_weight,
+              prescribed_percentage: i.prescribed_percentage,
+              prescribed_score: i.prescribed_score,
+              benchmark_type_id: i.benchmark_type_id,
+              benchmark_definition_id: i.benchmark_definition_id,
+              percent_rep_max: i.benchmark_definition_id
+                ? (defRepById.get(i.benchmark_definition_id) ?? 1)
+                : 1,
+              movement_label: i.movement_label,
+              line_item_kind: kind,
+              movement_components: components,
+              bench_name: complexTitle
+                ? complexTitle
+                : i.benchmark_type_id
+                  ? typeMap.get(i.benchmark_type_id)
+                  : (i.movement_label ?? undefined),
+              rx_variants: parseRxVariants(i.rx_variants),
+            };
+          }),
+      ),
     };
   });
 }

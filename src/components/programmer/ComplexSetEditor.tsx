@@ -75,11 +75,11 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
     const prId =
       prTypeId ?? componentsCopy.find((c) => c.benchmark_type_id)?.benchmark_type_id ?? null;
     const setCount = Math.max(1, sets);
-    const item: EditorLineItem = {
+    const base: EditorLineItem = {
       _new: true,
       sequence_number: 0,
-      reps_prescribed: setCount,
-      prescription_unit: "sets",
+      reps_prescribed: null,
+      prescription_unit: null,
       prescribed_weight: null,
       prescribed_percentage: pct != null ? pct / 100 : null,
       prescribed_score: null,
@@ -91,7 +91,7 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
       line_item_kind: "complex_set",
       movement_components: componentsCopy,
     };
-    onSave([item]);
+    onSave(Array.from({ length: setCount }, () => ({ ...base })));
     onOpenChange(false);
   }
 
@@ -182,6 +182,9 @@ export function ComplexSetEditor({ open, onOpenChange, catalog, initial, onSave 
                 value={sets}
                 onChange={(e) => setSets(Math.max(1, Number(e.target.value) || 1))}
               />
+              <p className="text-[10px] text-muted-foreground">
+                Creates one line item per set (e.g. 5 sets → 5 rows).
+              </p>
             </div>
             <div className="space-y-1">
               <Label>% (optional)</Label>

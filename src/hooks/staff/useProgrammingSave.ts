@@ -71,7 +71,7 @@ function resolveLineItemForSave(
   return {
     reps_prescribed: legacy.reps_prescribed,
     prescription_unit:
-      kind === "complex_set" ? "sets" : (legacy.prescription_unit ?? it.prescription_unit ?? null),
+      kind === "complex_set" ? null : (legacy.prescription_unit ?? it.prescription_unit ?? null),
     prescribed_weight: legacy.prescribed_weight,
     prescribed_percentage: it.prescribed_percentage,
     prescribed_score: legacy.prescribed_score,

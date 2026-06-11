@@ -141,13 +141,6 @@ export function LineItemFields({ mode, item, onChange }: Props) {
       )}
       {complexSet && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <NumInput
-            label="Sets"
-            value={item.reps_prescribed}
-            onChange={(v) =>
-              onChange({ reps_prescribed: v, prescription_unit: "sets" })
-            }
-          />
           <div className="space-y-1">
             <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
               % basis
@@ -174,12 +167,17 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             inputMode="numeric"
             onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
           />
+          <NumInput
+            label="weight (lb)"
+            value={item.prescribed_weight}
+            onChange={(v) => onChange({ prescribed_weight: v })}
+          />
         </div>
       )}
       {!complexSet && <GenderRxFields item={item} mode="strength" onChange={onChange} />}
       <p className="text-[10px] text-muted-foreground">
         {complexSet
-          ? "Reps per movement come from the complex definition above (e.g. 2 Snatch Pull + 1 Power Snatch)."
+          ? "One line item = one set. Reps per movement are in the complex title (e.g. 1 Snatch + 1 Hang Snatch)."
           : genderRx
             ? "Percent applies to both genders; set M/F fixed weights when not using percent."
             : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}

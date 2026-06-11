@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { summarizeLineItemBrief, summarizeSegmentPrescription } from "./segment-prescription-summary";
 
 describe("segment-prescription-summary", () => {
-  it("summarizes complex set with sets and percent", () => {
+  it("summarizes complex set with movement reps and percent", () => {
     const line = summarizeLineItemBrief({
       id: "1",
       sequence_number: 1,
-      reps_prescribed: 5,
+      reps_prescribed: null,
       prescribed_percentage: 0.7,
       prescribed_weight: null,
       prescribed_score: null,
@@ -19,7 +19,7 @@ describe("segment-prescription-summary", () => {
         { reps: 1, label: "Power Clean", benchmark_type_id: null },
       ],
     });
-    expect(line).toContain("5 sets");
+    expect(line).not.toContain("5 sets");
     expect(line).toContain("Clean Pull");
     expect(line).toContain("70%");
   });

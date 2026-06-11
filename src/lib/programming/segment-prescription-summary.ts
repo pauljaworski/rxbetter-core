@@ -39,7 +39,6 @@ function percentSuffix(item: LogLineItem): string | null {
 /** One-line summary for a prescription line item (strength / complex / accessory). */
 export function summarizeLineItemBrief(item: LogLineItem): string {
   const name = loadLabel(item);
-  const kind = item.line_item_kind ?? "strength_set";
   const parts: string[] = [name];
 
   const variants = parseRxVariants(item.rx_variants);
@@ -48,17 +47,13 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
     : null;
 
   if (dualRx) {
-    if (kind === "complex_set") parts.unshift(dualRx);
-    else parts.push(dualRx);
+    parts.push(dualRx);
   } else if (item.reps_prescribed != null) {
     const amount = formatPrescriptionAmount(
       item.reps_prescribed,
       prescriptionUnitForLineItem(item),
     );
-    if (amount) {
-      if (kind === "complex_set") parts.unshift(amount);
-      else parts.push(amount);
-    }
+    if (amount) parts.push(amount);
   }
 
   const pct = percentSuffix(item);
@@ -66,9 +61,6 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
   else if (!dualRx && item.prescribed_weight != null) parts.push(`${item.prescribed_weight} lb`);
   else if (!dualRx && item.prescribed_score?.trim()) parts.push(item.prescribed_score.trim());
 
-  if (kind === "complex_set") {
-    return parts.join(" · ");
-  }
   return parts.length > 1 ? parts.join(" · ") : name;
 }
 
