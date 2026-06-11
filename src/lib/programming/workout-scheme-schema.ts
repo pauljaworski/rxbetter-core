@@ -22,6 +22,8 @@ const schemeBase = z.object({
 export const rftSchemeSchema = schemeBase.extend({
   kind: z.literal("rft"),
   rounds: z.number().int().min(1).max(99),
+  /** Rest after each round except the last (seconds). Enables per-round split logging. */
+  restBetweenRoundsSec: z.number().int().min(0).max(600).optional(),
   scoreMetric: z.literal("time").default("time"),
 });
 
@@ -212,8 +214,17 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
         ? " · Completion"
         : "";
   switch (scheme.kind) {
-    case "rft":
-      return `${scheme.rounds} RFT${intent}`;
+    case "rft": {
+      const restSec = scheme.restBetweenRoundsSec ?? 0;
+      let restLabel = "";
+      if (restSec > 0) {
+        const m = Math.floor(restSec / 60);
+        const s = restSec % 60;
+        const formatted = s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m}:00`;
+        restLabel = ` · ${formatted} rest between rounds`;
+      }
+      return `${scheme.rounds} RFT${restLabel}${intent}`;
+    }
     case "for_time":
       return `For time${intent}`;
     case "amrap":

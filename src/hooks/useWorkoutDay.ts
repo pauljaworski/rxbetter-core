@@ -20,7 +20,7 @@ export type WorkoutLineItem = LogLineItem & { programming_id: string; contact_id
 
 export type SegmentPerformance = Pick<
   Tables<"athlete_performance">,
-  "id" | "score" | "workout_scale" | "result_value"
+  "id" | "score" | "workout_scale" | "result_value" | "score_meta"
 >;
 
 export type WorkoutDayProgramming = {
@@ -159,7 +159,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
       let perfQuery = supabase
         .from("athlete_performance")
         .select(
-          "id, programming_id, programming_line_item_id, segment_group_id, score, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
+          "id, programming_id, programming_line_item_id, segment_group_id, score, score_meta, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
         )
         .eq("contact_id", contactId);
 
@@ -182,6 +182,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
           perfByGroup.set(perf.segment_group_id, {
             id: perf.id,
             score: perf.score,
+            score_meta: perf.score_meta,
             workout_scale: perf.workout_scale,
             result_value: perf.result_value,
           });
@@ -189,6 +190,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
           perfBySegment.set(perf.programming_id, {
             id: perf.id,
             score: perf.score,
+            score_meta: perf.score_meta,
             workout_scale: perf.workout_scale,
             result_value: perf.result_value,
           });

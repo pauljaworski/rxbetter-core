@@ -146,7 +146,7 @@ export function useProgrammingWeek(
         let perfQuery = supabase
           .from("athlete_performance")
           .select(
-            "id, programming_id, programming_line_item_id, segment_group_id, score, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
+            "id, programming_id, programming_line_item_id, segment_group_id, score, score_meta, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
           )
           .eq("contact_id", contactId);
         if (progIds.length && groupIds.length) {
@@ -176,6 +176,7 @@ export function useProgrammingWeek(
             perfByGroup.set(p.segment_group_id, {
               id: p.id,
               score: p.score,
+              score_meta: p.score_meta,
               workout_scale: p.workout_scale,
               result_value: p.result_value,
             });
@@ -183,6 +184,7 @@ export function useProgrammingWeek(
             perfBySegment.set(p.programming_id, {
               id: p.id,
               score: p.score,
+              score_meta: p.score_meta,
               workout_scale: p.workout_scale,
               result_value: p.result_value,
             });

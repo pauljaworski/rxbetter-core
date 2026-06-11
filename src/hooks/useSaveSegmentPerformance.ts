@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
 import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
+import type { Json } from "@/types/database";
 
 export type SaveSegmentPerformanceInput = {
   contactId: string;
@@ -11,6 +12,7 @@ export type SaveSegmentPerformanceInput = {
   existingId?: string;
   score: string;
   resultValue: number | null;
+  scoreMeta?: Json | null;
   workoutScale: WorkoutScale | null;
   programmingSegment: string | null;
 };
@@ -25,6 +27,7 @@ export function useSaveSegmentPerformance() {
     const payload = {
       score: input.score,
       result_value: input.resultValue,
+      score_meta: input.scoreMeta ?? {},
       performance_date: input.wodDate,
       workout_scale: input.workoutScale,
       status: "completed" as const,

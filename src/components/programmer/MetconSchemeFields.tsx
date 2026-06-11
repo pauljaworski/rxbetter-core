@@ -115,30 +115,65 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
       </div>
 
       {scheme.kind === "rft" && (
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Rounds
-          </Label>
-          <Input
-            type="number"
-            min={1}
-            max={99}
-            className="h-8 w-24 font-mono-num"
-            value={scheme.rounds}
-            onChange={(e) =>
-              setScheme(
-                withMetric(
-                  {
-                    kind: "rft",
-                    rounds: Math.max(1, Number(e.target.value) || 1),
-                    scoreMetric: "time",
-                  },
-                  scoreMetric,
-                  workoutIntent,
-                ),
-              )
-            }
-          />
+        <div className="flex flex-wrap gap-3">
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Rounds
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              max={99}
+              className="h-8 w-24 font-mono-num"
+              value={scheme.rounds}
+              onChange={(e) =>
+                setScheme(
+                  withMetric(
+                    {
+                      kind: "rft",
+                      rounds: Math.max(1, Number(e.target.value) || 1),
+                      restBetweenRoundsSec: scheme.restBetweenRoundsSec,
+                      scoreMetric: "time",
+                    },
+                    scoreMetric,
+                    workoutIntent,
+                  ),
+                )
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Rest between rounds (sec)
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              max={600}
+              className="h-8 w-24 font-mono-num"
+              value={scheme.restBetweenRoundsSec ?? ""}
+              placeholder="0"
+              onChange={(e) => {
+                const v = e.target.value;
+                setScheme(
+                  withMetric(
+                    {
+                      kind: "rft",
+                      rounds: scheme.rounds,
+                      restBetweenRoundsSec:
+                        v === "" ? undefined : Math.max(0, Number(v) || 0),
+                      scoreMetric: "time",
+                    },
+                    scoreMetric,
+                    workoutIntent,
+                  ),
+                );
+              }}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Athletes log working time per round; rest is excluded from the score.
+            </p>
+          </div>
         </div>
       )}
 
