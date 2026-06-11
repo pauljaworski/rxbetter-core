@@ -9,11 +9,13 @@ import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
+import type { RxGender } from "@/lib/programming/rx-variants-schema";
 
 type Props = {
   wod: LogWodContext & { workout_scheme?: unknown };
   items: LogLineItem[];
   contactId: string | null;
+  rxGender?: RxGender | null;
   perfByItem: Map<string, ExistingPerformance>;
   segmentPerf?: SegmentPerformance | null;
   /** When true, segment/group score UI is rendered by a parent (multi-part block). */
@@ -25,6 +27,7 @@ export function WorkoutSegmentItems({
   wod,
   items,
   contactId,
+  rxGender,
   perfByItem,
   segmentPerf,
   hideSegmentScore,
@@ -37,7 +40,7 @@ export function WorkoutSegmentItems({
   if (isMetconSegment(wod.programming_segment ?? "")) {
     return (
       <>
-        <MetconMovementList items={items} />
+        <MetconMovementList items={items} rxGender={rxGender} />
         {!hideSegmentScore && (
           <MetconScoreRow
             wod={wod}
@@ -63,6 +66,7 @@ export function WorkoutSegmentItems({
             item={it}
             wod={wod}
             contactId={contactId}
+            rxGender={rxGender}
             existing={perfByItem.get(it.id) ?? null}
             onLogged={onLogged}
           />

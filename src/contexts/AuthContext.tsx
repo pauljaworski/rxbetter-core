@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, ReactNode } fr
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeMembershipRole, resolveAvailablePersonas } from "@/lib/personas";
+import type { RxGender } from "@/lib/programming/rx-variants-schema";
 
 export type Persona = "athlete" | "coach" | "programmer" | "admin";
 export const PERSONA_ORDER: Persona[] = ["athlete", "coach", "programmer", "admin"];
@@ -19,6 +20,8 @@ type AuthState = {
   user: User | null;
   contactId: string | null;
   displayName: string | null;
+  rxGender: RxGender | null;
+  setRxGender: (gender: RxGender | null) => void;
   mode: IdentityMode;
   activeGymId: string | null;
   memberships: GymMembership[];
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [contactId, setContactId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [rxGender, setRxGender] = useState<RxGender | null>(null);
   const [activeGymId, setActiveGymId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<GymMembership[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!u) {
       setContactId(null);
       setDisplayName(null);
+      setRxGender(null);
       setActiveGymId(null);
       setMemberships([]);
       setIdentityReady(false);
@@ -58,13 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // contact for current user
     const { data: c } = await supabase
       .from("contact")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, rx_gender")
       .eq("user_id", u.id)
       .maybeSingle();
     const cid = c?.id ?? null;
     setContactId(cid);
     setDisplayName(
       [c?.first_name, c?.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || null,
+    );
+    setRxGender(
+      c?.rx_gender === "male" || c?.rx_gender === "female" ? c.rx_gender : null,
     );
 
     // profile (last_active_gym_id)
@@ -175,6 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       contactId,
       displayName,
+      rxGender,
+      setRxGender,
       mode,
       activeGymId,
       memberships,
@@ -192,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       contactId,
       displayName,
+      rxGender,
       mode,
       activeGymId,
       memberships,

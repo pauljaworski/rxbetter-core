@@ -24,6 +24,10 @@ import {
   parseMovementComponents,
 } from "@/lib/programming/movement-components-schema";
 import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
+import {
+  resolvePrescriptionForAthlete,
+  type RxGender,
+} from "@/lib/programming/rx-variants-schema";
 import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
 
 function weightToInputValue(lb: number): string {
@@ -35,12 +39,14 @@ export function StrengthLiftRow({
   item,
   wod,
   contactId,
+  rxGender,
   existing,
   onLogged,
 }: {
   item: LogLineItem;
   wod: LogWodContext;
   contactId: string | null;
+  rxGender?: RxGender | null;
   existing: ExistingPerformance | null;
   onLogged?: () => void;
 }) {
@@ -54,6 +60,10 @@ export function StrengthLiftRow({
   const { save, submitting } = useSavePerformance();
 
   const displayPerf = localPerf ?? existing;
+  const resolvedRx = useMemo(
+    () => resolvePrescriptionForAthlete(item, rxGender ?? null),
+    [item, rxGender],
+  );
 
   const prescribedFromPr = useMemo(
     () => computeWeightFromPr(prWeight, item.prescribed_percentage),
@@ -62,9 +72,13 @@ export function StrengthLiftRow({
 
   const prescribedWeight = useMemo(() => {
     const raw =
-      item.prescribed_weight != null ? item.prescribed_weight : prescribedFromPr;
+      resolvedRx.prescribed_weight != null
+        ? resolvedRx.prescribed_weight
+        : item.prescribed_weight != null
+          ? item.prescribed_weight
+          : prescribedFromPr;
     return roundWeightLb(raw);
-  }, [item.prescribed_weight, prescribedFromPr]);
+  }, [resolvedRx.prescribed_weight, item.prescribed_weight, prescribedFromPr]);
 
   const displayPrWeight = roundWeightLb(prWeight);
 
@@ -227,8 +241,9 @@ export function StrengthLiftRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <AthletePrescriptionHeader
           movementName={movementName}
-          repsPrescribed={item.reps_prescribed}
-          prescriptionUnit={prescriptionUnitForLineItem(item)}
+          repsPrescribed={resolvedRx.reps_prescribed ?? item.reps_prescribed}
+          prescriptionUnit={resolvedRx.prescription_unit ?? prescriptionUnitForLineItem(item)}
+          dualAmountLabel={resolvedRx.dual_amount_label}
           prescribedPercentage={item.prescribed_percentage}
           repMaxCount={repCount}
           prescribedWeight={item.prescribed_weight}

@@ -3,6 +3,7 @@ import type { WorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import type { PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import type { LineItemKind } from "@/lib/programming/line-item-kind";
 import type { MovementComponent } from "@/lib/programming/movement-components-schema";
+import type { RxVariants } from "@/lib/programming/rx-variants-schema";
 
 export type ProgramLibrary = { id: string; name: string };
 
@@ -113,6 +114,8 @@ export type EditorLineItem = {
   movement_label?: string | null;
   line_item_kind?: LineItemKind;
   movement_components?: MovementComponent[];
+  /** Male / female Rx amounts and loads (both tiers are Rx). */
+  rx_variants?: RxVariants;
 };
 
 export type EditorWod = {

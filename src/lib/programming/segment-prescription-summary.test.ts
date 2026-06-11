@@ -24,6 +24,28 @@ describe("segment-prescription-summary", () => {
     expect(line).toContain("70%");
   });
 
+  it("summarizes gender-specific reps", () => {
+    const line = summarizeLineItemBrief({
+      id: "2",
+      sequence_number: 1,
+      reps_prescribed: 15,
+      prescription_unit: "calories",
+      prescribed_percentage: null,
+      prescribed_weight: null,
+      prescribed_score: "15/12 cal",
+      status: null,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+      bench_name: "Ski Erg",
+      rx_variants: {
+        male: { reps: 15, prescription_unit: "calories" },
+        female: { reps: 12, prescription_unit: "calories" },
+      },
+    });
+    expect(line).toContain("15/12 cal");
+    expect(line).toContain("Ski Erg");
+  });
+
   it("summarizes metcon with scheme footer", () => {
     const { lines, footer } = summarizeSegmentPrescription(
       {

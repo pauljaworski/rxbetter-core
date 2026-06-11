@@ -8,6 +8,8 @@ export type PrescriptionDisplayInput = {
   movementName: string;
   repsPrescribed?: number | null;
   prescriptionUnit?: PrescriptionUnit | string | null;
+  /** e.g. "15/12 cal" when M/F reps differ and gender unknown */
+  dualAmountLabel?: string | null;
   prescribedPercentage?: number | null;
   repMaxCount?: number | null;
   prescribedWeight?: number | null;
@@ -18,7 +20,9 @@ export type PrescriptionDisplayInput = {
 export function formatPrescriptionTitle(input: PrescriptionDisplayInput): string {
   const parts: string[] = [input.movementName.trim() || "Movement"];
 
-  if (input.repsPrescribed != null) {
+  if (input.dualAmountLabel?.trim()) {
+    parts.push(input.dualAmountLabel.trim());
+  } else if (input.repsPrescribed != null) {
     const amount = formatPrescriptionAmount(
       input.repsPrescribed,
       input.prescriptionUnit ?? "reps",

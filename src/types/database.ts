@@ -474,6 +474,7 @@ export type Database = {
           id: string
           last_name: string | null
           phone: string | null
+          rx_gender: string | null
           updated_at: string
           user_id: string | null
         }
@@ -484,6 +485,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          rx_gender?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -494,6 +496,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          rx_gender?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1269,6 +1272,7 @@ export type Database = {
           prescription_unit: string | null
           programming_id: string
           reps_prescribed: number | null
+          rx_variants: Json
           sequence_number: number | null
           status: string | null
           target_weight: number | null
@@ -1293,6 +1297,7 @@ export type Database = {
           prescription_unit?: string | null
           programming_id: string
           reps_prescribed?: number | null
+          rx_variants?: Json
           sequence_number?: number | null
           status?: string | null
           target_weight?: number | null
@@ -1317,6 +1322,7 @@ export type Database = {
           prescription_unit?: string | null
           programming_id?: string
           reps_prescribed?: number | null
+          rx_variants?: Json
           sequence_number?: number | null
           status?: string | null
           target_weight?: number | null

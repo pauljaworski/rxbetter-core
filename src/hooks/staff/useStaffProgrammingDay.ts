@@ -13,6 +13,7 @@ import {
   isLineItemKind,
   type LineItemKind,
 } from "@/lib/programming/line-item-kind";
+import { parseRxVariants } from "@/lib/programming/rx-variants-schema";
 
 async function loadLibraryAssignments(
   programmingIds: string[],
@@ -64,6 +65,7 @@ function mapWodsFromRows(
     movement_label: string | null;
     line_item_kind: string | null;
     movement_components: unknown;
+    rx_variants: unknown;
   }>,
   typeMap: Map<string, string>,
   assignmentMap: Map<string, string[]>,
@@ -131,6 +133,7 @@ function mapWodsFromRows(
               : i.benchmark_type_id
                 ? typeMap.get(i.benchmark_type_id)
                 : (i.movement_label ?? undefined),
+            rx_variants: parseRxVariants(i.rx_variants),
           };
         }),
     };
@@ -173,7 +176,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components",
+        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
@@ -223,7 +226,7 @@ export async function fetchProgrammingDayForCopy(
   const { data: items } = await supabase
     .from("programming_line_item")
     .select(
-      "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components",
+      "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants",
     )
     .in("programming_id", srcIds)
     .is("contact_id", null)

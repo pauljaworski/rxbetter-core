@@ -11,6 +11,11 @@ import {
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
 import { schemeSummaryLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import {
+  formatRxVariantsCompact,
+  hasRxVariants,
+  parseRxVariants,
+} from "@/lib/programming/rx-variants-schema";
 
 export type SegmentSummaryInput = {
   programming_segment: string;
@@ -37,7 +42,15 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
   const kind = item.line_item_kind ?? "strength_set";
   const parts: string[] = [name];
 
-  if (item.reps_prescribed != null) {
+  const variants = parseRxVariants(item.rx_variants);
+  const dualRx = hasRxVariants(variants)
+    ? formatRxVariantsCompact(variants, item.prescription_unit)
+    : null;
+
+  if (dualRx) {
+    if (kind === "complex_set") parts.unshift(dualRx);
+    else parts.push(dualRx);
+  } else if (item.reps_prescribed != null) {
     const amount = formatPrescriptionAmount(
       item.reps_prescribed,
       prescriptionUnitForLineItem(item),
@@ -50,8 +63,8 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
 
   const pct = percentSuffix(item);
   if (pct) parts.push(pct);
-  else if (item.prescribed_weight != null) parts.push(`${item.prescribed_weight} lb`);
-  else if (item.prescribed_score?.trim()) parts.push(item.prescribed_score.trim());
+  else if (!dualRx && item.prescribed_weight != null) parts.push(`${item.prescribed_weight} lb`);
+  else if (!dualRx && item.prescribed_score?.trim()) parts.push(item.prescribed_score.trim());
 
   if (kind === "complex_set") {
     return parts.join(" · ");

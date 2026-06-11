@@ -20,6 +20,10 @@ import {
   syncDeletedLineItems,
   syncProgrammingLibraryAssignments,
 } from "@/lib/programming/programming-delete";
+import {
+  rxVariantsForSave,
+  syncLegacyFieldsFromVariants,
+} from "@/lib/programming/rx-variants-schema";
 
 export async function loadDefinitionMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase
@@ -44,6 +48,7 @@ function resolveLineItemForSave(
   prescription_unit: string | null;
   line_item_kind: string;
   movement_components: Json;
+  rx_variants: Json;
 } {
   const kind = isLineItemKind(it.line_item_kind ?? "")
     ? it.line_item_kind
@@ -61,13 +66,15 @@ function resolveLineItemForSave(
     kind === "complex_set" && components.length
       ? formatComplexMovementTitle(components)
       : null;
+  const rxVariants = rxVariantsForSave(it.rx_variants);
+  const legacy = syncLegacyFieldsFromVariants({ ...it, rx_variants: rxVariants });
   return {
-    reps_prescribed: it.reps_prescribed,
+    reps_prescribed: legacy.reps_prescribed,
     prescription_unit:
-      kind === "complex_set" ? "sets" : (it.prescription_unit ?? null),
-    prescribed_weight: it.prescribed_weight,
+      kind === "complex_set" ? "sets" : (legacy.prescription_unit ?? it.prescription_unit ?? null),
+    prescribed_weight: legacy.prescribed_weight,
     prescribed_percentage: it.prescribed_percentage,
-    prescribed_score: it.prescribed_score,
+    prescribed_score: legacy.prescribed_score,
     benchmark_type_id: prTypeId,
     benchmark_definition_id: defId,
     movement_label:
@@ -78,6 +85,7 @@ function resolveLineItemForSave(
           : (it.movement_label ?? it.bench_name ?? null),
     line_item_kind: kind,
     movement_components: components as unknown as Json,
+    rx_variants: rxVariants as unknown as Json,
   };
 }
 

@@ -56,6 +56,8 @@ export function WorkoutDayView({
 
   displayName,
 
+  rxGender,
+
   onLogged,
 
 }: {
@@ -75,6 +77,8 @@ export function WorkoutDayView({
   contactId: string | null;
 
   displayName: string | null;
+
+  rxGender?: import("@/lib/programming/rx-variants-schema").RxGender | null;
 
   onLogged: () => void;
 
@@ -132,6 +136,8 @@ export function WorkoutDayView({
 
             contactId={contactId}
 
+            rxGender={rxGender}
+
             perfByItem={perfByItem}
 
             perfBySegment={perfBySegment}
@@ -161,6 +167,8 @@ export function WorkoutDayView({
               items={block.wod.items}
 
               contactId={contactId}
+
+              rxGender={rxGender}
 
               perfByItem={perfByItem}
 
@@ -264,6 +272,8 @@ function GroupBlockCard({
 
   contactId,
 
+  rxGender,
+
   perfByItem,
 
   perfBySegment,
@@ -281,6 +291,8 @@ function GroupBlockCard({
   wodDate: string;
 
   contactId: string | null;
+
+  rxGender?: import("@/lib/programming/rx-variants-schema").RxGender | null;
 
   perfByItem: Map<string, WorkoutPerformance>;
 
@@ -355,6 +367,8 @@ function GroupBlockCard({
               items={part.items}
 
               contactId={contactId}
+
+              rxGender={rxGender}
 
               perfByItem={perfByItem}
 

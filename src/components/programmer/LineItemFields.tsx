@@ -16,6 +16,8 @@ import {
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
 import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import { GenderRxFields } from "@/components/programmer/GenderRxFields";
+import { hasRxVariants, parseRxVariants } from "@/lib/programming/rx-variants-schema";
 
 function NumInput({
   label,
@@ -51,6 +53,8 @@ type Props = {
 };
 
 export function LineItemFields({ mode, item, onChange }: Props) {
+  const genderRx = hasRxVariants(parseRxVariants(item.rx_variants));
+
   if (mode === "tracking_only") {
     const unit = item.prescription_unit ?? "reps";
     const amountLabel =
@@ -62,39 +66,44 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             ? "feet"
             : "reps";
     return (
-      <div className="grid grid-cols-2 gap-2 pl-8 md:grid-cols-3">
-        <div className="space-y-1">
-          <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Unit</Label>
-          <Select
-            value={unit}
-            onValueChange={(v) => onChange({ prescription_unit: v as PrescriptionUnit })}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRESCRIPTION_UNITS.map((u) => (
-                <SelectItem key={u} value={u}>
-                  {u}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <NumInput
-          label={amountLabel}
-          value={item.reps_prescribed}
-          onChange={(v) => onChange({ reps_prescribed: v })}
-        />
-        <div className="space-y-1">
-          <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Rx load</Label>
-          <Input
-            value={item.prescribed_score ?? ""}
-            onChange={(e) => onChange({ prescribed_score: e.target.value || null })}
-            placeholder="e.g. 30/20 lb"
-            className="h-8 text-xs"
-          />
-        </div>
+      <div className="space-y-2 pl-8">
+        {!genderRx && (
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Unit</Label>
+              <Select
+                value={unit}
+                onValueChange={(v) => onChange({ prescription_unit: v as PrescriptionUnit })}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRESCRIPTION_UNITS.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <NumInput
+              label={amountLabel}
+              value={item.reps_prescribed}
+              onChange={(v) => onChange({ reps_prescribed: v })}
+            />
+            <div className="space-y-1">
+              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">Rx load</Label>
+              <Input
+                value={item.prescribed_score ?? ""}
+                onChange={(e) => onChange({ prescribed_score: e.target.value || null })}
+                placeholder="e.g. 30 lb"
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+        )}
+        <GenderRxFields item={item} mode="tracking_only" onChange={onChange} />
       </div>
     );
   }
@@ -105,54 +114,120 @@ export function LineItemFields({ mode, item, onChange }: Props) {
 
   return (
     <div className="space-y-2 pl-8">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <NumInput
-          label={complexSet ? "Sets" : "reps"}
-          value={item.reps_prescribed}
-          onChange={(v) =>
-            onChange(
-              complexSet
-                ? { reps_prescribed: v, prescription_unit: "sets" }
-                : { reps_prescribed: v },
-            )
-          }
-        />
-        <div className="space-y-1">
-          <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-            % basis
-          </Label>
-          <Select
-            value={String(repMax)}
-            onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PERCENT_REP_MAX_OPTIONS.map((o) => (
-                <SelectItem key={o.repCount} value={String(o.repCount)}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {!complexSet && !genderRx && (
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <NumInput
+            label="reps"
+            value={item.reps_prescribed}
+            onChange={(v) => onChange({ reps_prescribed: v })}
+          />
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              % basis
+            </Label>
+            <Select
+              value={String(repMax)}
+              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERCENT_REP_MAX_OPTIONS.map((o) => (
+                  <SelectItem key={o.repCount} value={String(o.repCount)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <NumInput
+            label="percent"
+            value={pctDisplay}
+            inputMode="numeric"
+            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
+          />
+          <NumInput
+            label="weight (lb)"
+            value={item.prescribed_weight}
+            onChange={(v) => onChange({ prescribed_weight: v })}
+          />
         </div>
-        <NumInput
-          label="percent"
-          value={pctDisplay}
-          inputMode="numeric"
-          onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
-        />
-        <NumInput
-          label="weight (lb)"
-          value={item.prescribed_weight}
-          onChange={(v) => onChange({ prescribed_weight: v })}
-        />
-      </div>
+      )}
+      {!complexSet && genderRx && (
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              % basis
+            </Label>
+            <Select
+              value={String(repMax)}
+              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERCENT_REP_MAX_OPTIONS.map((o) => (
+                  <SelectItem key={o.repCount} value={String(o.repCount)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <NumInput
+            label="percent"
+            value={pctDisplay}
+            inputMode="numeric"
+            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
+          />
+        </div>
+      )}
+      {complexSet && (
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <NumInput
+            label="Sets"
+            value={item.reps_prescribed}
+            onChange={(v) =>
+              onChange({ reps_prescribed: v, prescription_unit: "sets" })
+            }
+          />
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              % basis
+            </Label>
+            <Select
+              value={String(repMax)}
+              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERCENT_REP_MAX_OPTIONS.map((o) => (
+                  <SelectItem key={o.repCount} value={String(o.repCount)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <NumInput
+            label="percent"
+            value={pctDisplay}
+            inputMode="numeric"
+            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
+          />
+        </div>
+      )}
+      {!complexSet && <GenderRxFields item={item} mode="strength" onChange={onChange} />}
       <p className="text-[10px] text-muted-foreground">
         {complexSet
           ? "Reps per movement come from the complex definition above (e.g. 2 Snatch Pull + 1 Power Snatch)."
-          : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
+          : genderRx
+            ? "Percent applies to both genders; set M/F fixed weights when not using percent."
+            : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
       </p>
     </div>
   );

@@ -36,6 +36,7 @@ export type LogLineItem = {
   stimulus?: string;
   line_item_kind?: string | null;
   movement_components?: unknown;
+  rx_variants?: unknown;
 };
 
 export type LogWodContext = {

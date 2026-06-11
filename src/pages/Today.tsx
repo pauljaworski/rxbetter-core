@@ -6,9 +6,10 @@ import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
+import { RxGenderSelect } from "@/components/workout/RxGenderSelect";
 
 export default function Today() {
-  const { contactId, displayName, activeGymId, mode } = useAuth();
+  const { contactId, displayName, activeGymId, mode, rxGender } = useAuth();
   const { data, isLoading, error, isEmpty, refetch } = useWorkoutDay(activeGymId, contactId);
 
   const dateLabel = useMemo(() => data.wodDate, [data.wodDate]);
@@ -41,6 +42,7 @@ export default function Today() {
           description={dateLabel ? `Nothing scheduled for ${dateLabel}.` : "No class programming published yet."}
         />
       )}
+      {!isLoading && !error && activeGymId && <RxGenderSelect />}
       {!isLoading && !error && !isEmpty && (
         <WorkoutDayView
           wodDate={data.wodDate}
@@ -51,6 +53,7 @@ export default function Today() {
           completions={data.completions}
           contactId={contactId}
           displayName={displayName}
+          rxGender={rxGender}
           onLogged={refetch}
         />
       )}

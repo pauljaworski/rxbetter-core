@@ -9,6 +9,7 @@ import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import { cn } from "@/lib/utils";
+import type { RxGender } from "@/lib/programming/rx-variants-schema";
 
 type Props = {
   wod: LogWodContext & {
@@ -21,6 +22,7 @@ type Props = {
   };
   items: LogLineItem[];
   contactId: string | null;
+  rxGender?: RxGender | null;
   perfByItem: Map<string, ExistingPerformance>;
   segmentPerf?: SegmentPerformance | null;
   hideSegmentScore?: boolean;
@@ -34,6 +36,7 @@ export function CollapsibleWorkoutSegment({
   wod,
   items,
   contactId,
+  rxGender,
   perfByItem,
   segmentPerf,
   hideSegmentScore,
@@ -145,6 +148,7 @@ export function CollapsibleWorkoutSegment({
             wod={wod}
             items={items}
             contactId={contactId}
+            rxGender={rxGender}
             perfByItem={perfByItem}
             segmentPerf={segmentPerf ?? null}
             hideSegmentScore={hideSegmentScore}
