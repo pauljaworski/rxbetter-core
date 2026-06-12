@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, Clock, Flame, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Clock, Flame, Users, Trophy } from "lucide-react";
 import { seededHash, seededSample, segmentLabel } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgrammingWeek } from "@/hooks/useProgrammingWeek";
@@ -209,12 +210,20 @@ export default function CalendarPage() {
       </Card>
 
       <div>
-        <div className="mb-3 flex items-baseline justify-between">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-xl font-bold tracking-tight">{format(selected, "EEEE, MMM d")}</h2>
-          <span className="text-xs text-muted-foreground">
-            {selectedClasses.length} classes · {selectedWods.length} WOD
-            {selectedWods.length === 1 ? "" : "s"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {selectedClasses.length} classes · {selectedWods.length} WOD
+              {selectedWods.length === 1 ? "" : "s"}
+            </span>
+            <Button asChild variant="secondary" size="sm" className="h-8 gap-1 text-xs">
+              <Link to={`/leaderboard?date=${selectedKey}`}>
+                <Trophy className="h-3.5 w-3.5 text-primary" />
+                Leaderboard
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <section className="space-y-3">

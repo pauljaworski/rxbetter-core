@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { daysSince, fmtWeight } from "@/lib/format";
+import { daysSince } from "@/lib/format";
+import { fmtWeightWithUnit, weightUnitLabel } from "@/lib/weight-unit";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBenchmarkSummaries, type PrRow } from "@/hooks/useBenchmarkSummaries";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
@@ -21,7 +22,7 @@ import { PrProgressDialog } from "@/components/rx/PrProgressDialog";
 type SortKey = "recent" | "stale" | "heaviest";
 
 export default function PRs() {
-  const { contactId } = useAuth();
+  const { contactId, weightUnit } = useAuth();
   const { data: rows, isLoading: loading, error, isEmpty } = useBenchmarkSummaries(contactId);
   const [stim, setStim] = useState<string | null>(null);
   const [subStim, setSubStim] = useState<string>("all");
@@ -168,8 +169,12 @@ export default function PRs() {
                   {stale && <Badge className="bg-accent text-accent-foreground hover:bg-accent">Stale</Badge>}
                 </div>
                 <div className="mt-4 flex items-baseline gap-2">
-                  <span className="font-mono-num text-5xl font-black neon-text">{fmtWeight(r.current_pr_weight)}</span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">lb</span>
+                  <span className="font-mono-num text-5xl font-black neon-text">
+                    {fmtWeightWithUnit(r.current_pr_weight, weightUnit)}
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    {weightUnitLabel(weightUnit)}
+                  </span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   {r.stimulus && (

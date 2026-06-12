@@ -12,6 +12,8 @@ import PRs from "./pages/PRs";
 import Insights from "./pages/Insights";
 import History from "./pages/History";
 import CalendarPage from "./pages/Calendar";
+import Leaderboard from "./pages/Leaderboard";
+import Profile from "./pages/Profile";
 import AuthPage from "./pages/Auth";
 import JoinPage from "./pages/Join";
 import StaffDashboard from "./pages/staff/StaffDashboard";
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/prs" element={<PRs />} />
               <Route path="/insights" element={<Insights />} />
               <Route path="/history" element={<History />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/profile" element={<Profile />} />
               <Route
                 path="/staff"
                 element={

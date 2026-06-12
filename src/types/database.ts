@@ -468,37 +468,49 @@ export type Database = {
       }
       contact: {
         Row: {
+          avatar_url: string | null
           created_at: string
+          default_workout_scale: Database["public"]["Enums"]["workout_scale"] | null
           email: string | null
           first_name: string | null
           id: string
           last_name: string | null
           phone: string | null
           rx_gender: string | null
+          timezone: string | null
           updated_at: string
           user_id: string | null
+          weight_unit: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
+          default_workout_scale?: Database["public"]["Enums"]["workout_scale"] | null
           email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
           phone?: string | null
           rx_gender?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string | null
+          weight_unit?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
+          default_workout_scale?: Database["public"]["Enums"]["workout_scale"] | null
           email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
           phone?: string | null
           rx_gender?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string | null
+          weight_unit?: string
         }
         Relationships: []
       }
@@ -715,6 +727,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          leaderboard_levels: Json
           name: string
           subscription_plan: string | null
           subscription_status: string | null
@@ -723,6 +736,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          leaderboard_levels?: Json
           name: string
           subscription_plan?: string | null
           subscription_status?: string | null
@@ -731,12 +745,108 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          leaderboard_levels?: Json
           name?: string
           subscription_plan?: string | null
           subscription_status?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      leaderboard_comment: {
+        Row: {
+          body: string
+          contact_id: string
+          created_at: string
+          gym_id: string
+          id: string
+          performance_id: string
+        }
+        Insert: {
+          body: string
+          contact_id: string
+          created_at?: string
+          gym_id: string
+          id?: string
+          performance_id: string
+        }
+        Update: {
+          body?: string
+          contact_id?: string
+          created_at?: string
+          gym_id?: string
+          id?: string
+          performance_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_comment_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_comment_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_comment_performance_id_fkey"
+            columns: ["performance_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_performance"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboard_like: {
+        Row: {
+          contact_id: string
+          created_at: string
+          gym_id: string
+          id: string
+          performance_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          gym_id: string
+          id?: string
+          performance_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          gym_id?: string
+          id?: string
+          performance_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_like_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_like_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaderboard_like_performance_id_fkey"
+            columns: ["performance_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_performance"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gym_onboarding_request: {
         Row: {

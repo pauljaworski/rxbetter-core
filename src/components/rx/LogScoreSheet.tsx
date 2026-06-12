@@ -20,6 +20,7 @@ import { useSavePerformance } from "@/hooks/useSavePerformance";
 import { loadRepCountForDefinition } from "@/lib/programming/enrich-line-items";
 import { recomputeBenchmarkSummary } from "@/lib/pr/record-athlete-pr";
 import { AthletePrescriptionHeader } from "@/components/workout/AthletePrescriptionHeader";
+import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
 
 export type LogLineItem = {
   id: string;
@@ -77,6 +78,7 @@ export function LogScoreRow({
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
   const [liftStatus, setLiftStatus] = useState<"completed" | "failed">("completed");
   const [repCount, setRepCount] = useState(1);
+  const { defaultWorkoutScale } = useAuth();
   const { save, removePerformance, submitting } = useSavePerformance();
 
   const isMetcon = wod.programming_segment === "metcon" || !!item.prescribed_score;
@@ -99,11 +101,15 @@ export function LogScoreRow({
       setWeight(existing?.weight_lifted != null ? String(existing.weight_lifted) : "");
       setRpe(existing?.rpe != null ? String(existing.rpe) : "");
       setWorkoutScale(
-        (existing?.workout_scale as WorkoutScale) ?? (wod.prescribed_scale as WorkoutScale) ?? "rx",
+        resolveDefaultWorkoutScale(
+          existing?.workout_scale,
+          wod.prescribed_scale,
+          defaultWorkoutScale,
+        ),
       );
       setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
     }
-  }, [open, existing, wod.prescribed_scale]);
+  }, [open, existing, wod.prescribed_scale, defaultWorkoutScale]);
 
   async function submit() {
     if (!contactId) {

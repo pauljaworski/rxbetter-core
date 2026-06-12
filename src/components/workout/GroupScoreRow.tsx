@@ -22,6 +22,7 @@ import {
 } from "@/lib/programming/metcon-score";
 import { parseWorkoutScheme, schemeSummaryLabel } from "@/lib/programming/workout-scheme-schema";
 import { useSaveGroupPerformance } from "@/hooks/useSaveGroupPerformance";
+import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
 type Props = {
@@ -45,6 +46,7 @@ export function GroupScoreRow({
   workoutScheme,
   onLogged,
 }: Props) {
+  const { defaultWorkoutScale } = useAuth();
   const [score, setScore] = useState("");
   const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
@@ -57,9 +59,9 @@ export function GroupScoreRow({
     setScore(existing?.score ?? "");
     setCompleted(existing?.score?.toLowerCase() === "completed" || existing?.score === "Yes");
     setWorkoutScale(
-      (existing?.workout_scale as WorkoutScale) ?? (prescribedScale as WorkoutScale) ?? "rx",
+      resolveDefaultWorkoutScale(existing?.workout_scale, prescribedScale, defaultWorkoutScale),
     );
-  }, [existing?.id, existing?.score, prescribedScale]);
+  }, [existing?.id, existing?.score, existing?.workout_scale, prescribedScale, defaultWorkoutScale]);
 
   async function submit() {
     if (!contactId) {

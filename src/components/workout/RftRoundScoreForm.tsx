@@ -31,6 +31,7 @@ import type { z } from "zod";
 
 type RftScheme = z.infer<typeof rftSchemeSchema>;
 import { useSaveSegmentPerformance } from "@/hooks/useSaveSegmentPerformance";
+import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
 import type { LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export function RftRoundScoreForm({ wod, scheme, contactId, existing, onLogged }: Props) {
+  const { defaultWorkoutScale } = useAuth();
   const rounds = scheme.rounds;
   const restSec = scheme.restBetweenRoundsSec ?? 0;
   const restTotalSec = rftRestTotalSec(rounds, restSec);
@@ -55,11 +57,14 @@ export function RftRoundScoreForm({ wod, scheme, contactId, existing, onLogged }
   useEffect(() => {
     const meta = parseRftScoreMeta(existing?.score_meta);
     setRoundInputs(roundInputsFromMeta(meta, rounds));
-    const prescribed = wod.prescribed_scale as WorkoutScale | "na" | null;
-    const defaultScale =
-      prescribed && prescribed !== "na" ? (prescribed as WorkoutScale) : "";
-    setWorkoutScale((existing?.workout_scale as WorkoutScale) ?? defaultScale);
-  }, [existing?.id, existing?.score_meta, rounds, wod.prescribed_scale]);
+    setWorkoutScale(
+      resolveDefaultWorkoutScale(
+        existing?.workout_scale,
+        wod.prescribed_scale,
+        defaultWorkoutScale,
+      ),
+    );
+  }, [existing?.id, existing?.score_meta, existing?.workout_scale, rounds, wod.prescribed_scale, defaultWorkoutScale]);
 
   const preview = useMemo(() => deriveRftWorkingTime(rounds, restSec, roundInputs), [rounds, restSec, roundInputs]);
 

@@ -3,6 +3,8 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeMembershipRole, resolveAvailablePersonas } from "@/lib/personas";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
+import type { WorkoutScale } from "@/lib/format";
+import type { WeightUnit } from "@/lib/weight-unit";
 
 export type Persona = "athlete" | "coach" | "programmer" | "admin";
 export const PERSONA_ORDER: Persona[] = ["athlete", "coach", "programmer", "admin"];
@@ -20,13 +22,21 @@ type AuthState = {
   user: User | null;
   contactId: string | null;
   displayName: string | null;
+  profileDisplayName: string | null;
+  email: string | null;
+  phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
   rxGender: RxGender | null;
   setRxGender: (gender: RxGender | null) => void;
+  defaultWorkoutScale: WorkoutScale | null;
+  weightUnit: WeightUnit;
+  timezone: string | null;
   mode: IdentityMode;
   activeGymId: string | null;
   memberships: GymMembership[];
   loading: boolean;
-  /** False until the first membership hydrate completes for a signed-in user. */
   identityReady: boolean;
   availablePersonas: Persona[];
   activePersona: Persona;
@@ -43,46 +53,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [contactId, setContactId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [rxGender, setRxGender] = useState<RxGender | null>(null);
+  const [defaultWorkoutScale, setDefaultWorkoutScale] = useState<WorkoutScale | null>(null);
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>("lb");
+  const [timezone, setTimezone] = useState<string | null>(null);
   const [activeGymId, setActiveGymId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<GymMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [identityReady, setIdentityReady] = useState(false);
   const [activePersona, setActivePersonaState] = useState<Persona>("athlete");
 
+  function clearIdentity() {
+    setContactId(null);
+    setDisplayName(null);
+    setProfileDisplayName(null);
+    setEmail(null);
+    setPhone(null);
+    setFirstName(null);
+    setLastName(null);
+    setAvatarUrl(null);
+    setRxGender(null);
+    setDefaultWorkoutScale(null);
+    setWeightUnit("lb");
+    setTimezone(null);
+    setActiveGymId(null);
+    setMemberships([]);
+    setIdentityReady(false);
+  }
+
   async function hydrate(u: User | null) {
     if (!u) {
-      setContactId(null);
-      setDisplayName(null);
-      setRxGender(null);
-      setActiveGymId(null);
-      setMemberships([]);
-      setIdentityReady(false);
+      clearIdentity();
       return;
     }
-    // contact for current user
+
     const { data: c } = await supabase
       .from("contact")
-      .select("id, first_name, last_name, rx_gender")
+      .select(
+        "id, first_name, last_name, email, phone, rx_gender, avatar_url, default_workout_scale, weight_unit, timezone",
+      )
       .eq("user_id", u.id)
       .maybeSingle();
     const cid = c?.id ?? null;
     setContactId(cid);
-    setDisplayName(
-      [c?.first_name, c?.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || null,
+    setFirstName(c?.first_name ?? null);
+    setLastName(c?.last_name ?? null);
+    setEmail(c?.email ?? u.email ?? null);
+    setPhone(c?.phone ?? null);
+    setAvatarUrl(c?.avatar_url ?? null);
+    setRxGender(c?.rx_gender === "male" || c?.rx_gender === "female" ? c.rx_gender : null);
+    setDefaultWorkoutScale(
+      c?.default_workout_scale === "rx_plus" ||
+        c?.default_workout_scale === "rx" ||
+        c?.default_workout_scale === "fx" ||
+        c?.default_workout_scale === "scaled"
+        ? c.default_workout_scale
+        : null,
     );
-    setRxGender(
-      c?.rx_gender === "male" || c?.rx_gender === "female" ? c.rx_gender : null,
-    );
+    setWeightUnit(c?.weight_unit === "kg" ? "kg" : "lb");
+    setTimezone(c?.timezone ?? null);
 
-    // profile (last_active_gym_id)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("last_active_gym_id")
+      .select("last_active_gym_id, display_name")
       .eq("id", u.id)
       .maybeSingle();
 
-    // memberships
+    const legalName = [c?.first_name, c?.last_name].filter(Boolean).join(" ");
+    const disp = profile?.display_name?.trim() || legalName || u.email?.split("@")[0] || null;
+    setProfileDisplayName(profile?.display_name ?? null);
+    setDisplayName(disp);
+
     let mems: GymMembership[] = [];
     if (cid) {
       const { data: fm } = await supabase
@@ -93,8 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const gymIds = Array.from(new Set((fm ?? []).map((m) => m.gym_id)));
       const { data: gyms } = gymIds.length
         ? await supabase.from("gym").select("id, name").in("id", gymIds)
-        : { data: [] as any[] };
-      const nameMap = new Map((gyms ?? []).map((g: any) => [g.id, g.name]));
+        : { data: [] as { id: string; name: string }[] };
+      const nameMap = new Map((gyms ?? []).map((g) => [g.id, g.name]));
       const rolesByGym = new Map<string, Set<string>>();
       for (const m of fm ?? []) {
         if (!m.role) continue;
@@ -129,11 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Set listener BEFORE getSession (Lovable auth rule).
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
-      // Defer DB calls to avoid deadlocking the auth callback.
       setTimeout(() => {
         void hydrate(s?.user ?? null);
       }, 0);
@@ -165,7 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return resolveAvailablePersonas(activeMembership?.roles ?? []);
   }, [activeMembership?.roles?.join("|")]);
 
-  // Keep activePersona in sync with what's available; default to highest privilege.
   useEffect(() => {
     if (!availablePersonas.includes(activePersona)) {
       setActivePersonaState(availablePersonas[availablePersonas.length - 1]);
@@ -183,8 +227,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       contactId,
       displayName,
+      profileDisplayName,
+      email,
+      phone,
+      firstName,
+      lastName,
+      avatarUrl,
       rxGender,
       setRxGender,
+      defaultWorkoutScale,
+      weightUnit,
+      timezone,
       mode,
       activeGymId,
       memberships,
@@ -202,7 +255,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       contactId,
       displayName,
+      profileDisplayName,
+      email,
+      phone,
+      firstName,
+      lastName,
+      avatarUrl,
       rxGender,
+      defaultWorkoutScale,
+      weightUnit,
+      timezone,
       mode,
       activeGymId,
       memberships,
@@ -220,4 +282,18 @@ export function useAuth() {
   const v = useContext(Ctx);
   if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
   return v;
+}
+
+/** Resolve default logging scale: existing perf → prescribed → profile default → rx. */
+export function resolveDefaultWorkoutScale(
+  existing: string | null | undefined,
+  prescribed: string | null | undefined,
+  profileDefault: WorkoutScale | null,
+): WorkoutScale {
+  const valid = (s: string | null | undefined): s is WorkoutScale =>
+    s === "rx_plus" || s === "rx" || s === "fx" || s === "scaled";
+  if (valid(existing)) return existing;
+  if (valid(prescribed)) return prescribed;
+  if (profileDefault) return profileDefault;
+  return "rx";
 }

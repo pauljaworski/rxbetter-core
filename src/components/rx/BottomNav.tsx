@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Activity, CalendarDays, Flame, History as HistoryIcon } from "lucide-react";
+import { Activity, CalendarDays, Flame, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", label: "Today", icon: Activity, end: true },
+  { to: "/leaderboard", label: "Board", icon: Trophy },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/prs", label: "PRs", icon: Flame },
-  { to: "/history", label: "History", icon: HistoryIcon },
 ];
 
 export function BottomNav() {

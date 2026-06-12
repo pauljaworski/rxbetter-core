@@ -15,6 +15,8 @@ const titles: Record<string, string> = {
   "/insights": "Smart Insights",
   "/prs": "PR Vault",
   "/history": "History",
+  "/leaderboard": "Leaderboard",
+  "/profile": "Profile",
   "/staff": "Staff",
   "/staff/programming": "Programming",
   "/staff/classes": "Class Day",

@@ -5,6 +5,8 @@ import {
   Sparkles,
   Flame,
   History as HistoryIcon,
+  Trophy,
+  User,
   BarChart3,
   LayoutDashboard,
   ClipboardList,
@@ -31,12 +33,14 @@ type NavItem = { to: string; label: string; icon: any; end?: boolean };
 
 const athleteTrain: NavItem[] = [
   { to: "/", label: "Today", icon: Activity, end: true },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/insights", label: "Smart Insights", icon: Sparkles },
 ];
 const athletePerf: NavItem[] = [
   { to: "/prs", label: "PR Vault", icon: Flame },
   { to: "/history", label: "History", icon: HistoryIcon },
+  { to: "/profile", label: "Profile", icon: User },
 ];
 
 const staffCore: NavItem[] = [

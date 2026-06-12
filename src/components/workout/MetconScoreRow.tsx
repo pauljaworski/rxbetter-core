@@ -25,6 +25,7 @@ import {
   schemeSummaryLabel,
 } from "@/lib/programming/workout-scheme-schema";
 import { useSaveSegmentPerformance } from "@/hooks/useSaveSegmentPerformance";
+import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
 import type { LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
+  const { defaultWorkoutScale } = useAuth();
   const [score, setScore] = useState("");
   const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
@@ -47,11 +49,14 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
   useEffect(() => {
     setScore(existing?.score ?? "");
     setCompleted(existing?.score?.toLowerCase() === "completed" || existing?.score === "Yes");
-    const prescribed = wod.prescribed_scale as WorkoutScale | "na" | null;
-    const defaultScale =
-      prescribed && prescribed !== "na" ? (prescribed as WorkoutScale) : "";
-    setWorkoutScale((existing?.workout_scale as WorkoutScale) ?? defaultScale);
-  }, [existing?.id, existing?.score, wod.prescribed_scale]);
+    setWorkoutScale(
+      resolveDefaultWorkoutScale(
+        existing?.workout_scale,
+        wod.prescribed_scale,
+        defaultWorkoutScale,
+      ),
+    );
+  }, [existing?.id, existing?.score, existing?.workout_scale, wod.prescribed_scale, defaultWorkoutScale]);
 
   async function submit() {
     if (!contactId) {
