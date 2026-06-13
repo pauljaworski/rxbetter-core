@@ -3,11 +3,14 @@ import { Flame } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { PerformanceHistoryRow } from "@/hooks/usePerformanceHistory";
+import { performanceHistoryLabels } from "@/lib/history/performance-history-label";
 
 export function WorkoutHistoryList({ rows }: { rows: PerformanceHistoryRow[] }) {
   return (
     <div className="space-y-2">
-      {rows.map((r) => (
+      {rows.map((r) => {
+        const { title, subtitle } = performanceHistoryLabels(r);
+        return (
         <Card key={r.id} className="glass-card flex items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
             <div className="font-mono-num grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-secondary text-center">
@@ -23,12 +26,10 @@ export function WorkoutHistoryList({ rows }: { rows: PerformanceHistoryRow[] }) 
               </span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {r.bench_name ?? r.wod_name ?? (r.programming_id ? "Class WOD" : "Logged score")}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {r.wod_name ?? (r.programming_id ? "" : "Import / personal")}
-              </p>
+              <p className="truncate text-sm font-semibold">{title}</p>
+              {subtitle ? (
+                <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -42,7 +43,8 @@ export function WorkoutHistoryList({ rows }: { rows: PerformanceHistoryRow[] }) 
             </span>
           </div>
         </Card>
-      ))}
+      );
+      })}
     </div>
   );
 }

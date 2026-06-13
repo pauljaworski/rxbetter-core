@@ -86,6 +86,7 @@ export async function commitAthleteImport(
     result_value: number | null;
     reps_prescribed: number | null;
     score: string | null;
+    score_meta: { source: "import"; label: string; kind: "lift" | "workout" };
     workout_scale: PreparedImportRow["workoutScale"];
     status: string;
     is_pr: boolean;
@@ -104,6 +105,7 @@ export async function commitAthleteImport(
     }
 
     if (row.kind === "lift") {
+      const label = row.movementLabel?.trim() || "Strength lift";
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
@@ -113,6 +115,7 @@ export async function commitAthleteImport(
         result_value: Math.round(row.weightLb!),
         reps_prescribed: row.repCount,
         score: null,
+        score_meta: { source: "import", label, kind: "lift" },
         workout_scale: row.workoutScale,
         status: "completed",
         is_pr: false,
@@ -120,6 +123,7 @@ export async function commitAthleteImport(
       if (row.benchmarkDefinitionId) definitionIds.add(row.benchmarkDefinitionId);
       existingKeys.add(key);
     } else {
+      const label = row.workoutName?.trim() || row.movementLabel?.trim() || "Workout";
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
@@ -129,6 +133,7 @@ export async function commitAthleteImport(
         result_value: null,
         reps_prescribed: null,
         score: row.score,
+        score_meta: { source: "import", label, kind: "workout" },
         workout_scale: row.workoutScale,
         status: "completed",
         is_pr: false,

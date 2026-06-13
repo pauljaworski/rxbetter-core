@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import type { WorkoutScale } from "@/lib/format";
+import type { Json } from "@/types/database";
 import { useAsyncState } from "./useAsyncState";
 
 export type PerformanceHistoryRow = {
@@ -12,6 +14,9 @@ export type PerformanceHistoryRow = {
   programming_id: string | null;
   benchmark_type_id: string | null;
   benchmark_definition_id: string | null;
+  reps_prescribed: number | null;
+  workout_scale: WorkoutScale | null;
+  score_meta: Json | null;
   wod_name?: string;
   bench_name?: string;
   stimulus: string | null;
@@ -27,7 +32,7 @@ export function usePerformanceHistory(contactId: string | null, limit = 100) {
     const { data: perf, error } = await supabase
       .from("athlete_performance")
       .select(
-        "id, performance_date, created_at, score, weight_lifted, is_pr, programming_id, benchmark_type_id, benchmark_definition_id",
+        "id, performance_date, created_at, score, weight_lifted, is_pr, programming_id, benchmark_type_id, benchmark_definition_id, reps_prescribed, workout_scale, score_meta",
       )
       .eq("contact_id", contactId)
       .order("performance_date", { ascending: false, nullsFirst: false })
@@ -76,8 +81,14 @@ export function usePerformanceHistory(contactId: string | null, limit = 100) {
     return (perf ?? []).map((p) => {
       const t = p.benchmark_type_id ? typeMap.get(p.benchmark_type_id) : undefined;
       const d = p.benchmark_definition_id ? defMap.get(p.benchmark_definition_id) : undefined;
+      const scale = p.workout_scale;
+      const workoutScale =
+        scale === "rx_plus" || scale === "rx" || scale === "fx" || scale === "scaled"
+          ? scale
+          : null;
       return {
         ...p,
+        workout_scale: workoutScale,
         wod_name: p.programming_id ? (progMap.get(p.programming_id) ?? undefined) : undefined,
         bench_name: t?.name ?? undefined,
         stimulus: t?.stimulus ?? null,
