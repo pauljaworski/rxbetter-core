@@ -29,6 +29,7 @@ import {
   programmingSubtypeForUiKey,
 } from "@/lib/programming/manual-config";
 import { defaultSchemeForMetconFormat } from "@/lib/programming/workout-scheme-schema";
+import { cloneEditorWod } from "@/lib/programming/staff-programming-state";
 
 type Mode = "choose" | "new" | "copy";
 
@@ -39,6 +40,9 @@ type Props = {
   libraries: ProgramLibrary[];
   defaultLib: string | null;
   displayOrder: number;
+  /** Current editor day (yyyy-MM-dd) — merges unsaved segments into copy list. */
+  currentDateKey?: string;
+  currentDayWods?: EditorWod[];
   onAdd: (wod: EditorWod) => void;
 };
 
@@ -49,6 +53,8 @@ export function SegmentAddDialog({
   libraries,
   defaultLib,
   displayOrder,
+  currentDateKey,
+  currentDayWods = [],
   onAdd,
 }: Props) {
   const [mode, setMode] = useState<Mode>("choose");
@@ -83,8 +89,17 @@ export function SegmentAddDialog({
         activeGymId,
         new Date(copyDate + "T00:00:00"),
       );
-      setCopySegments(segs);
-      setSelectedCopyIdx(segs.length ? 0 : null);
+      const merged =
+        currentDateKey && copyDate === currentDateKey
+          ? [
+              ...segs,
+              ...currentDayWods.filter(
+                (w) => w._new || !segs.some((s) => s.id && s.id === w.id),
+              ),
+            ]
+          : segs;
+      setCopySegments(merged);
+      setSelectedCopyIdx(merged.length ? 0 : null);
     } finally {
       setCopyLoading(false);
     }
@@ -92,8 +107,8 @@ export function SegmentAddDialog({
 
   useEffect(() => {
     if (open && mode === "copy") loadCopySegments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when copy tab active
-  }, [open, mode, copyDate, activeGymId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when copy source changes
+  }, [open, mode, copyDate, activeGymId, currentDateKey, currentDayWods.length]);
 
   function toggleLib(id: string, checked: boolean) {
     setLibIds((prev) => {
@@ -138,19 +153,16 @@ export function SegmentAddDialog({
         : defaultLib
           ? [defaultLib]
           : [];
-    onAdd({
-      ...src,
-      _new: true,
-      display_order: displayOrder,
-      program_library_id: ids[0] ?? src.program_library_id,
-      program_library_ids: ids,
-      items: src.items.map((it, j) => ({
-        ...it,
-        _new: true,
-        id: undefined,
-        sequence_number: j + 1,
-      })),
-    });
+    onAdd(
+      cloneEditorWod(
+        {
+          ...src,
+          program_library_id: ids[0] ?? src.program_library_id,
+          program_library_ids: ids,
+        },
+        displayOrder,
+      ),
+    );
     onOpenChange(false);
   }
 
@@ -275,6 +287,8 @@ export function SegmentAddDialog({
                   <span className="font-semibold">{s.name ?? "Untitled"}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
                     {s.programming_segment}
+                    {s.prescribed_scale ? ` · ${s.prescribed_scale}` : ""}
+                    {s._new ? " · unsaved" : ""}
                     {s.items.length ? ` · ${s.items.length} movements` : ""}
                   </span>
                 </button>

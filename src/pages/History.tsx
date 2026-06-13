@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { Upload } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePerformanceHistory } from "@/hooks/usePerformanceHistory";
 import { WorkoutHistoryList } from "@/components/workout/WorkoutHistoryList";
+import { AthleteDataImportDialog } from "@/components/import/AthleteDataImportDialog";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,7 +20,8 @@ type SortKey = "recent" | "stale" | "heaviest";
 
 export default function History() {
   const { contactId } = useAuth();
-  const { data: rows, isLoading, error, isEmpty } = usePerformanceHistory(contactId);
+  const { data: rows, isLoading, error, isEmpty, refetch } = usePerformanceHistory(contactId);
+  const [importOpen, setImportOpen] = useState(false);
   const [subStim, setSubStim] = useState<string>("all");
   const [purpose, setPurpose] = useState<string>("all");
   const [rep, setRep] = useState<string>("all");
@@ -71,6 +75,14 @@ export default function History() {
         <p className="mt-1 text-sm text-muted-foreground">
           Class WODs and imported scores — {rows.length} entries
         </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="mr-1 h-3.5 w-3.5" /> Import CSV / Excel
+        </Button>
       </header>
 
       {error && <ErrorBanner message={error} />}
@@ -152,6 +164,13 @@ export default function History() {
       {!isLoading && !error && visible.length > 0 && (
         <WorkoutHistoryList rows={visible} />
       )}
+
+      <AthleteDataImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        contactId={contactId}
+        onImported={() => refetch()}
+      />
     </div>
   );
 }

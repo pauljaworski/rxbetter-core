@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Upload } from "lucide-react";
 import { daysSince } from "@/lib/format";
 import { fmtWeightWithUnit, weightUnitLabel } from "@/lib/weight-unit";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,12 +19,14 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { PrProgressDialog } from "@/components/rx/PrProgressDialog";
+import { AthleteDataImportDialog } from "@/components/import/AthleteDataImportDialog";
 
 type SortKey = "recent" | "stale" | "heaviest";
 
 export default function PRs() {
   const { contactId, weightUnit } = useAuth();
-  const { data: rows, isLoading: loading, error, isEmpty } = useBenchmarkSummaries(contactId);
+  const { data: rows, isLoading: loading, error, isEmpty, refetch } = useBenchmarkSummaries(contactId);
+  const [importOpen, setImportOpen] = useState(false);
   const [stim, setStim] = useState<string | null>(null);
   const [subStim, setSubStim] = useState<string>("all");
   const [purpose, setPurpose] = useState<string>("all");
@@ -75,6 +78,14 @@ export default function PRs() {
         <p className="mt-1 text-sm text-muted-foreground">
           {rows.length} tracked lift{rows.length === 1 ? "" : "s"} · stale lifts deserve a fresh attempt.
         </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="mr-1 h-3.5 w-3.5" /> Import CSV / Excel
+        </Button>
       </header>
 
       {error && <ErrorBanner message={error} />}
@@ -206,6 +217,13 @@ export default function PRs() {
         repCount={openRow?.rep_count ?? null}
         stimulus={openRow?.stimulus ?? null}
         metric="weight"
+      />
+
+      <AthleteDataImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        contactId={contactId}
+        onImported={() => refetch()}
       />
     </div>
   );

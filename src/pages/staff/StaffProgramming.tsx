@@ -21,7 +21,11 @@ import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
-import { isSegmentUnsaved } from "@/lib/programming/staff-programming-state";
+import {
+  cloneEditorWod,
+  isSegmentUnsaved,
+  suggestDuplicateScale,
+} from "@/lib/programming/staff-programming-state";
 import {
   MovementPickerDialog,
   type MovementPick,
@@ -190,6 +194,22 @@ export default function StaffProgramming() {
         return { ...w, items: [...w.items, ...next] };
       }),
     );
+  }
+
+  function duplicateWod(wodIdx: number) {
+    const src = wods[wodIdx];
+    if (!src) return;
+    const nextScale = suggestDuplicateScale(src.prescribed_scale);
+    const clone = cloneEditorWod(src, wods.length, { prescribedScale: nextScale });
+    setServerSyncMode(null);
+    setWods((prev) => [...prev, clone]);
+    if (nextScale !== src.prescribed_scale) {
+      toast.message("Segment duplicated", {
+        description: `Prescribed level set to ${nextScale.replace("_", " ")} — adjust if needed.`,
+      });
+    } else {
+      toast.success("Segment duplicated");
+    }
   }
 
   function cloneItem(wodIdx: number, itemIdx: number) {
@@ -401,6 +421,7 @@ export default function StaffProgramming() {
               onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
               onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
+              onDuplicate={() => duplicateWod(idx)}
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
               onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
             />
@@ -415,6 +436,8 @@ export default function StaffProgramming() {
         libraries={libraries}
         defaultLib={defaultLibId}
         displayOrder={wods.length}
+        currentDateKey={dateKey}
+        currentDayWods={wods}
         onAdd={addWod}
       />
 

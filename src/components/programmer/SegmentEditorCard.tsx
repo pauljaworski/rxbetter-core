@@ -63,6 +63,7 @@ type Props = {
   onUpdateItem: (itemIdx: number, patch: Partial<EditorLineItem>) => void;
   onRemoveItem: (itemIdx: number) => void;
   onCloneItem: (itemIdx: number) => void;
+  onDuplicate: () => void;
   onAddMovement: () => void;
   onOpenComplexEditor: () => void;
 };
@@ -77,6 +78,7 @@ export function SegmentEditorCard({
   onUpdateItem,
   onRemoveItem,
   onCloneItem,
+  onDuplicate,
   onAddMovement,
   wodIndex,
   allWods,
@@ -302,6 +304,15 @@ export function SegmentEditorCard({
               Saved · not published
             </Badge>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDuplicate}
+            title="Duplicate segment on this day"
+          >
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            Duplicate
+          </Button>
           <Button
             size="sm"
             onClick={onSaveSection}
