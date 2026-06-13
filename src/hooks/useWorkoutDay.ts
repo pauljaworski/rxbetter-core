@@ -39,6 +39,7 @@ export type WorkoutDayProgramming = {
   wod_date: string;
   prescribed_scale: string | null;
   items: WorkoutLineItem[];
+  source?: "gym" | "athlete_custom";
 };
 
 export type WorkoutPerformance = Pick<
@@ -86,11 +87,28 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
 
     const raw = dayProgs ?? [];
     const assignmentMap = await loadAssignmentMap(raw.map((p) => p.id));
-    const progs = raw.filter(
+    const gymProgs = raw.filter(
       (p) =>
         p.published_at != null &&
         isProgrammingVisibleForTracks(p, assignmentMap, trackIds),
     );
+
+    let customProgs: typeof gymProgs = [];
+    if (contactId) {
+      const { data: custom, error: customErr } = await supabase
+        .from("programming")
+        .select(
+          "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+        )
+        .eq("source", "athlete_custom")
+        .eq("created_by_contact_id", contactId)
+        .eq("wod_date", todayKey)
+        .order("display_order", { ascending: true });
+      if (customErr) throw new Error(customErr.message);
+      customProgs = custom ?? [];
+    }
+
+    const progs = [...gymProgs, ...customProgs];
     if (!progs.length) {
       return {
         wodDate: todayKey,
@@ -103,6 +121,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
     }
 
     const ids = progs.map((p) => p.id);
+    const gymIds = new Set(gymProgs.map((p) => p.id));
 
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
@@ -144,6 +163,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
       wods.push({
         ...p,
         group_score_anchor: p.group_score_anchor ?? false,
+        source: gymIds.has(p.id) ? "gym" : "athlete_custom",
         items: enriched,
       });
     }

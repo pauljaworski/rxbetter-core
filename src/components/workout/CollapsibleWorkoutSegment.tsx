@@ -18,8 +18,9 @@ type Props = {
     description?: string | null;
     athlete_notes?: string | null;
     coaches_notes?: string | null;
-    metcon_format?: string | null;
-  };
+  metcon_format?: string | null;
+  source?: "gym" | "athlete_custom";
+};
   items: LogLineItem[];
   contactId: string | null;
   rxGender?: RxGender | null;
@@ -84,6 +85,11 @@ export function CollapsibleWorkoutSegment({
             <p className="eyebrow">
               {segmentLabel(wod.programming_segment, wod.programming_subtype)}
               {wod.metcon_format ? ` · ${wod.metcon_format.toUpperCase()}` : ""}
+              {wod.source === "athlete_custom" && (
+                <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
+                  Personal
+                </Badge>
+              )}
             </p>
             <h3
               className={cn(

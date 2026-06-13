@@ -8,7 +8,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Menu, CalendarCheck2, CreditCard, Settings, User, History as HistoryIcon } from "lucide-react";
+import {
+  Menu,
+  CalendarCheck2,
+  CreditCard,
+  Settings,
+  User,
+  History as HistoryIcon,
+  PenLine,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export function OverflowMenu() {
@@ -31,6 +39,11 @@ export function OverflowMenu() {
         <DropdownMenuItem asChild>
           <Link to="/profile" className="flex cursor-pointer items-center">
             <User className="mr-2 h-4 w-4" /> Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/my-programming" className="flex cursor-pointer items-center">
+            <PenLine className="mr-2 h-4 w-4" /> My Programming
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

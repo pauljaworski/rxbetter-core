@@ -17,6 +17,7 @@ const titles: Record<string, string> = {
   "/history": "History",
   "/leaderboard": "Leaderboard",
   "/profile": "Profile",
+  "/my-programming": "My Programming",
   "/staff": "Staff",
   "/staff/programming": "Programming",
   "/staff/classes": "Class Day",
@@ -34,16 +35,17 @@ export function AppShell() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
-        {!isAthlete && <RxSidebar />}
+        <RxSidebar className={cn(isAthlete && "hidden md:flex")} />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl">
             {isAthlete && <OverflowMenu />}
-            {!isAthlete && (
-              <>
-                <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-                <div className="h-4 w-px bg-border" />
-              </>
-            )}
+            <SidebarTrigger
+              className={cn(
+                "text-muted-foreground hover:text-foreground",
+                isAthlete ? "hidden" : "inline-flex",
+              )}
+            />
+            {!isAthlete && <div className="h-4 w-px bg-border" />}
             {isAthlete && (
               <Button
                 asChild

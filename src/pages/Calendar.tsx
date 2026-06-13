@@ -6,6 +6,7 @@ import { seededHash, seededSample, segmentLabel } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgrammingWeek } from "@/hooks/useProgrammingWeek";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -255,6 +256,11 @@ export default function CalendarPage() {
                       <p className="eyebrow">
                         {segmentLabel(w.programming_segment)}
                         {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
+                        {w.source === "athlete_custom" && (
+                          <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
+                            Personal
+                          </Badge>
+                        )}
                       </p>
                       <h3 className="mt-1 text-base font-bold leading-tight">
                         {w.name ?? "Untitled"}

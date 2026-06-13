@@ -27,6 +27,7 @@ export type WeekWod = {
   prescribed_scale?: string | null;
   program_library_id?: string | null;
   published_at?: string | null;
+  source?: "gym" | "athlete_custom";
 };
 
 export type GymAthlete = { id: string; name: string };
@@ -81,13 +82,36 @@ export function useProgrammingWeek(
 
     if (progErr) throw new Error(progErr.message);
 
-    const raw = (progs ?? []) as WeekWod[];
+    const raw = (progs ?? []).map((p) => ({ ...p, source: "gym" as const }));
     const assignmentMap = await loadAssignmentMap(raw.map((p) => p.id));
-    const wods = raw.filter(
+    const gymWods = raw.filter(
       (p) =>
         p.published_at != null &&
         isProgrammingVisibleForTracks(p, assignmentMap, trackIds),
     ) as WeekWod[];
+
+    let customWods: WeekWod[] = [];
+    if (contactId) {
+      const { data: custom, error: customErr } = await supabase
+        .from("programming")
+        .select(
+          "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+        )
+        .eq("source", "athlete_custom")
+        .eq("created_by_contact_id", contactId)
+        .gte("wod_date", start)
+        .lte("wod_date", end)
+        .order("wod_date", { ascending: true })
+        .order("display_order", { ascending: true });
+      if (customErr) throw new Error(customErr.message);
+      customWods = (custom ?? []).map((p) => ({ ...p, source: "athlete_custom" as const }));
+    }
+
+    const wods = [...gymWods, ...customWods].sort((a, b) => {
+      const d = a.wod_date.localeCompare(b.wod_date);
+      if (d !== 0) return d;
+      return (a.display_order ?? 0) - (b.display_order ?? 0);
+    });
     const progIds = wods.map((p) => p.id);
 
     const itemsByWod = new Map<string, LogLineItem[]>();
