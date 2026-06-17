@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Sparkles } from "lucide-react";
 import { PersonaSwitcher } from "./PersonaSwitcher";
 import { BottomNav } from "./BottomNav";
-import { OverflowMenu } from "./OverflowMenu";
+import { AthleteProfileMenu } from "./AthleteProfileMenu";
 import { cn } from "@/lib/utils";
 
 const titles: Record<string, string> = {
@@ -38,7 +38,6 @@ export function AppShell() {
         <RxSidebar className={cn(isAthlete && "hidden md:flex")} />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl">
-            {isAthlete && <OverflowMenu />}
             <SidebarTrigger
               className={cn(
                 "text-muted-foreground hover:text-foreground",
@@ -91,18 +90,24 @@ export function AppShell() {
                   {activeGym.gym_name}
                 </span>
               ) : null}
-              {displayName && (
-                <span className="hidden text-xs text-muted-foreground sm:inline">{displayName}</span>
+              {isAthlete ? (
+                <AthleteProfileMenu />
+              ) : (
+                <>
+                  {displayName && (
+                    <span className="hidden text-xs text-muted-foreground sm:inline">{displayName}</span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => void signOut()}
+                    aria-label="Sign out"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => void signOut()}
-                aria-label="Sign out"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
           </header>
           <main

@@ -122,7 +122,7 @@ export function AthleteDataImportDialog({ open, onOpenChange, contactId, onImpor
 
   async function onFileSelected(file: File) {
     const result = await parseSpreadsheetFile(file);
-    if (!result.ok) {
+    if (result.ok === false) {
       toast.error("Couldn't read file", { description: result.error });
       return;
     }
