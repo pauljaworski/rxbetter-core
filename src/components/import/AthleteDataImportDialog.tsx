@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Upload, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
@@ -57,6 +57,7 @@ export function AthleteDataImportDialog({ open, onOpenChange, contactId, onImpor
   >([]);
   const [importing, setImporting] = useState(false);
   const [manualBench, setManualBench] = useState<Record<number, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -120,19 +121,22 @@ export function AthleteDataImportDialog({ open, onOpenChange, contactId, onImpor
   }
 
   async function onFileSelected(file: File) {
-    const table = await parseSpreadsheetFile(file);
-    if (!table) {
-      toast.error("Couldn't read file", {
-        description: "Upload a .csv or .xlsx with a header row and data.",
-      });
+    const result = await parseSpreadsheetFile(file);
+    if (!result.ok) {
+      toast.error("Couldn't read file", { description: result.error });
       return;
     }
+    const { table } = result;
     const detected = detectColumnMapping(table.headers);
     setFileName(file.name);
     setHeaders(table.headers);
     setRawRows(table.rows);
     refreshPrepared(detected, table.rows, table.headers);
     setStep("map");
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
   }
 
   function setColumnField(colIdx: number, field: ImportField) {
@@ -174,36 +178,51 @@ export function AthleteDataImportDialog({ open, onOpenChange, contactId, onImpor
         <DialogHeader>
           <DialogTitle>Import workout history</DialogTitle>
           <DialogDescription>
-            Upload a CSV or Excel export (SugarWOD, spreadsheets, etc.). We&apos;ll map columns and
-            add lifts to your PR vault and scores to History.
+            Import past lifts and workout scores into History and PR Vault (.csv, .xlsx, .xlsm).
+            Gym programming is entered on Staff → Programming, not here.
           </DialogDescription>
         </DialogHeader>
 
         {step === "upload" && (
-          <label className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border p-8 transition-colors hover:border-primary/50 hover:bg-muted/30">
+          <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") openFilePicker();
+            }}
+            onClick={openFilePicker}
+            className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border p-8 transition-colors hover:border-primary/50 hover:bg-muted/30"
+          >
             <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
             <div className="text-center">
-              <p className="font-semibold">Choose .csv or .xlsx</p>
+              <p className="font-semibold">Choose .csv, .xlsx, or .xlsm</p>
               <p className="text-xs text-muted-foreground">
-                Expected columns: date, movement, weight, reps — or date, workout, score
+                Header row required. Columns: date, movement, weight, reps — or date, workout, score
               </p>
             </div>
             <input
+              ref={fileInputRef}
               type="file"
-              accept=".csv,.txt,.xlsx,.xls"
-              className="sr-only"
+              accept=".csv,.txt,.xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void onFileSelected(f);
                 e.target.value = "";
               }}
             />
-            <Button type="button" variant="secondary" size="sm" asChild>
-              <span>
-                <Upload className="mr-1 h-3.5 w-3.5" /> Browse
-              </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                openFilePicker();
+              }}
+            >
+              <Upload className="mr-1 h-3.5 w-3.5" /> Browse files
             </Button>
-          </label>
+          </div>
         )}
 
         {step === "map" && (

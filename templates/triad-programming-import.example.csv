@@ -1,0 +1,4 @@
+date,segment_order,segment_type,segment_name,prescribed_scale,format,description,movement,sets,reps,percent,weight_lb,coaches_notes
+2026-05-26,1,strength,Back Squat,rx,,Build across 5 sets,Back Squat,5,3,80,,Pause in the hole
+2026-05-26,2,metcon,Tuesday Metcon,rx,for_time,21-15-9 Thruster (95/65) and Pull-ups,,,,,,
+2026-05-26,3,metcon,Tuesday Metcon (Scaled),scaled,for_time,21-15-9 Thruster (65/45) and Ring rows,,,,,,
