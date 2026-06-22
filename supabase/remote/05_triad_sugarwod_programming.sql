@@ -1,11 +1,22 @@
 -- Triad SugarWOD programming import (draft — published_at left null)
+begin;
 alter table public.programming disable trigger programming_update_guard;
 alter table public.programming_line_item disable trigger pli_update_guard;
 
-delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
-    and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym'
-);
+do $$
+begin
+  if exists (
+    select 1
+    from public.athlete_performance ap
+    join public.programming p on p.id = ap.programming_id
+    where p.gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
+      and p.wod_date >= '2026-06-01'
+      and p.wod_date <= '2026-07-25'
+      and p.source = 'gym'
+  ) then
+    raise exception 'Refusing to replace Triad SugarWOD programming because athlete scores already reference this date range';
+  end if;
+end $$;
 delete from public.programming_library_assignment where programming_id in (
   select id from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
     and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym'
@@ -854,3 +865,4 @@ values ('f5000000-0000-4000-8000-000000000128', 'e5000000-0000-4000-8000-2026072
 
 alter table public.programming enable trigger programming_update_guard;
 alter table public.programming_line_item enable trigger pli_update_guard;
+commit;
