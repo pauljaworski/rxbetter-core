@@ -137,7 +137,7 @@ begin
         'authenticated',
         'authenticated',
         lower(p_email),
-        extensions.crypt('TriadTrain2026!', extensions.gen_salt('bf')),
+        extensions.crypt(gen_random_uuid()::text || gen_random_uuid()::text, extensions.gen_salt('bf')),
         now(),
         jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
         jsonb_build_object('first_name', p_first_name, 'last_name', p_last_name),
@@ -353,7 +353,7 @@ end;
 $$;
 
 comment on function public.seed_triad_member is
-  'POC: provision Triad Training athlete with CrossFit + Hyrox track access for one year. Creates auth user when email provided (temp password TriadTrain2026!).';
+  'POC: provision Triad Training athlete with CrossFit + Hyrox track access for one year. Creates auth user with a random reset-required password when email provided.';
 
 -- ---------------------------------------------------------------------------
 -- 3. Run seeds (idempotent via helper)

@@ -10,10 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+export function safeAuthRedirectPath(rawNext: string | null): string {
+  if (!rawNext || !rawNext.startsWith("/") || rawNext.startsWith("//")) return "/";
+  return rawNext;
+}
+
 export default function AuthPage() {
   const { user, loading } = useAuth();
   const [params] = useSearchParams();
-  const next = params.get("next") || "/";
+  const next = safeAuthRedirectPath(params.get("next"));
   const nav = useNavigate();
 
   useEffect(() => {
