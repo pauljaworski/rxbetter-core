@@ -14,7 +14,9 @@ describe("SugarWOD import SQL safety", () => {
     expect(generatedSql).not.toMatch(/delete\s+from\s+public\.athlete_performance/i);
     expect(script).not.toMatch(/delete\s+from\s+public\.athlete_performance/i);
     expect(generatedSql).toContain("Refusing to replace Triad SugarWOD programming");
-    expect(generatedSql).toMatch(/^begin;\n/i);
+    expect(generatedSql).toMatch(
+      /begin;\nalter table public\.programming disable trigger programming_update_guard;/i,
+    );
     expect(generatedSql.trim()).toMatch(/commit;$/i);
   });
 
