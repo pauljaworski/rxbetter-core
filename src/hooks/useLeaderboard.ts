@@ -140,6 +140,7 @@ export function useLeaderboard(
                 "id, contact_id, programming_id, segment_group_id, score, result_value, workout_scale, programming_line_item_id",
               )
               .in("segment_group_id", groupIds)
+              .eq("performance_date", dateKey)
               .is("programming_line_item_id", null)
               .not("score", "is", null)
           : Promise.resolve({ data: [] as never[], error: null }),
