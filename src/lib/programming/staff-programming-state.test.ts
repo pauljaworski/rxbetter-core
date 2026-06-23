@@ -18,6 +18,8 @@ const baseWod: EditorWod = {
   program_library_id: "lib-1",
   program_library_ids: ["lib-1"],
   published_at: "2024-01-01T00:00:00Z",
+  segment_group_id: "group-from-source-day",
+  group_score_anchor: true,
   prescribed_scale: "rx",
   items: [
     {
@@ -45,6 +47,8 @@ describe("cloneEditorWod", () => {
     expect(isSegmentUnsaved(clone)).toBe(true);
     expect(clone.id).toBeUndefined();
     expect(clone.published_at).toBeNull();
+    expect(clone.segment_group_id).toBeNull();
+    expect(clone.group_score_anchor).toBe(false);
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
