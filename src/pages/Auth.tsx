@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { getSafeAuthNext } from "@/lib/auth/safe-auth-next";
 
 export default function AuthPage() {
   const { user, loading } = useAuth();
   const [params] = useSearchParams();
-  const next = params.get("next") || "/";
+  const next = getSafeAuthNext(params.get("next"));
   const nav = useNavigate();
 
   useEffect(() => {
