@@ -3,6 +3,7 @@ import { parseCsvText } from "./parse-spreadsheet";
 import { detectColumnMapping, applyColumnMapping } from "./map-import-columns";
 import { matchBenchmarkType } from "./match-benchmark";
 import { parseImportDate, prepareImportRows } from "./prepare-import-rows";
+import { importPerformanceKey } from "./commit-athlete-import";
 
 describe("parseCsvText", () => {
   it("parses quoted CSV with header", () => {
@@ -54,5 +55,50 @@ describe("prepareImportRows", () => {
     ]);
     expect(rows[0].kind).toBe("lift");
     expect(rows[0].benchmarkDefinitionId).toBe("def1");
+  });
+});
+
+describe("importPerformanceKey", () => {
+  it("keeps distinct same-day workout imports with matching scores", () => {
+    const fran = importPerformanceKey({
+      date: "2024-01-01",
+      kind: "workout",
+      definitionId: null,
+      weight: null,
+      score: "12:34",
+      label: "Fran",
+    });
+    const grace = importPerformanceKey({
+      date: "2024-01-01",
+      kind: "workout",
+      definitionId: null,
+      weight: null,
+      score: "12:34",
+      label: "Grace",
+    });
+
+    expect(fran).not.toBe(grace);
+  });
+
+  it("normalizes workout labels and scores for duplicate detection", () => {
+    expect(
+      importPerformanceKey({
+        date: "2024-01-01",
+        kind: "workout",
+        definitionId: null,
+        weight: null,
+        score: " 12:34 ",
+        label: "Open   24.1",
+      }),
+    ).toBe(
+      importPerformanceKey({
+        date: "2024-01-01",
+        kind: "workout",
+        definitionId: null,
+        weight: null,
+        score: "12:34",
+        label: "open 24.1",
+      }),
+    );
   });
 });
