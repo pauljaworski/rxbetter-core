@@ -1,21 +1,49 @@
 -- Triad SugarWOD programming import (draft — published_at left null)
+begin;
+
 alter table public.programming disable trigger programming_update_guard;
 alter table public.programming_line_item disable trigger pli_update_guard;
 
-delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
-    and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym'
+delete from public.athlete_performance
+where programming_id in (
+  select p.id
+  from public.programming p
+  join public.gym g on g.id = p.gym_id
+  where g.name ilike 'Triad Training'
+    and p.wod_date between '2026-06-01' and '2026-07-25'
+    and p.source = 'gym'
+    and p.id::text like 'e5000000%'
 );
-delete from public.programming_library_assignment where programming_id in (
-  select id from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
-    and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym'
+delete from public.programming_library_assignment
+where programming_id in (
+  select p.id
+  from public.programming p
+  join public.gym g on g.id = p.gym_id
+  where g.name ilike 'Triad Training'
+    and p.wod_date between '2026-06-01' and '2026-07-25'
+    and p.source = 'gym'
+    and p.id::text like 'e5000000%'
 );
-delete from public.programming_line_item where programming_id in (
-  select id from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
-    and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym'
+delete from public.programming_line_item
+where programming_id in (
+  select p.id
+  from public.programming p
+  join public.gym g on g.id = p.gym_id
+  where g.name ilike 'Triad Training'
+    and p.wod_date between '2026-06-01' and '2026-07-25'
+    and p.source = 'gym'
+    and p.id::text like 'e5000000%'
 );
-delete from public.programming where gym_id = (select id from public.gym where name ilike 'Triad Training' limit 1)
-  and wod_date >= '2026-06-01' and wod_date <= '2026-07-25' and source = 'gym';
+delete from public.programming
+where id in (
+  select p.id
+  from public.programming p
+  join public.gym g on g.id = p.gym_id
+  where g.name ilike 'Triad Training'
+    and p.wod_date between '2026-06-01' and '2026-07-25'
+    and p.source = 'gym'
+    and p.id::text like 'e5000000%'
+);
 
 insert into public.programming (id, gym_id, program_library_id, name, wod_date, programming_segment, programming_subtype, prescribed_scale, display_order, description, source, published_at)
 values ('e5000000-0000-4000-8000-202606010001', (select id from public.gym where name ilike 'Triad Training' limit 1), (select pl.id from public.program_library pl join public.gym g on g.id = pl.gym_id where g.name ilike 'Triad Training' and pl.name ilike 'CrossFit' limit 1), 'Back Squat', '2026-06-01', 'weightlifting', 'strength', 'rx', 1, 'Back Squat (1 X 3)', 'gym', null);
@@ -854,3 +882,5 @@ values ('f5000000-0000-4000-8000-000000000128', 'e5000000-0000-4000-8000-2026072
 
 alter table public.programming enable trigger programming_update_guard;
 alter table public.programming_line_item enable trigger pli_update_guard;
+
+commit;

@@ -12,19 +12,48 @@ export type CommitImportResult = {
 
 type ExistingPerfKey = string;
 
-function perfKey(
-  date: string,
-  definitionId: string | null,
-  weight: number | null,
-  score: string | null,
-): ExistingPerfKey {
-  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}`;
+function normalizeKeyPart(value: string | null | undefined): string {
+  return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+}
+
+function scoreMetaLabel(scoreMeta: unknown): string | null {
+  if (scoreMeta && typeof scoreMeta === "object" && !Array.isArray(scoreMeta)) {
+    const label = (scoreMeta as { label?: unknown }).label;
+    return typeof label === "string" ? label : null;
+  }
+  return null;
+}
+
+export function importPerformanceKey(input: {
+  date: string;
+  kind: "lift" | "workout";
+  definitionId: string | null;
+  weight: number | null;
+  score: string | null;
+  label?: string | null;
+}): ExistingPerfKey {
+  if (input.kind === "workout") {
+    return [
+      "workout",
+      input.date,
+      normalizeKeyPart(input.label),
+      normalizeKeyPart(input.score),
+    ].join("|");
+  }
+
+  return [
+    "lift",
+    input.date,
+    input.definitionId ?? "",
+    input.weight ?? "",
+    normalizeKeyPart(input.score),
+  ].join("|");
 }
 
 async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
   const { data, error } = await supabase
     .from("athlete_performance")
-    .select("performance_date, benchmark_definition_id, weight_lifted, score")
+    .select("performance_date, benchmark_definition_id, weight_lifted, score, score_meta")
     .eq("contact_id", contactId);
 
   if (error) throw new Error(formatSupabaseError(error.message));
@@ -34,12 +63,14 @@ async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey
     const date = row.performance_date?.slice(0, 10);
     if (!date) continue;
     keys.add(
-      perfKey(
+      importPerformanceKey({
         date,
-        row.benchmark_definition_id,
-        row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
-        row.score?.trim() ?? null,
-      ),
+        kind: row.benchmark_definition_id ? "lift" : "workout",
+        definitionId: row.benchmark_definition_id,
+        weight: row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
+        score: row.score?.trim() ?? null,
+        label: scoreMetaLabel(row.score_meta),
+      }),
     );
   }
   return keys;
@@ -93,19 +124,20 @@ export async function commitAthleteImport(
   }[] = [];
 
   for (const row of importable) {
-    const key = perfKey(
-      row.date!,
-      row.benchmarkDefinitionId,
-      row.weightLb != null ? Math.round(row.weightLb) : null,
-      row.score,
-    );
-    if (existingKeys.has(key)) {
-      result.duplicates++;
-      continue;
-    }
-
     if (row.kind === "lift") {
       const label = row.movementLabel?.trim() || "Strength lift";
+      const key = importPerformanceKey({
+        date: row.date!,
+        kind: "lift",
+        definitionId: row.benchmarkDefinitionId,
+        weight: row.weightLb != null ? Math.round(row.weightLb) : null,
+        score: row.score,
+        label,
+      });
+      if (existingKeys.has(key)) {
+        result.duplicates++;
+        continue;
+      }
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
@@ -124,6 +156,18 @@ export async function commitAthleteImport(
       existingKeys.add(key);
     } else {
       const label = row.workoutName?.trim() || row.movementLabel?.trim() || "Workout";
+      const key = importPerformanceKey({
+        date: row.date!,
+        kind: "workout",
+        definitionId: null,
+        weight: null,
+        score: row.score,
+        label,
+      });
+      if (existingKeys.has(key)) {
+        result.duplicates++;
+        continue;
+      }
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
