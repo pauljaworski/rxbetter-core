@@ -14,6 +14,7 @@ const FILES = [
 
 const GYM_SQL = `(select id from public.gym where name ilike 'Triad Training' limit 1)`;
 const LIB_SQL = `(select pl.id from public.program_library pl join public.gym g on g.id = pl.gym_id where g.name ilike 'Triad Training' and pl.name ilike 'CrossFit' limit 1)`;
+const IMPORT_ID_PREFIX = 'e5000000';
 
 const LIFT_NAMES = [
   'Hang Power Snatch',
@@ -183,24 +184,25 @@ const minDate = rows[0].iso;
 const maxDate = rows[rows.length - 1].iso;
 
 const sql = [];
-sql.push('-- Triad SugarWOD programming import (draft — published_at left null)');
+sql.push('-- Triad SugarWOD programming import (draft - published_at left null)');
+sql.push('begin;');
+sql.push('-- Keep guard-trigger changes transactional so an import failure rolls them back.');
 sql.push('alter table public.programming disable trigger programming_update_guard;');
 sql.push('alter table public.programming_line_item disable trigger pli_update_guard;');
 sql.push('');
-sql.push(`delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = ${GYM_SQL}
-    and wod_date >= ${sqlStr(minDate)} and wod_date <= ${sqlStr(maxDate)} and source = 'gym'
-);`);
 sql.push(`delete from public.programming_library_assignment where programming_id in (
   select id from public.programming where gym_id = ${GYM_SQL}
     and wod_date >= ${sqlStr(minDate)} and wod_date <= ${sqlStr(maxDate)} and source = 'gym'
+    and id::text like '${IMPORT_ID_PREFIX}%'
 );`);
 sql.push(`delete from public.programming_line_item where programming_id in (
   select id from public.programming where gym_id = ${GYM_SQL}
     and wod_date >= ${sqlStr(minDate)} and wod_date <= ${sqlStr(maxDate)} and source = 'gym'
+    and id::text like '${IMPORT_ID_PREFIX}%'
 );`);
 sql.push(`delete from public.programming where gym_id = ${GYM_SQL}
-  and wod_date >= ${sqlStr(minDate)} and wod_date <= ${sqlStr(maxDate)} and source = 'gym';`);
+  and wod_date >= ${sqlStr(minDate)} and wod_date <= ${sqlStr(maxDate)} and source = 'gym'
+  and id::text like '${IMPORT_ID_PREFIX}%';`);
 sql.push('');
 
 let progCount = 0;
@@ -256,6 +258,7 @@ values ('${pliId}', '${progId}', 1, ${sqlStr(preview.slice(0, 500))}, 'pending')
 sql.push('');
 sql.push('alter table public.programming enable trigger programming_update_guard;');
 sql.push('alter table public.programming_line_item enable trigger pli_update_guard;');
+sql.push('commit;');
 
 const outPath = join(dirname(fileURLToPath(import.meta.url)), '../supabase/remote/05_triad_sugarwod_programming.sql');
 writeFileSync(outPath, sql.join('\n'));
