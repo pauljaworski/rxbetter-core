@@ -10,6 +10,9 @@ describe("SugarWOD SQL guardrails", () => {
   const importSql = readRepoFile("supabase/remote/05_triad_sugarwod_programming.sql");
   const revertSql = readRepoFile("supabase/remote/06_revert_triad_sugarwod_programming.sql");
   const generator = readRepoFile("scripts/import-triad-sugarwod-programming.mjs");
+  const workoutTrendsSql = readRepoFile("supabase/remote/04_triad_workout_trends.sql");
+  const workoutTrendsGenerator = readRepoFile("scripts/import-triad-workout-trends.mjs");
+  const paulCleanupSql = readRepoFile("supabase/remote/05_cleanup_paul_fake_data.sql");
 
   it("does not delete athlete scores during import or revert cleanup", () => {
     for (const sql of [importSql, revertSql, generator]) {
@@ -37,6 +40,22 @@ describe("SugarWOD SQL guardrails", () => {
       expect(sql).toMatch(/enable trigger programming_update_guard/i);
       expect(sql).toMatch(/commit;/i);
     }
+  });
+
+  it("does not use broad Workout Trends date-window deletes", () => {
+    for (const sql of [workoutTrendsSql, workoutTrendsGenerator]) {
+      expect(sql).not.toMatch(/delete\s+from\s+public\.programming\s+where[\s\S]*wod_date\s*>=/i);
+      expect(sql).not.toMatch(/delete\s+from\s+public\.athlete_performance\s+where\s+programming_id\s+in\s*\([\s\S]*wod_date\s*>=/i);
+      expect(sql).toMatch(/id::text like 'e3000000%'/i);
+      expect(sql).toMatch(/Refusing to refresh Workout Trends import because imported programming has non-Paul athlete scores/);
+    }
+  });
+
+  it("does not wipe all Paul performances or benchmark summaries", () => {
+    expect(paulCleanupSql).not.toMatch(
+      /delete\s+from\s+public\.athlete_performance\s+where\s+contact_id\s*=\s*'c0000000-0000-4000-8000-000000000001'\s*;/i,
+    );
+    expect(paulCleanupSql).not.toMatch(/delete\s+from\s+public\.athlete_benchmark_summary/i);
   });
 });
 
