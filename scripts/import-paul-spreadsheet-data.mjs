@@ -360,9 +360,7 @@ for (const w of workouts2026) {
 const sql = [];
 sql.push('-- Auto-generated: Paul Crossfit Tracker (CrossFit Stats) + SugarWod + Max Lifts');
 sql.push('');
-sql.push('-- Standalone PR / 1RM history only (preserve Triad class performances from 04)');
-sql.push(`delete from public.athlete_performance where contact_id = '${PAUL}' and programming_id is null;`);
-sql.push(`delete from public.athlete_benchmark_summary where contact_id = '${PAUL}';`);
+sql.push('-- Standalone PR / 1RM history only (preserve athlete-entered and Triad class performances)');
 
 for (const [bt, v] of Object.entries(strengthPrs)) {
   if (!v.weight) continue;

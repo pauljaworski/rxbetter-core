@@ -1,8 +1,6 @@
 -- Auto-generated: Paul Crossfit Tracker (CrossFit Stats) + SugarWod + Max Lifts
 
--- Standalone PR / 1RM history only (preserve Triad class performances from 04)
-delete from public.athlete_performance where contact_id = 'c0000000-0000-4000-8000-000000000001' and programming_id is null;
-delete from public.athlete_benchmark_summary where contact_id = 'c0000000-0000-4000-8000-000000000001';
+-- Standalone PR / 1RM history only (preserve athlete-entered and Triad class performances)
 insert into public.athlete_benchmark_summary (contact_id, benchmark_definition_id, current_pr_weight, date_pr_achieved)
 select 'c0000000-0000-4000-8000-000000000001', bd.id, 425, '2025-12-15'
 from public.benchmark_definition bd

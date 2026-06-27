@@ -12,6 +12,8 @@ describe("SugarWOD SQL guardrails", () => {
   const generator = readRepoFile("scripts/import-triad-sugarwod-programming.mjs");
   const workoutTrendsSql = readRepoFile("supabase/remote/04_triad_workout_trends.sql");
   const workoutTrendsGenerator = readRepoFile("scripts/import-triad-workout-trends.mjs");
+  const paulSpreadsheetSql = readRepoFile("supabase/remote/03_spreadsheet_import.sql");
+  const paulSpreadsheetGenerator = readRepoFile("scripts/import-paul-spreadsheet-data.mjs");
   const paulCleanupSql = readRepoFile("supabase/remote/05_cleanup_paul_fake_data.sql");
 
   it("does not delete athlete scores during import or revert cleanup", () => {
@@ -52,10 +54,12 @@ describe("SugarWOD SQL guardrails", () => {
   });
 
   it("does not wipe all Paul performances or benchmark summaries", () => {
-    expect(paulCleanupSql).not.toMatch(
-      /delete\s+from\s+public\.athlete_performance\s+where\s+contact_id\s*=\s*'c0000000-0000-4000-8000-000000000001'\s*;/i,
-    );
-    expect(paulCleanupSql).not.toMatch(/delete\s+from\s+public\.athlete_benchmark_summary/i);
+    for (const sql of [paulCleanupSql, paulSpreadsheetSql, paulSpreadsheetGenerator]) {
+      expect(sql).not.toMatch(
+        /delete\s+from\s+public\.athlete_performance\s+where\s+contact_id\s*=\s*'?(\$\{PAUL\}|c0000000-0000-4000-8000-000000000001)'?/i,
+      );
+      expect(sql).not.toMatch(/delete\s+from\s+public\.athlete_benchmark_summary/i);
+    }
   });
 });
 
