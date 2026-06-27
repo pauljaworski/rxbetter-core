@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function readRepoFile(path: string): string {
-  return readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
+  return readFileSync(join(process.cwd(), path), "utf8");
 }
 
 describe("SugarWOD SQL guardrails", () => {
