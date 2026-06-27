@@ -1,0 +1,76 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+function readRepoFile(path: string): string {
+  return readFileSync(join(process.cwd(), path), "utf8");
+}
+
+describe("SugarWOD SQL guardrails", () => {
+  const importSql = readRepoFile("supabase/remote/05_triad_sugarwod_programming.sql");
+  const revertSql = readRepoFile("supabase/remote/06_revert_triad_sugarwod_programming.sql");
+  const generator = readRepoFile("scripts/import-triad-sugarwod-programming.mjs");
+  const workoutTrendsSql = readRepoFile("supabase/remote/04_triad_workout_trends.sql");
+  const workoutTrendsGenerator = readRepoFile("scripts/import-triad-workout-trends.mjs");
+  const paulSpreadsheetSql = readRepoFile("supabase/remote/03_spreadsheet_import.sql");
+  const paulSpreadsheetGenerator = readRepoFile("scripts/import-paul-spreadsheet-data.mjs");
+  const paulCleanupSql = readRepoFile("supabase/remote/05_cleanup_paul_fake_data.sql");
+
+  it("does not delete athlete scores during import or revert cleanup", () => {
+    for (const sql of [importSql, revertSql, generator]) {
+      expect(sql).not.toMatch(/delete\s+from\s+public\.athlete_performance/i);
+    }
+  });
+
+  it("scopes programming cleanup to deterministic SugarWOD import ids", () => {
+    expect(importSql).toMatch(/delete\s+from\s+public\.programming\s+where[\s\S]*id::text like 'e5000000%'/i);
+    expect(revertSql).toMatch(/delete\s+from\s+public\.programming\s+where[\s\S]*id::text like 'e5000000%'/i);
+    expect(generator).toMatch(/delete from public\.programming where[\s\S]*id::text like 'e5000000%'/i);
+  });
+
+  it("fails closed before removing imported programming with logged scores", () => {
+    for (const sql of [importSql, revertSql, generator]) {
+      expect(sql).toMatch(/if exists \([\s\S]*from public\.athlete_performance ap[\s\S]*id::text like 'e5000000%'/i);
+      expect(sql).toMatch(/Refusing to (refresh|revert) SugarWOD import because imported programming already has athlete scores/);
+    }
+  });
+
+  it("keeps trigger disables inside transactions", () => {
+    for (const sql of [importSql, revertSql, generator]) {
+      expect(sql).toMatch(/begin;/i);
+      expect(sql).toMatch(/disable trigger programming_update_guard/i);
+      expect(sql).toMatch(/enable trigger programming_update_guard/i);
+      expect(sql).toMatch(/commit;/i);
+    }
+  });
+
+  it("does not use broad Workout Trends date-window deletes", () => {
+    for (const sql of [workoutTrendsSql, workoutTrendsGenerator]) {
+      expect(sql).not.toMatch(/delete\s+from\s+public\.programming\s+where[\s\S]*wod_date\s*>=/i);
+      expect(sql).not.toMatch(/delete\s+from\s+public\.athlete_performance\s+where\s+programming_id\s+in\s*\([\s\S]*wod_date\s*>=/i);
+      expect(sql).toMatch(/id::text like 'e3000000%'/i);
+      expect(sql).toMatch(/Refusing to refresh Workout Trends import because imported programming has non-Paul athlete scores/);
+    }
+  });
+
+  it("does not wipe all Paul performances or benchmark summaries", () => {
+    for (const sql of [paulCleanupSql, paulSpreadsheetSql, paulSpreadsheetGenerator]) {
+      expect(sql).not.toMatch(
+        /delete\s+from\s+public\.athlete_performance\s+where\s+contact_id\s*=\s*'?(\$\{PAUL\}|c0000000-0000-4000-8000-000000000001)'?/i,
+      );
+      expect(sql).not.toMatch(/delete\s+from\s+public\.athlete_benchmark_summary/i);
+    }
+  });
+});
+
+describe("seed auth guardrails", () => {
+  it("does not commit the old shared Triad seed password", () => {
+    const seedMigration = readRepoFile("supabase/migrations/20260613150000_triad_members_personal_workouts.sql");
+    const codyMigration = readRepoFile("supabase/migrations/20260613160000_cody_houchin_auth.sql");
+    const rotationMigration = readRepoFile("supabase/migrations/20260627130500_rotate_committed_seed_passwords.sql");
+
+    for (const sql of [seedMigration, codyMigration, rotationMigration]) {
+      expect(sql).not.toMatch(/TriadTrain2026!/);
+    }
+  });
+});
