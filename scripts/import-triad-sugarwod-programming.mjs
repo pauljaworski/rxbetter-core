@@ -201,7 +201,8 @@ begin
   ) then
     raise exception 'Refusing to refresh SugarWOD import because imported programming already has athlete scores';
   end if;
-end $$;`);
+end;
+$$;`);
 sql.push('');
 sql.push('alter table public.programming disable trigger programming_update_guard;');
 sql.push('alter table public.programming_line_item disable trigger pli_update_guard;');
