@@ -1,8 +1,9 @@
 import { readFileSync } from "fs";
+import { join } from "path";
 import { describe, expect, it } from "vitest";
 
 function repoFile(path: string): string {
-  return readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
+  return readFileSync(join(process.cwd(), path), "utf8");
 }
 
 describe("Triad import SQL guardrails", () => {
