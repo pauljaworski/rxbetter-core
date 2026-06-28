@@ -49,4 +49,18 @@ describe("cloneEditorWod", () => {
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
   });
+
+  it("does not reuse group score identity when duplicating", () => {
+    const clone = cloneEditorWod(
+      {
+        ...baseWod,
+        segment_group_id: "group-1",
+        group_score_anchor: true,
+      },
+      2,
+    );
+
+    expect(clone.segment_group_id).toBeNull();
+    expect(clone.group_score_anchor).toBe(false);
+  });
 });
