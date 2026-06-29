@@ -17,14 +17,22 @@ function perfKey(
   definitionId: string | null,
   weight: number | null,
   score: string | null,
+  workoutLabel: string | null,
 ): ExistingPerfKey {
-  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}`;
+  const labelKey = !definitionId && weight == null ? workoutLabel?.trim().toLowerCase() ?? "" : "";
+  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}|${labelKey}`;
+}
+
+function scoreMetaLabel(scoreMeta: unknown): string | null {
+  if (!scoreMeta || typeof scoreMeta !== "object" || !("label" in scoreMeta)) return null;
+  const label = (scoreMeta as { label?: unknown }).label;
+  return typeof label === "string" ? label : null;
 }
 
 async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
   const { data, error } = await supabase
     .from("athlete_performance")
-    .select("performance_date, benchmark_definition_id, weight_lifted, score")
+    .select("performance_date, benchmark_definition_id, weight_lifted, score, score_meta")
     .eq("contact_id", contactId);
 
   if (error) throw new Error(formatSupabaseError(error.message));
@@ -39,6 +47,7 @@ async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey
         row.benchmark_definition_id,
         row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
         row.score?.trim() ?? null,
+        scoreMetaLabel(row.score_meta),
       ),
     );
   }
@@ -93,11 +102,16 @@ export async function commitAthleteImport(
   }[] = [];
 
   for (const row of importable) {
+    const label =
+      row.kind === "lift"
+        ? row.movementLabel?.trim() || "Strength lift"
+        : row.workoutName?.trim() || row.movementLabel?.trim() || "Workout";
     const key = perfKey(
       row.date!,
       row.benchmarkDefinitionId,
       row.weightLb != null ? Math.round(row.weightLb) : null,
       row.score,
+      row.kind === "workout" ? label : null,
     );
     if (existingKeys.has(key)) {
       result.duplicates++;
@@ -105,7 +119,6 @@ export async function commitAthleteImport(
     }
 
     if (row.kind === "lift") {
-      const label = row.movementLabel?.trim() || "Strength lift";
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
@@ -123,7 +136,6 @@ export async function commitAthleteImport(
       if (row.benchmarkDefinitionId) definitionIds.add(row.benchmarkDefinitionId);
       existingKeys.add(key);
     } else {
-      const label = row.workoutName?.trim() || row.movementLabel?.trim() || "Workout";
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,
