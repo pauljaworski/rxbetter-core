@@ -12,6 +12,8 @@ const baseWod: EditorWod = {
   description: "test",
   programming_segment: "metcon",
   metcon_format: "for_time",
+  segment_group_id: "group-1",
+  group_score_anchor: true,
   athlete_notes: null,
   coaches_notes: null,
   display_order: 0,
@@ -48,5 +50,11 @@ describe("cloneEditorWod", () => {
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+  });
+
+  it("does not reuse group score identity on copied segments", () => {
+    const clone = cloneEditorWod(baseWod, 1);
+    expect(clone.segment_group_id).toBeNull();
+    expect(clone.group_score_anchor).toBe(false);
   });
 });

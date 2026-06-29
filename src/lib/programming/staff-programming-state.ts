@@ -24,6 +24,8 @@ export function cloneEditorWod(
     _new: true,
     id: undefined,
     published_at: null,
+    segment_group_id: null,
+    group_score_anchor: false,
     display_order: displayOrder,
     prescribed_scale: options?.prescribedScale ?? src.prescribed_scale,
     items: src.items.map((it, j) => ({
