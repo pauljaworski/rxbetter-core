@@ -46,7 +46,7 @@ begin
       'authenticated',
       'authenticated',
       v_email,
-      extensions.crypt('TriadTrain2026!', extensions.gen_salt('bf')),
+      extensions.crypt(gen_random_uuid()::text || ':' || clock_timestamp()::text, extensions.gen_salt('bf')),
       now(),
       jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
       jsonb_build_object('first_name', 'Cody', 'last_name', 'Houchin'),

@@ -326,16 +326,31 @@ for (const cols of records) {
 
 const sql = [];
 sql.push('-- Triad Workout Trends: programming + line items + Paul performances');
+sql.push('begin;');
+sql.push('');
 sql.push('alter table public.programming disable trigger programming_update_guard;');
 sql.push('alter table public.programming_line_item disable trigger pli_update_guard;');
 sql.push('');
-sql.push(`delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}'
-);`);
+sql.push(`do $$
+begin
+  if exists (
+    select 1
+    from public.athlete_performance ap
+    join public.programming p on p.id = ap.programming_id
+    where p.gym_id = '${GYM}'
+      and p.wod_date >= '${DELETE_FROM}'
+      and p.wod_date <= '${DELETE_TO}'
+      and p.id::text like 'e3000000%'
+  ) then
+    raise exception 'Triad Workout Trends import aborting: generated programming already has athlete scores';
+  end if;
+end;
+$$;`);
+sql.push('');
 sql.push(`delete from public.programming_line_item where programming_id in (
-  select id from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}'
+  select id from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}' and id::text like 'e3000000%'
 );`);
-sql.push(`delete from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}';`);
+sql.push(`delete from public.programming where gym_id = '${GYM}' and wod_date >= '${DELETE_FROM}' and wod_date <= '${DELETE_TO}' and id::text like 'e3000000%';`);
 sql.push('');
 
 let pliCount = 0;
@@ -407,6 +422,8 @@ values ('${PAUL}', '${progId}', '${pliId}', ${benchmark ? btSubquery(benchmark) 
 sql.push('');
 sql.push('alter table public.programming enable trigger programming_update_guard;');
 sql.push('alter table public.programming_line_item enable trigger pli_update_guard;');
+sql.push('');
+sql.push('commit;');
 
 const outPath = join(dirname(fileURLToPath(import.meta.url)), '../supabase/remote/04_triad_workout_trends.sql');
 writeFileSync(outPath, sql.join('\n'));
