@@ -36,14 +36,24 @@ export function useSaveGroupPerformance() {
 
     let id = input.existingId;
     let error: { message: string } | null = null;
+    let didUpdateExisting = false;
 
     if (input.existingId) {
       const res = await supabase
         .from("athlete_performance")
         .update(payload)
-        .eq("id", input.existingId);
+        .eq("id", input.existingId)
+        .eq("contact_id", input.contactId)
+        .eq("segment_group_id", input.segmentGroupId)
+        .eq("performance_date", input.wodDate)
+        .select("id")
+        .maybeSingle();
       error = res.error;
-    } else {
+      didUpdateExisting = Boolean(res.data?.id);
+      id = res.data?.id ?? undefined;
+    }
+
+    if (!input.existingId || (!error && !didUpdateExisting)) {
       const res = await supabase
         .from("athlete_performance")
         .insert({

@@ -170,9 +170,11 @@ export function useProgrammingWeek(
         let perfQuery = supabase
           .from("athlete_performance")
           .select(
-            "id, programming_id, programming_line_item_id, segment_group_id, score, score_meta, weight_lifted, rpe, is_pr, workout_scale, status, result_value",
+            "id, programming_id, programming_line_item_id, segment_group_id, score, score_meta, weight_lifted, rpe, is_pr, workout_scale, status, result_value, performance_date",
           )
-          .eq("contact_id", contactId);
+          .eq("contact_id", contactId)
+          .gte("performance_date", start)
+          .lte("performance_date", end);
         if (progIds.length && groupIds.length) {
           perfQuery = perfQuery.or(
             `programming_id.in.(${progIds.join(",")}),segment_group_id.in.(${groupIds.join(",")})`,
