@@ -12,19 +12,31 @@ export type CommitImportResult = {
 
 type ExistingPerfKey = string;
 
+function normalizePerfKeyPart(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function workoutLabelFromScoreMeta(meta: unknown): string | null {
+  if (!meta || typeof meta !== "object" || !("label" in meta)) return null;
+  const label = (meta as { label?: unknown }).label;
+  return typeof label === "string" ? label : null;
+}
+
 function perfKey(
   date: string,
   definitionId: string | null,
   weight: number | null,
   score: string | null,
+  workoutLabel: string | null,
 ): ExistingPerfKey {
-  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}`;
+  const labelKey = definitionId ? "" : normalizePerfKeyPart(workoutLabel);
+  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${normalizePerfKeyPart(score)}|${labelKey}`;
 }
 
 async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
   const { data, error } = await supabase
     .from("athlete_performance")
-    .select("performance_date, benchmark_definition_id, weight_lifted, score")
+    .select("performance_date, benchmark_definition_id, weight_lifted, score, score_meta")
     .eq("contact_id", contactId);
 
   if (error) throw new Error(formatSupabaseError(error.message));
@@ -39,6 +51,7 @@ async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey
         row.benchmark_definition_id,
         row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
         row.score?.trim() ?? null,
+        workoutLabelFromScoreMeta(row.score_meta),
       ),
     );
   }
@@ -98,6 +111,7 @@ export async function commitAthleteImport(
       row.benchmarkDefinitionId,
       row.weightLb != null ? Math.round(row.weightLb) : null,
       row.score,
+      row.kind === "workout" ? row.workoutName ?? row.movementLabel : null,
     );
     if (existingKeys.has(key)) {
       result.duplicates++;
