@@ -38,6 +38,14 @@ const LIFT_NAMES = [
   'Hang Snatch',
   'Hang Clean',
   'Muscle Snatch',
+  'Snatch Pull',
+  'Clean Pull',
+  'Snatch Deadlift',
+  'Clean Deadlift',
+  'Snatch High Pull',
+  'Clean High Pull',
+  'Snatch Balance',
+  'Clean Balance',
   'Deadlift',
   'Thruster',
   'Snatch',
@@ -75,7 +83,8 @@ function bdSubquery(liftName, repCount) {
 
 function detectLift(name) {
   const raw = String(name).trim();
-  for (const lift of LIFT_NAMES) {
+  const liftsBySpecificity = [...LIFT_NAMES].sort((a, b) => b.length - a.length);
+  for (const lift of liftsBySpecificity) {
     if (raw.toLowerCase() === lift.toLowerCase() || raw.toLowerCase().startsWith(lift.toLowerCase())) {
       return LIFT_TO_BENCHMARK[lift] || lift;
     }
