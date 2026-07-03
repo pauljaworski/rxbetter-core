@@ -26,6 +26,10 @@ describe("parseImportDate", () => {
     expect(parseImportDate("2024-03-01")).toBe("2024-03-01");
     expect(parseImportDate("3/1/2024")).toBe("2024-03-01");
   });
+
+  it("parses Excel serial dates from xlsx exports", () => {
+    expect(parseImportDate("45413")).toBe("2024-05-01");
+  });
 });
 
 describe("matchBenchmarkType", () => {
@@ -54,5 +58,22 @@ describe("prepareImportRows", () => {
     ]);
     expect(rows[0].kind).toBe("lift");
     expect(rows[0].benchmarkDefinitionId).toBe("def1");
+  });
+
+  it("keeps xlsx rows importable when dates are Excel serial numbers", () => {
+    const mapped = applyColumnMapping(
+      {
+        headers: ["date", "workout_name", "score"],
+        rows: [["45413", "Fran", "3:21"]],
+      },
+      ["date", "workout_name", "score"],
+    );
+    const rows = prepareImportRows(mapped, [], []);
+    expect(rows[0]).toMatchObject({
+      kind: "workout",
+      date: "2024-05-01",
+      workoutName: "Fran",
+      skipReason: null,
+    });
   });
 });
