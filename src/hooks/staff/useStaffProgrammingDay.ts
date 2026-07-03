@@ -164,6 +164,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
         "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at, prescribed_scale",
       )
       .eq("gym_id", activeGymId)
+      .eq("source", "gym")
       .eq("wod_date", dateKey)
       .order("display_order", { ascending: true });
 
@@ -215,6 +216,7 @@ export async function fetchProgrammingDayForCopy(
       "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, athlete_notes, coaches_notes, display_order, program_library_id, published_at, prescribed_scale",
     )
     .eq("gym_id", activeGymId)
+    .eq("source", "gym")
     .eq("wod_date", srcKey)
     .order("display_order", { ascending: true });
 
