@@ -46,7 +46,7 @@ begin
       'authenticated',
       'authenticated',
       v_email,
-      extensions.crypt('TriadTrain2026!', extensions.gen_salt('bf')),
+      extensions.crypt(gen_random_uuid()::text || gen_random_uuid()::text, extensions.gen_salt('bf')),
       now(),
       jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
       jsonb_build_object('first_name', 'Cody', 'last_name', 'Houchin'),
@@ -88,6 +88,20 @@ begin
   limit 1;
 
   if v_dup_contact_id is not null then
+    update public.fitness_membership target
+    set
+      membership_status = case
+        when source.membership_status = 'active' then 'active'
+        else target.membership_status
+      end,
+      join_date = least(coalesce(target.join_date, source.join_date), coalesce(source.join_date, target.join_date)),
+      end_date = greatest(coalesce(target.end_date, source.end_date), coalesce(source.end_date, target.end_date))
+    from public.fitness_membership source
+    where source.contact_id = v_seed_contact_id
+      and target.contact_id = v_dup_contact_id
+      and target.gym_id = source.gym_id
+      and target.role = source.role;
+
     update public.fitness_membership
     set contact_id = v_dup_contact_id
     where contact_id = v_seed_contact_id
