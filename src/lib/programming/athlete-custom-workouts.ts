@@ -78,7 +78,15 @@ export async function createAthleteCustomWorkout(
       contact_id: null,
     }));
     const { error: itemErr } = await supabase.from("programming_line_item").insert(rows);
-    if (itemErr) return { id: prog.id, error: formatSupabaseError(itemErr.message) };
+    if (itemErr) {
+      await supabase
+        .from("programming")
+        .delete()
+        .eq("id", prog.id)
+        .eq("created_by_contact_id", input.contactId)
+        .eq("source", "athlete_custom");
+      return { id: null, error: formatSupabaseError(itemErr.message) };
+    }
   }
 
   return { id: prog.id, error: null };
@@ -88,12 +96,6 @@ export async function deleteAthleteCustomWorkout(
   programmingId: string,
   contactId: string,
 ): Promise<{ error: string | null }> {
-  const { error: itemErr } = await supabase
-    .from("programming_line_item")
-    .delete()
-    .eq("programming_id", programmingId);
-  if (itemErr) return { error: formatSupabaseError(itemErr.message) };
-
   const { error } = await supabase
     .from("programming")
     .delete()
