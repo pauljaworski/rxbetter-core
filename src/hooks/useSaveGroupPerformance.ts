@@ -34,16 +34,52 @@ export function useSaveGroupPerformance() {
       weight_lifted: null,
     };
 
-    let id = input.existingId;
+    let id: string | undefined;
     let error: { message: string } | null = null;
 
     if (input.existingId) {
       const res = await supabase
         .from("athlete_performance")
         .update(payload)
-        .eq("id", input.existingId);
+        .eq("id", input.existingId)
+        .eq("contact_id", input.contactId)
+        .eq("segment_group_id", input.segmentGroupId)
+        .eq("performance_date", input.wodDate)
+        .is("programming_id", null)
+        .is("programming_line_item_id", null)
+        .select("id")
+        .maybeSingle();
       error = res.error;
-    } else {
+      id = res.data?.id;
+    }
+
+    if (!error && !id) {
+      const existing = await supabase
+        .from("athlete_performance")
+        .select("id")
+        .eq("contact_id", input.contactId)
+        .eq("segment_group_id", input.segmentGroupId)
+        .eq("performance_date", input.wodDate)
+        .is("programming_id", null)
+        .is("programming_line_item_id", null)
+        .limit(1)
+        .maybeSingle();
+      error = existing.error;
+
+      if (!error && existing.data?.id) {
+        const res = await supabase
+          .from("athlete_performance")
+          .update(payload)
+          .eq("id", existing.data.id)
+          .eq("contact_id", input.contactId)
+          .select("id")
+          .single();
+        error = res.error;
+        id = res.data?.id;
+      }
+    }
+
+    if (!error && !id) {
       const res = await supabase
         .from("athlete_performance")
         .insert({
@@ -55,7 +91,7 @@ export function useSaveGroupPerformance() {
         .select("id")
         .single();
       error = res.error;
-      id = res.data?.id ?? id;
+      id = res.data?.id;
     }
 
     if (!error) {

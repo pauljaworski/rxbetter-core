@@ -82,6 +82,7 @@ export async function tryMarkGroupBlockComplete(
     .select("id, score")
     .eq("contact_id", contactId)
     .eq("segment_group_id", segmentGroupId)
+    .eq("performance_date", wodDate)
     .is("programming_id", null)
     .maybeSingle();
 
