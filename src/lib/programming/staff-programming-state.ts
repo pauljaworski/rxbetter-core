@@ -34,3 +34,15 @@ export function cloneEditorWod(
     })),
   };
 }
+
+/**
+ * After a partial multi-segment save, keep only drafts that never landed in the DB.
+ * Indices in `savedIndices` already have a programming row — omitting them prevents
+ * re-insert / duplicate Today sections on Publish Day retry.
+ */
+export function pendingDraftsAfterPartialSave(
+  wods: EditorWod[],
+  savedIndices: ReadonlySet<number>,
+): EditorWod[] {
+  return wods.filter((w, i) => isSegmentUnsaved(w) && !savedIndices.has(i));
+}

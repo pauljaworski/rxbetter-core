@@ -24,6 +24,7 @@ import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
   isSegmentUnsaved,
+  pendingDraftsAfterPartialSave,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import {
@@ -230,8 +231,13 @@ export default function StaffProgramming() {
     );
   }
 
-  async function saveAllUnsavedSections(): Promise<{ error: string | null; saved: number }> {
+  async function saveAllUnsavedSections(): Promise<{
+    error: string | null;
+    saved: number;
+    savedIndices: Set<number>;
+  }> {
     let saved = 0;
+    const savedIndices = new Set<number>();
     for (let i = 0; i < wods.length; i++) {
       const wod = wods[i];
       if (!isSegmentUnsaved(wod)) continue;
@@ -240,15 +246,20 @@ export default function StaffProgramming() {
         return {
           error: `"${wod.name ?? "Segment"}" needs at least one track before it can be saved.`,
           saved,
+          savedIndices,
         };
       }
-      const { error: saveError } = await saveWod(wod, i);
-      if (saveError) {
-        return { error: saveError, saved };
+      const { error: saveError, programmingId } = await saveWod(wod, i);
+      if (programmingId) {
+        // Parent row exists (full success, or insert-then-later-failure).
+        savedIndices.add(i);
+        saved++;
       }
-      saved++;
+      if (saveError) {
+        return { error: saveError, saved, savedIndices };
+      }
     }
-    return { error: null, saved };
+    return { error: null, saved, savedIndices };
   }
 
   async function handleSaveSection(idx: number) {
@@ -275,15 +286,23 @@ export default function StaffProgramming() {
   }
 
   async function handlePublishDay() {
-    const { error: saveError, saved } = await saveAllUnsavedSections();
+    const { error: saveError, saved, savedIndices } = await saveAllUnsavedSections();
     if (saveError) {
       toast.error("Couldn't save before publish", { description: saveError });
+      // Reconcile UI with DB so already-inserted segments are not re-inserted on retry.
+      pendingDraftsRef.current = pendingDraftsAfterPartialSave(wods, savedIndices);
+      setServerSyncMode("save");
+      refetch();
       return;
     }
 
     const { error, count } = await publishDay(date);
     if (error) {
       toast.error("Couldn't publish", { description: error });
+      // Saves may have succeeded; refresh so local drafts don't duplicate on retry.
+      pendingDraftsRef.current = [];
+      setServerSyncMode("date");
+      refetch();
       return;
     }
 
