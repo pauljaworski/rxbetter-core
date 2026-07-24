@@ -220,7 +220,9 @@ export async function saveWod(
     return { programmingId: progId, error: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { programmingId: null, error: formatSupabaseError(msg) };
+    // If the parent row was inserted before a later step failed, return its id so
+    // callers can stop treating the segment as unsaved (avoids duplicate inserts).
+    return { programmingId: progId ?? null, error: formatSupabaseError(msg) };
   }
 }
 
