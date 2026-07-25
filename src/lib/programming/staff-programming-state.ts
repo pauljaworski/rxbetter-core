@@ -6,6 +6,17 @@ export function isSegmentUnsaved(wod: EditorWod): boolean {
   return wod._new === true || !wod.id;
 }
 
+/**
+ * Indices that must be persisted before publish + refetch.
+ *
+ * Publish previously only saved `isSegmentUnsaved` drafts. Edits to segments that
+ * already have an id were skipped, so publish wrote stale DB content and refetch
+ * wiped the coach's local changes.
+ */
+export function indicesToPersistBeforePublish(wods: readonly EditorWod[]): number[] {
+  return wods.map((_, index) => index);
+}
+
 /** Suggest the next prescribed tier when duplicating (e.g. Rx → Scaled). */
 export function suggestDuplicateScale(scale?: PrescribedLevel): PrescribedLevel {
   if (scale === "rx_plus") return "rx";

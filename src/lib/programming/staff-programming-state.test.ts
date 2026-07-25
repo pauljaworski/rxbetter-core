@@ -3,6 +3,7 @@ import {
   cloneEditorWod,
   suggestDuplicateScale,
   isSegmentUnsaved,
+  indicesToPersistBeforePublish,
 } from "@/lib/programming/staff-programming-state";
 import type { EditorWod } from "@/hooks/staff/types";
 
@@ -48,5 +49,18 @@ describe("cloneEditorWod", () => {
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+  });
+});
+
+describe("indicesToPersistBeforePublish", () => {
+  it("includes existing saved segments so dirty local edits are not skipped", () => {
+    const existingEdited: EditorWod = {
+      ...baseWod,
+      description: "coach changed this locally",
+    };
+    const draft = cloneEditorWod(baseWod, 1);
+
+    expect(isSegmentUnsaved(existingEdited)).toBe(false);
+    expect(indicesToPersistBeforePublish([existingEdited, draft])).toEqual([0, 1]);
   });
 });
