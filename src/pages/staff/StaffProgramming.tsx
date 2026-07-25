@@ -23,6 +23,7 @@ import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
+  indicesToPersistBeforePublish,
   isSegmentUnsaved,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
@@ -230,11 +231,15 @@ export default function StaffProgramming() {
     );
   }
 
-  async function saveAllUnsavedSections(): Promise<{ error: string | null; saved: number }> {
+  /**
+   * Persist every in-editor segment before publish/refetch.
+   * Skipping existing rows (those with ids) used to publish stale DB content and
+   * then wipe dirty local edits when the day reloaded.
+   */
+  async function saveAllSectionsBeforePublish(): Promise<{ error: string | null; saved: number }> {
     let saved = 0;
-    for (let i = 0; i < wods.length; i++) {
+    for (const i of indicesToPersistBeforePublish(wods)) {
       const wod = wods[i];
-      if (!isSegmentUnsaved(wod)) continue;
       const lib = wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
       if (!lib) {
         return {
@@ -275,7 +280,7 @@ export default function StaffProgramming() {
   }
 
   async function handlePublishDay() {
-    const { error: saveError, saved } = await saveAllUnsavedSections();
+    const { error: saveError, saved } = await saveAllSectionsBeforePublish();
     if (saveError) {
       toast.error("Couldn't save before publish", { description: saveError });
       return;
@@ -289,7 +294,7 @@ export default function StaffProgramming() {
 
     if (saved > 0) {
       toast.message(
-        `Saved ${saved} unsaved segment${saved === 1 ? "" : "s"} before publishing`,
+        `Saved ${saved} segment${saved === 1 ? "" : "s"} before publishing`,
       );
     }
     toast.success(
@@ -305,10 +310,23 @@ export default function StaffProgramming() {
   }
 
   async function handlePublishWeek() {
+    // Persist the currently open day first — Publish week only flips published_at
+    // in the DB and then refetches, which would discard dirty local edits.
+    const { error: saveError, saved } = await saveAllSectionsBeforePublish();
+    if (saveError) {
+      toast.error("Couldn't save before publish", { description: saveError });
+      return;
+    }
+
     const { error, count } = await publishWeek(weekStart);
     if (error) {
       toast.error("Couldn't publish", { description: error });
       return;
+    }
+    if (saved > 0) {
+      toast.message(
+        `Saved ${saved} segment${saved === 1 ? "" : "s"} on the open day before publishing`,
+      );
     }
     toast.success(
       count > 0
