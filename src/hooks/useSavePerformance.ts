@@ -76,9 +76,18 @@ export function useSavePerformance() {
 
   async function removePerformance(performanceId: string): Promise<{ error: string | null }> {
     setSubmitting(true);
-    const { error } = await supabase.from("athlete_performance").delete().eq("id", performanceId);
+    // Prefer returning deleted rows so RLS no-ops (0 rows, no error) surface as failures.
+    const { data, error } = await supabase
+      .from("athlete_performance")
+      .delete()
+      .eq("id", performanceId)
+      .select("id");
     setSubmitting(false);
-    return { error: error ? formatSupabaseError(error.message) : null };
+    if (error) return { error: formatSupabaseError(error.message) };
+    if (!data?.length) {
+      return { error: "Could not clear this result. You may not have permission, or it was already removed." };
+    }
+    return { error: null };
   }
 
   return { save, removePerformance, submitting };

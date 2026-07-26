@@ -192,12 +192,22 @@ export function LogScoreRow({
       return;
     }
     const { error } = await removePerformance(existing.id);
-    if (error) toast.error(error);
-    else {
-      toast.message("Segment marked N/A");
-      setOpen(false);
-      onLogged?.();
+    if (error) {
+      toast.error(error);
+      return;
     }
+    if (contactId && item.benchmark_definition_id) {
+      const { error: prErr } = await recomputeBenchmarkSummary(
+        contactId,
+        item.benchmark_definition_id,
+      );
+      if (prErr) {
+        toast.error("Result cleared but PR vault didn't update", { description: prErr });
+      }
+    }
+    toast.message("Segment marked N/A");
+    setOpen(false);
+    onLogged?.();
   }
 
   const loggedDisplay = existing

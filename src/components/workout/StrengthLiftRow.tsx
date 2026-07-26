@@ -352,7 +352,7 @@ export function StrengthLiftRow({
         benchmarkTypeId={item.benchmark_type_id}
         movementName={item.bench_name ?? "Lift"}
         repMaxCount={repCount}
-        repsPrescribed={item.reps_prescribed}
+        repsPrescribed={repCount}
         defaultDate={wod.wod_date}
         onSaved={() => {
           void refreshPr();

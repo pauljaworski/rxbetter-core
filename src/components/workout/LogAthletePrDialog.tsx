@@ -77,7 +77,8 @@ export function LogAthletePrDialog({
       benchmarkTypeId,
       weightLb: weightNum,
       performanceDate: prDate,
-      repsPrescribed: repsPrescribed ?? null,
+      // Persist the definition's RM reps (not the class working-set prescription).
+      repsPrescribed: repMaxCount || repsPrescribed || null,
     });
     setSubmitting(false);
 

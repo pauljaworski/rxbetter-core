@@ -6,7 +6,24 @@ export type PerformanceWeightRow = {
   weight_lifted: number | null;
   performance_date: string | null;
   created_at: string | null;
+  reps_prescribed?: number | null;
+  programming_line_item_id?: string | null;
 };
+
+/**
+ * Class working sets store the %RM benchmark_definition_id for prescription math, but their
+ * logged weight must not become that RM's PR unless the set's reps match the definition
+ * (e.g. a true 1RM attempt). Standalone vault/import rows (no PLI) always remain eligible.
+ */
+export function isEligibleForBenchmarkPr(
+  row: Pick<PerformanceWeightRow, "reps_prescribed" | "programming_line_item_id">,
+  definitionRepCount: number | null,
+): boolean {
+  if (row.programming_line_item_id == null) return true;
+  if (definitionRepCount == null) return true;
+  if (row.reps_prescribed == null) return false;
+  return Number(row.reps_prescribed) === Number(definitionRepCount);
+}
 
 /** Pick heaviest lift; ties go to the latest performance_date. */
 export function pickBestPerformanceRow(rows: PerformanceWeightRow[]): PerformanceWeightRow | null {
@@ -30,16 +47,33 @@ export async function recomputeBenchmarkSummary(
   contactId: string,
   benchmarkDefinitionId: string,
 ): Promise<{ error: string | null }> {
+  const { data: def, error: defErr } = await supabase
+    .from("benchmark_definition")
+    .select("rep_count")
+    .eq("id", benchmarkDefinitionId)
+    .maybeSingle();
+
+  if (defErr) return { error: formatSupabaseError(defErr.message) };
+  const definitionRepCount =
+    def?.rep_count != null && Number.isFinite(Number(def.rep_count))
+      ? Number(def.rep_count)
+      : null;
+
   const { data: perfs, error: fetchErr } = await supabase
     .from("athlete_performance")
-    .select("id, weight_lifted, performance_date, created_at")
+    .select(
+      "id, weight_lifted, performance_date, created_at, reps_prescribed, programming_line_item_id",
+    )
     .eq("contact_id", contactId)
     .eq("benchmark_definition_id", benchmarkDefinitionId)
     .not("weight_lifted", "is", null);
 
   if (fetchErr) return { error: formatSupabaseError(fetchErr.message) };
 
-  const best = pickBestPerformanceRow((perfs ?? []) as PerformanceWeightRow[]);
+  const eligible = ((perfs ?? []) as PerformanceWeightRow[]).filter((row) =>
+    isEligibleForBenchmarkPr(row, definitionRepCount),
+  );
+  const best = pickBestPerformanceRow(eligible);
   if (!best) {
     const { error: delErr } = await supabase
       .from("athlete_benchmark_summary")
