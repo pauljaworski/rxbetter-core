@@ -22,4 +22,12 @@ describe("ATHLETE_LOG_LINE_ITEM_SELECT", () => {
     expect(today).toContain("ATHLETE_LOG_LINE_ITEM_SELECT");
     expect(calendar).toContain("ATHLETE_LOG_LINE_ITEM_SELECT");
   });
+
+  it("Calendar passes athlete rxGender into segment logging UI", () => {
+    const calendarPage = readFileSync(
+      resolve(import.meta.dirname, "../../pages/Calendar.tsx"),
+      "utf8",
+    );
+    expect(calendarPage).toMatch(/rxGender=\{rxGender\}/);
+  });
 });
