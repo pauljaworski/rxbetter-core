@@ -8,7 +8,12 @@ import {
   isProgrammingVisibleForTracks,
   loadAssignmentMap,
 } from "@/lib/programming/athlete-library-filter";
+import { ATHLETE_LOG_LINE_ITEM_SELECT } from "@/lib/programming/athlete-log-line-item-select";
 import { enrichLogLineItems } from "@/lib/programming/enrich-line-items";
+import {
+  formatComplexMovementTitle,
+  parseMovementComponents,
+} from "@/lib/programming/movement-components-schema";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
 export type WeekWod = {
@@ -125,9 +130,7 @@ export function useProgrammingWeek(
     if (progIds.length) {
       const { data: items, error: itemErr } = await supabase
         .from("programming_line_item")
-        .select(
-          "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label",
-        )
+        .select(ATHLETE_LOG_LINE_ITEM_SELECT)
         .in("programming_id", progIds)
         .is("contact_id", null)
         .order("sequence_number", { ascending: true });
@@ -145,18 +148,25 @@ export function useProgrammingWeek(
       const rawByWod = new Map<string, LogLineItem[]>();
       for (const it of items ?? []) {
         const t = it.benchmark_type_id ? typeMap.get(it.benchmark_type_id) : undefined;
+        const components = parseMovementComponents(it.movement_components);
+        const complexTitle =
+          components.length > 0 ? formatComplexMovementTitle(components) : null;
         const row: LogLineItem = {
           id: it.id,
           sequence_number: it.sequence_number,
           reps_prescribed: it.reps_prescribed,
+          prescription_unit: it.prescription_unit,
           prescribed_percentage: it.prescribed_percentage,
           prescribed_weight: it.prescribed_weight,
           prescribed_score: it.prescribed_score,
           status: it.status,
           benchmark_definition_id: it.benchmark_definition_id,
           benchmark_type_id: it.benchmark_type_id,
-          bench_name: t?.name ?? it.movement_label ?? undefined,
+          bench_name: complexTitle ?? t?.name ?? it.movement_label ?? undefined,
           stimulus: t?.stimulus ?? undefined,
+          line_item_kind: it.line_item_kind,
+          movement_components: it.movement_components,
+          rx_variants: it.rx_variants,
         };
         const arr = rawByWod.get(it.programming_id) ?? [];
         arr.push(row);
