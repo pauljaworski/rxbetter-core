@@ -82,7 +82,7 @@ function dayKey(d: Date) {
 }
 
 export default function CalendarPage() {
-  const { contactId, activeGymId, mode } = useAuth();
+  const { contactId, activeGymId, mode, rxGender } = useAuth();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selected, setSelected] = useState<Date>(new Date());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -309,6 +309,7 @@ export default function CalendarPage() {
                           }}
                           items={items}
                           contactId={contactId}
+                          rxGender={rxGender}
                           perfByItem={perfByItem}
                           segmentPerf={perfBySegment.get(w.id) ?? null}
                           onLogged={refetch}
