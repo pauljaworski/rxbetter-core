@@ -20,8 +20,16 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
+import {
+  buildWorkoutDayBlocks,
+  groupScoreForBlock,
+} from "@/lib/programming/workout-segment-groups";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
-import type { GymAthlete } from "@/hooks/useProgrammingWeek";
+import { GroupScoreRow } from "@/components/workout/GroupScoreRow";
+import type { GymAthlete, WeekWod } from "@/hooks/useProgrammingWeek";
+import type { LogLineItem } from "@/components/rx/LogScoreSheet";
+import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
+import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
 type ClassSlot = {
   key: string;
@@ -89,7 +97,7 @@ export default function CalendarPage() {
   const [openClass, setOpenClass] = useState<{ date: Date; slot: ClassSlot } | null>(null);
 
   const { data, isLoading, error, refetch } = useProgrammingWeek(activeGymId, contactId, weekStart);
-  const { wods, itemsByWod, perfByItem, perfBySegment, athletes } = data;
+  const { wods, itemsByWod, perfByItem, perfBySegment, perfByGroup, athletes } = data;
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -116,7 +124,14 @@ export default function CalendarPage() {
   }, [wods]);
 
   const selectedKey = dayKey(selected);
-  const selectedWods = wodsByDay.get(selectedKey) ?? [];
+  const selectedWods = useMemo(
+    () => wodsByDay.get(selectedKey) ?? [],
+    [wodsByDay, selectedKey],
+  );
+  const selectedBlocks = useMemo(
+    () => buildWorkoutDayBlocks(selectedWods),
+    [selectedWods],
+  );
   const selectedClasses = classesForDay(selected);
   const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d, yyyy")}`;
 
@@ -240,85 +255,36 @@ export default function CalendarPage() {
           )}
           {!isLoading && !error && selectedWods.length > 0 && (
             <div className="grid grid-cols-1 gap-2">
-              {selectedWods.map((w) => {
-                const items = itemsByWod.get(w.id) ?? [];
-                const summary = summarizeSegmentPrescription(w, items);
-                const isOpen = expanded.has(w.id);
-                return (
-                <Card key={w.id} className="glass-card overflow-hidden p-0">
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(w.id)}
-                    className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
-                    aria-expanded={isOpen}
-                  >
-                    <div>
-                      <p className="eyebrow">
-                        {segmentLabel(w.programming_segment)}
-                        {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
-                        {w.source === "athlete_custom" && (
-                          <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
-                            Personal
-                          </Badge>
-                        )}
-                      </p>
-                      <h3 className="mt-1 text-base font-bold leading-tight">
-                        {w.name ?? "Untitled"}
-                      </h3>
-                      {!isOpen && (
-                        <div className="mt-2 space-y-0.5">
-                          {summary.lines.map((line, i) => (
-                            <p key={i} className="text-xs text-muted-foreground">
-                              {line}
-                            </p>
-                          ))}
-                          {summary.footer && (
-                            <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
-                          )}
-                          {w.description && (
-                            <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
-                              {w.description}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                        isOpen && "rotate-180",
-                      )}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="border-t border-border/60">
-                      {w.description && (
-                        <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
-                          {w.description}
-                        </p>
-                      )}
-                      <div className="divide-y divide-border/60">
-                        <WorkoutSegmentItems
-                          wod={{
-                            id: w.id,
-                            name: w.name,
-                            wod_date: w.wod_date,
-                            programming_segment: w.programming_segment,
-                            prescribed_scale: w.prescribed_scale,
-                            workout_scheme: w.workout_scheme,
-                          }}
-                          items={items}
-                          contactId={contactId}
-                          perfByItem={perfByItem}
-                          segmentPerf={perfBySegment.get(w.id) ?? null}
-                          onLogged={refetch}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              );
-              })}
+              {selectedBlocks.map((block) =>
+                block.kind === "group" ? (
+                  <CalendarGroupCard
+                    key={block.groupId}
+                    parts={block.parts}
+                    groupId={block.groupId}
+                    anchor={block.anchor}
+                    expanded={expanded}
+                    onToggle={toggleExpanded}
+                    itemsByWod={itemsByWod}
+                    contactId={contactId}
+                    perfByItem={perfByItem}
+                    perfBySegment={perfBySegment}
+                    groupPerf={groupScoreForBlock(block, perfByGroup)}
+                    onLogged={refetch}
+                  />
+                ) : (
+                  <CalendarSingleCard
+                    key={block.wod.id}
+                    w={block.wod}
+                    items={itemsByWod.get(block.wod.id) ?? []}
+                    isOpen={expanded.has(block.wod.id)}
+                    onToggle={() => toggleExpanded(block.wod.id)}
+                    contactId={contactId}
+                    perfByItem={perfByItem}
+                    segmentPerf={perfBySegment.get(block.wod.id) ?? null}
+                    onLogged={refetch}
+                  />
+                ),
+              )}
             </div>
           )}
         </section>
@@ -370,6 +336,209 @@ export default function CalendarPage() {
         roster={athletes}
       />
     </div>
+  );
+}
+
+function CalendarSingleCard({
+  w,
+  items,
+  isOpen,
+  onToggle,
+  contactId,
+  perfByItem,
+  segmentPerf,
+  onLogged,
+}: {
+  w: WeekWod;
+  items: LogLineItem[];
+  isOpen: boolean;
+  onToggle: () => void;
+  contactId: string | null;
+  perfByItem: Map<string, ExistingPerformance>;
+  segmentPerf: SegmentPerformance | null;
+  onLogged: () => void;
+}) {
+  const summary = summarizeSegmentPrescription(w, items);
+  return (
+    <Card className="glass-card overflow-hidden p-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
+        aria-expanded={isOpen}
+      >
+        <div>
+          <p className="eyebrow">
+            {segmentLabel(w.programming_segment)}
+            {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
+            {w.source === "athlete_custom" && (
+              <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
+                Personal
+              </Badge>
+            )}
+          </p>
+          <h3 className="mt-1 text-base font-bold leading-tight">{w.name ?? "Untitled"}</h3>
+          {!isOpen && (
+            <div className="mt-2 space-y-0.5">
+              {summary.lines.map((line, i) => (
+                <p key={i} className="text-xs text-muted-foreground">
+                  {line}
+                </p>
+              ))}
+              {summary.footer && (
+                <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
+              )}
+              {w.description && (
+                <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
+                  {w.description}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
+      </button>
+      {isOpen && (
+        <div className="border-t border-border/60">
+          {w.description && (
+            <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
+              {w.description}
+            </p>
+          )}
+          <div className="divide-y divide-border/60">
+            <WorkoutSegmentItems
+              wod={{
+                id: w.id,
+                name: w.name,
+                wod_date: w.wod_date,
+                programming_segment: w.programming_segment,
+                prescribed_scale: w.prescribed_scale,
+                workout_scheme: w.workout_scheme,
+              }}
+              items={items}
+              contactId={contactId}
+              perfByItem={perfByItem}
+              segmentPerf={segmentPerf}
+              onLogged={onLogged}
+            />
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CalendarGroupCard({
+  parts,
+  groupId,
+  anchor,
+  expanded,
+  onToggle,
+  itemsByWod,
+  contactId,
+  perfByItem,
+  perfBySegment,
+  groupPerf,
+  onLogged,
+}: {
+  parts: WeekWod[];
+  groupId: string;
+  anchor: WeekWod;
+  expanded: Set<string>;
+  onToggle: (id: string) => void;
+  itemsByWod: Map<string, LogLineItem[]>;
+  contactId: string | null;
+  perfByItem: Map<string, ExistingPerformance>;
+  perfBySegment: Map<string, SegmentPerformance>;
+  groupPerf: SegmentPerformance | null;
+  onLogged: () => void;
+}) {
+  const isOpen = expanded.has(groupId);
+  return (
+    <Card className="glass-card overflow-hidden p-0">
+      <button
+        type="button"
+        onClick={() => onToggle(groupId)}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
+        aria-expanded={isOpen}
+      >
+        <div>
+          <p className="eyebrow">
+            Multi-part workout · {parts.length} parts
+            {anchor.metcon_format ? ` · ${anchor.metcon_format.toUpperCase()}` : ""}
+          </p>
+          <h3 className="mt-1 text-base font-bold leading-tight">
+            {anchor.name ?? "Workout block"}
+          </h3>
+          {!isOpen && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              One total score for the block · expand to view parts and log
+            </p>
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
+      </button>
+      {isOpen && (
+        <div className="border-t border-border/60">
+          <div className="divide-y divide-border/60">
+            {parts.map((part, idx) => {
+              const items = itemsByWod.get(part.id) ?? [];
+              return (
+                <div key={part.id}>
+                  <div className="border-b border-border/40 bg-muted/20 px-4 py-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Part {idx + 1}
+                      {part.name ? ` · ${part.name}` : ""}
+                    </p>
+                  </div>
+                  {part.description && (
+                    <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
+                      {part.description}
+                    </p>
+                  )}
+                  <WorkoutSegmentItems
+                    wod={{
+                      id: part.id,
+                      name: part.name,
+                      wod_date: part.wod_date,
+                      programming_segment: part.programming_segment,
+                      prescribed_scale: part.prescribed_scale,
+                      workout_scheme: part.workout_scheme,
+                    }}
+                    items={items}
+                    contactId={contactId}
+                    perfByItem={perfByItem}
+                    segmentPerf={perfBySegment.get(part.id) ?? null}
+                    hideSegmentScore
+                    onLogged={onLogged}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <GroupScoreRow
+            groupId={groupId}
+            wodDate={anchor.wod_date}
+            partCount={parts.length}
+            contactId={contactId}
+            existing={groupPerf}
+            prescribedScale={anchor.prescribed_scale}
+            workoutScheme={anchor.workout_scheme}
+            onLogged={onLogged}
+          />
+        </div>
+      )}
+    </Card>
   );
 }
 

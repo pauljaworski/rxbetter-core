@@ -286,7 +286,7 @@ function GroupBlockCard({
 
 }: {
 
-  block: Extract<ReturnType<typeof buildWorkoutDayBlocks>[number], { kind: "group" }>;
+  block: Extract<ReturnType<typeof buildWorkoutDayBlocks<WorkoutDayProgramming>>[number], { kind: "group" }>;
 
   wodDate: string;
 

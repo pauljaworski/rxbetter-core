@@ -1,21 +1,29 @@
 import type { WorkoutDayProgramming } from "@/hooks/useWorkoutDay";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
-export type WorkoutDayBlock =
-  | { kind: "single"; wod: WorkoutDayProgramming }
+/** Minimal fields required to merge multi-part programming into score blocks. */
+export type SegmentGroupable = {
+  id: string;
+  display_order: number | null;
+  segment_group_id?: string | null;
+  group_score_anchor?: boolean | null;
+};
+
+export type WorkoutDayBlock<T extends SegmentGroupable = WorkoutDayProgramming> =
+  | { kind: "single"; wod: T }
   | {
       kind: "group";
       groupId: string;
-      anchor: WorkoutDayProgramming;
-      parts: WorkoutDayProgramming[];
+      anchor: T;
+      parts: T[];
     };
 
 /** Order day segments; merge rows sharing segment_group_id into one block. */
-export function buildWorkoutDayBlocks(wods: WorkoutDayProgramming[]): WorkoutDayBlock[] {
+export function buildWorkoutDayBlocks<T extends SegmentGroupable>(wods: T[]): WorkoutDayBlock<T>[] {
   const sorted = [...wods].sort(
     (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0),
   );
-  const blocks: WorkoutDayBlock[] = [];
+  const blocks: WorkoutDayBlock<T>[] = [];
   const seenGroups = new Set<string>();
 
   for (const wod of sorted) {
@@ -35,9 +43,14 @@ export function buildWorkoutDayBlocks(wods: WorkoutDayProgramming[]): WorkoutDay
 }
 
 export function groupScoreForBlock(
-  block: WorkoutDayBlock,
+  block: WorkoutDayBlock<SegmentGroupable>,
   perfByGroup: Map<string, SegmentPerformance>,
 ): SegmentPerformance | null {
   if (block.kind !== "group") return null;
   return perfByGroup.get(block.groupId) ?? null;
+}
+
+/** True when a calendar/today UI must use GroupScoreRow instead of per-part MetconScoreRow. */
+export function blockRequiresGroupScore(block: WorkoutDayBlock<SegmentGroupable>): boolean {
+  return block.kind === "group";
 }
