@@ -34,25 +34,49 @@ as $$
     from public.athlete_performance ap
     where ap.id = p_performance_id
       and (
-        exists (
-          select 1
-          from public.programming p
-          where p.id = ap.programming_id
-            and p.gym_id = p_gym_id
+        -- Class / programmed WOD: gym must match the programming row (do not
+        -- fall through to membership — that allowed multi-gym athletes to
+        -- attach likes/comments under a different gym than the WOD).
+        (
+          ap.programming_id is not null
+          and exists (
+            select 1
+            from public.programming p
+            where p.id = ap.programming_id
+              and p.gym_id = p_gym_id
+          )
         )
-        or exists (
-          select 1
-          from public.fitness_membership fm
-          where fm.contact_id = ap.contact_id
-            and fm.gym_id = p_gym_id
-            and fm.membership_status = 'active'
+        -- Group-block scores store segment_group_id + null programming_id;
+        -- resolve gym via any segment in the group.
+        or (
+          ap.programming_id is null
+          and ap.segment_group_id is not null
+          and exists (
+            select 1
+            from public.programming p
+            where p.segment_group_id = ap.segment_group_id
+              and p.gym_id = p_gym_id
+          )
+        )
+        -- Personal / PR rows (no programming, no group): athlete must be an
+        -- active member of the target gym.
+        or (
+          ap.programming_id is null
+          and ap.segment_group_id is null
+          and exists (
+            select 1
+            from public.fitness_membership fm
+            where fm.contact_id = ap.contact_id
+              and fm.gym_id = p_gym_id
+              and fm.membership_status = 'active'
+          )
         )
       )
   );
 $$;
 
 comment on function public.athlete_performance_belongs_to_gym (uuid, uuid) is
-  'True when a performance is tied to gym programming or the athlete is an active member of that gym.';
+  'True when performance belongs to the gym: matching programming, matching segment group, or (personal only) active membership.';
 
 revoke all on function public.athlete_performance_belongs_to_gym (uuid, uuid) from public;
 grant execute on function public.athlete_performance_belongs_to_gym (uuid, uuid) to authenticated;
