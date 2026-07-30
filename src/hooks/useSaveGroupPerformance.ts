@@ -14,6 +14,19 @@ export type SaveGroupPerformanceInput = {
   workoutScale: WorkoutScale | null;
 };
 
+/** Mutable fields only — ownership FKs are set on insert and must not change. */
+function groupScoreMutablePayload(input: SaveGroupPerformanceInput) {
+  return {
+    score: input.score,
+    result_value: input.resultValue,
+    performance_date: input.wodDate,
+    workout_scale: input.workoutScale,
+    status: "completed" as const,
+    is_pr: false,
+    weight_lifted: null,
+  };
+}
+
 export function useSaveGroupPerformance() {
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,18 +34,7 @@ export function useSaveGroupPerformance() {
     input: SaveGroupPerformanceInput,
   ): Promise<{ error: string | null; id?: string }> {
     setSubmitting(true);
-    const payload = {
-      score: input.score,
-      result_value: input.resultValue,
-      performance_date: input.wodDate,
-      workout_scale: input.workoutScale,
-      status: "completed" as const,
-      is_pr: false,
-      programming_id: null,
-      programming_line_item_id: null,
-      segment_group_id: input.segmentGroupId,
-      weight_lifted: null,
-    };
+    const mutable = groupScoreMutablePayload(input);
 
     let id = input.existingId;
     let error: { message: string } | null = null;
@@ -40,15 +42,18 @@ export function useSaveGroupPerformance() {
     if (input.existingId) {
       const res = await supabase
         .from("athlete_performance")
-        .update(payload)
+        .update(mutable)
         .eq("id", input.existingId);
       error = res.error;
     } else {
       const res = await supabase
         .from("athlete_performance")
         .insert({
-          ...payload,
+          ...mutable,
           contact_id: input.contactId,
+          programming_id: null,
+          programming_line_item_id: null,
+          segment_group_id: input.segmentGroupId,
           benchmark_definition_id: null,
           benchmark_type_id: null,
         })
