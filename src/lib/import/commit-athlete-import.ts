@@ -12,7 +12,17 @@ export type CommitImportResult = {
 
 type ExistingPerfKey = string;
 
-function perfKey(
+/** Matches Supabase/PostgREST `max_rows` (see supabase/config.toml). */
+export const EXISTING_PERF_PAGE_SIZE = 1000;
+
+type ExistingPerfRow = {
+  performance_date: string | null;
+  benchmark_definition_id: string | null;
+  weight_lifted: number | null;
+  score: string | null;
+};
+
+export function perfKey(
   date: string,
   definitionId: string | null,
   weight: number | null,
@@ -21,16 +31,9 @@ function perfKey(
   return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}`;
 }
 
-async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
-  const { data, error } = await supabase
-    .from("athlete_performance")
-    .select("performance_date, benchmark_definition_id, weight_lifted, score")
-    .eq("contact_id", contactId);
-
-  if (error) throw new Error(formatSupabaseError(error.message));
-
-  const keys = new Set<ExistingPerfKey>();
-  for (const row of data ?? []) {
+/** Fold DB rows into the import dedupe key set (exported for tests). */
+export function addExistingPerfKeys(keys: Set<ExistingPerfKey>, rows: ExistingPerfRow[]): void {
+  for (const row of rows) {
     const date = row.performance_date?.slice(0, 10);
     if (!date) continue;
     keys.add(
@@ -42,6 +45,29 @@ async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey
       ),
     );
   }
+}
+
+async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
+  const keys = new Set<ExistingPerfKey>();
+
+  // PostgREST silently truncates at max_rows (1000). Page until exhausted so
+  // re-imports of large SugarWOD/history files do not insert duplicate ledger rows.
+  for (let from = 0; ; from += EXISTING_PERF_PAGE_SIZE) {
+    const to = from + EXISTING_PERF_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("athlete_performance")
+      .select("id, performance_date, benchmark_definition_id, weight_lifted, score")
+      .eq("contact_id", contactId)
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (error) throw new Error(formatSupabaseError(error.message));
+
+    const rows = (data ?? []) as ExistingPerfRow[];
+    addExistingPerfKeys(keys, rows);
+    if (rows.length < EXISTING_PERF_PAGE_SIZE) break;
+  }
+
   return keys;
 }
 
