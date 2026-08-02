@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneEditorWod,
+  isDateTransitionPending,
   suggestDuplicateScale,
   isSegmentUnsaved,
 } from "@/lib/programming/staff-programming-state";
@@ -36,6 +37,19 @@ describe("suggestDuplicateScale", () => {
   it("steps down Rx to Scaled", () => {
     expect(suggestDuplicateScale("rx")).toBe("scaled");
     expect(suggestDuplicateScale("rx_plus")).toBe("rx");
+  });
+});
+
+describe("isDateTransitionPending", () => {
+  it("blocks the editor while a new day is loading or refreshing", () => {
+    expect(isDateTransitionPending("date", true, false)).toBe(true);
+    expect(isDateTransitionPending("date", false, true)).toBe(true);
+  });
+
+  it("allows the editor after date sync finishes or during same-day save refresh", () => {
+    expect(isDateTransitionPending(null, false, false)).toBe(false);
+    expect(isDateTransitionPending("save", false, true)).toBe(false);
+    expect(isDateTransitionPending("date", false, false)).toBe(false);
   });
 });
 
