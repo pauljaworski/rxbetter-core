@@ -1,9 +1,24 @@
 import type { EditorWod } from "@/hooks/staff/types";
 import type { PrescribedLevel } from "@/lib/format";
 
+export type ServerSyncMode = "date" | "save" | null;
+
 /** Segment exists only in local editor state (not yet in the database). */
 export function isSegmentUnsaved(wod: EditorWod): boolean {
   return wod._new === true || !wod.id;
+}
+
+/**
+ * True while the editor is switching calendar days and server rows for the new
+ * date have not been applied yet. Stale previous-day segments must not remain
+ * actionable — Save rewrites `wod_date` to the newly selected day.
+ */
+export function isDateTransitionPending(
+  serverSyncMode: ServerSyncMode,
+  isLoading: boolean,
+  isRefreshing: boolean,
+): boolean {
+  return serverSyncMode === "date" && (isLoading || isRefreshing);
 }
 
 /** Suggest the next prescribed tier when duplicating (e.g. Rx → Scaled). */

@@ -23,15 +23,15 @@ import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
+  isDateTransitionPending,
   isSegmentUnsaved,
   suggestDuplicateScale,
+  type ServerSyncMode,
 } from "@/lib/programming/staff-programming-state";
 import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
-
-type ServerSyncMode = "date" | "save" | null;
 
 export default function StaffProgramming() {
   const { activeGymId } = useAuth();
@@ -48,6 +48,8 @@ export default function StaffProgramming() {
   const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
 
   const dateKey = format(date, "yyyy-MM-dd");
+  const dateKeyRef = useRef(dateKey);
+  dateKeyRef.current = dateKey;
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const {
@@ -62,11 +64,11 @@ export default function StaffProgramming() {
   const defaultLibId = libraries[0]?.id ?? null;
   const { saveWod, busy: saving } = useProgrammingSave(activeGymId, date, defaultLibId);
   const { publishDay, publishWeek, busy: publishing } = useProgrammingPublish(activeGymId);
-
-  useEffect(() => {
-    setServerSyncMode("date");
-    pendingDraftsRef.current = [];
-  }, [dateKey]);
+  const dateTransitionPending = isDateTransitionPending(
+    serverSyncMode,
+    isLoading,
+    isRefreshing,
+  );
 
   useEffect(() => {
     if (isLoading || isRefreshing || !serverSyncMode) return;
@@ -89,6 +91,11 @@ export default function StaffProgramming() {
       );
       if (!ok) return;
     }
+    // Drop previous-day rows immediately. Save rewrites wod_date to the newly
+    // selected day, so stale cards must not remain actionable during refresh.
+    pendingDraftsRef.current = [];
+    setWods([]);
+    setServerSyncMode("date");
     setDate(next);
   }
 
@@ -259,6 +266,7 @@ export default function StaffProgramming() {
       return;
     }
 
+    const saveDateKey = dateKey;
     setSavingSectionIdx(idx);
     const { error: saveError } = await saveWod(wod, idx);
     setSavingSectionIdx(null);
@@ -269,6 +277,8 @@ export default function StaffProgramming() {
     }
 
     toast.success("Section saved");
+    // If the coach switched days mid-save, do not merge this day's drafts into the new day.
+    if (saveDateKey !== dateKeyRef.current) return;
     pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
     setServerSyncMode("save");
     refetch();
@@ -319,7 +329,7 @@ export default function StaffProgramming() {
     refetch();
   }
 
-  const busy = saving || publishing || isRefreshing;
+  const busy = saving || publishing || isRefreshing || dateTransitionPending;
   const unsavedCount = wods.filter(isSegmentUnsaved).length;
 
   return (
@@ -382,7 +392,12 @@ export default function StaffProgramming() {
 
       {/* Day actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
+        <Button
+          onClick={() => setSegmentAddOpen(true)}
+          size="sm"
+          variant="secondary"
+          disabled={dateTransitionPending}
+        >
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
         <Button
@@ -398,14 +413,14 @@ export default function StaffProgramming() {
         </Button>
       </div>
 
-      {isLoading && <PageSkeleton rows={4} />}
-      {!isLoading && !error && isEmpty && wods.length === 0 && (
+      {(isLoading || dateTransitionPending) && <PageSkeleton rows={4} />}
+      {!isLoading && !dateTransitionPending && !error && isEmpty && wods.length === 0 && (
         <EmptyState
           title="Nothing scheduled"
           description={`${format(date, "EEE, MMM d")} is empty. Click Segment to add or copy programming.`}
         />
       )}
-      {!isLoading && wods.length > 0 && (
+      {!isLoading && !dateTransitionPending && wods.length > 0 && (
         <div className="space-y-4">
           {wods.map((w, idx) => (
             <SegmentEditorCard
@@ -415,6 +430,7 @@ export default function StaffProgramming() {
               allWods={wods}
               libraries={libraries}
               saving={savingSectionIdx === idx}
+              actionsDisabled={dateTransitionPending}
               onUpdate={(patch) => updateWod(idx, patch)}
               onRemove={() => void handleRemoveWod(idx)}
               onSaveSection={() => void handleSaveSection(idx)}

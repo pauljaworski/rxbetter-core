@@ -57,6 +57,8 @@ type Props = {
   allWods: EditorWod[];
   libraries: ProgramLibrary[];
   saving?: boolean;
+  /** Blocks destructive/save actions while the selected day is still loading. */
+  actionsDisabled?: boolean;
   onUpdate: (patch: Partial<EditorWod>) => void;
   onRemove: () => void;
   onSaveSection: () => void;
@@ -72,6 +74,7 @@ export function SegmentEditorCard({
   wod,
   libraries,
   saving,
+  actionsDisabled = false,
   onUpdate,
   onRemove,
   onSaveSection,
@@ -308,6 +311,7 @@ export function SegmentEditorCard({
             size="sm"
             variant="outline"
             onClick={onDuplicate}
+            disabled={actionsDisabled}
             title="Duplicate segment on this day"
           >
             <Copy className="mr-1 h-3.5 w-3.5" />
@@ -316,7 +320,7 @@ export function SegmentEditorCard({
           <Button
             size="sm"
             onClick={onSaveSection}
-            disabled={saving}
+            disabled={saving || actionsDisabled}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Save className="mr-1 h-3.5 w-3.5" />
@@ -326,6 +330,7 @@ export function SegmentEditorCard({
             size="icon"
             variant="ghost"
             onClick={onRemove}
+            disabled={actionsDisabled}
             aria-label="Remove segment"
             className="text-muted-foreground hover:text-destructive"
           >
