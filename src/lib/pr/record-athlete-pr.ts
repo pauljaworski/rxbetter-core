@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
+import { pageAllRows } from "@/lib/supabase/page-all-rows";
 
 export type PerformanceWeightRow = {
   id: string;
@@ -26,20 +27,39 @@ export function pickBestPerformanceRow(rows: PerformanceWeightRow[]): Performanc
   return best;
 }
 
+/**
+ * Load every weighted attempt for a definition. PostgREST truncates at max_rows
+ * (1000); without paging, a true PR on a later page silently loses the vault race.
+ */
+export async function fetchWeightedPerformancesForDefinition(
+  contactId: string,
+  benchmarkDefinitionId: string,
+): Promise<{ data: PerformanceWeightRow[]; error: string | null }> {
+  const { data, error } = await pageAllRows<PerformanceWeightRow>((from, to) =>
+    supabase
+      .from("athlete_performance")
+      .select("id, weight_lifted, performance_date, created_at")
+      .eq("contact_id", contactId)
+      .eq("benchmark_definition_id", benchmarkDefinitionId)
+      .not("weight_lifted", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return { data, error: error ? formatSupabaseError(error) : null };
+}
+
 export async function recomputeBenchmarkSummary(
   contactId: string,
   benchmarkDefinitionId: string,
 ): Promise<{ error: string | null }> {
-  const { data: perfs, error: fetchErr } = await supabase
-    .from("athlete_performance")
-    .select("id, weight_lifted, performance_date, created_at")
-    .eq("contact_id", contactId)
-    .eq("benchmark_definition_id", benchmarkDefinitionId)
-    .not("weight_lifted", "is", null);
+  const { data: perfs, error: fetchErr } = await fetchWeightedPerformancesForDefinition(
+    contactId,
+    benchmarkDefinitionId,
+  );
 
-  if (fetchErr) return { error: formatSupabaseError(fetchErr.message) };
+  if (fetchErr) return { error: fetchErr };
 
-  const best = pickBestPerformanceRow((perfs ?? []) as PerformanceWeightRow[]);
+  const best = pickBestPerformanceRow(perfs);
   if (!best) {
     const { error: delErr } = await supabase
       .from("athlete_benchmark_summary")
