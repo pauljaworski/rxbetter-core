@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import { formatSupabaseError } from "@/lib/format";
+import { pageAllRows } from "@/lib/supabase/page-all-rows";
 import { useAsyncState } from "../useAsyncState";
 import type {
   StaffClassContact,
@@ -74,14 +76,21 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
       itemsByWod.set(it.programming_id, arr);
     }
 
-    const { data: perfs, error: perfErr } = await supabase
-      .from("athlete_performance")
-      .select(
-        "id, contact_id, programming_id, programming_line_item_id, score, weight_lifted, rpe, is_pr, workout_scale, status",
-      )
-      .in("programming_id", ids);
+    // Busy class days (many athletes × per-set strength PLIs) can exceed
+    // PostgREST max_rows; truncate would silently hide logged scores on the coach board.
+    const { data: perfs, error: perfErr } = await pageAllRows<StaffClassPerformance>(
+      (from, to) =>
+        supabase
+          .from("athlete_performance")
+          .select(
+            "id, contact_id, programming_id, programming_line_item_id, score, weight_lifted, rpe, is_pr, workout_scale, status",
+          )
+          .in("programming_id", ids)
+          .order("id", { ascending: true })
+          .range(from, to),
+    );
 
-    if (perfErr) throw new Error(perfErr.message);
+    if (perfErr) throw new Error(formatSupabaseError(perfErr));
 
     let totalLogged = 0;
     for (const p of perfs ?? []) {
