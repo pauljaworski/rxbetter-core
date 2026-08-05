@@ -17,4 +17,44 @@ describe("pickBestPerformanceRow", () => {
     ]);
     expect(best?.id).toBe("b");
   });
+
+  it("ignores failed attempts when selecting PR weight", () => {
+    const best = pickBestPerformanceRow([
+      {
+        id: "failed-heavy",
+        weight_lifted: 300,
+        performance_date: "2026-03-01",
+        created_at: null,
+        status: "failed",
+      },
+      {
+        id: "completed",
+        weight_lifted: 250,
+        performance_date: "2026-02-01",
+        created_at: null,
+        status: "completed",
+      },
+    ]);
+    expect(best?.id).toBe("completed");
+  });
+
+  it("keeps legacy rows without a status eligible", () => {
+    const best = pickBestPerformanceRow([
+      {
+        id: "legacy",
+        weight_lifted: 275,
+        performance_date: "2026-01-01",
+        created_at: null,
+        status: null,
+      },
+      {
+        id: "completed",
+        weight_lifted: 250,
+        performance_date: "2026-02-01",
+        created_at: null,
+        status: "completed",
+      },
+    ]);
+    expect(best?.id).toBe("legacy");
+  });
 });
