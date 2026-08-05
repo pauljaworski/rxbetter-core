@@ -4,6 +4,11 @@ import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
 import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
 import type { Json } from "@/types/database";
+import {
+  findExistingPerformanceId,
+  isUniqueViolation,
+  resolvePerformanceIdForSave,
+} from "@/lib/performance/performance-ledger";
 
 export type SaveSegmentPerformanceInput = {
   contactId: string;
@@ -36,14 +41,17 @@ export function useSaveSegmentPerformance() {
       weight_lifted: null,
     };
 
-    let id = input.existingId;
-    let error: { message: string } | null = null;
+    const ledgerKey = {
+      kind: "segment" as const,
+      contactId: input.contactId,
+      programmingId: input.programmingId,
+    };
 
-    if (input.existingId) {
-      const res = await supabase
-        .from("athlete_performance")
-        .update(payload)
-        .eq("id", input.existingId);
+    let id = await resolvePerformanceIdForSave(input.existingId, ledgerKey);
+    let error: { message: string; code?: string } | null = null;
+
+    if (id) {
+      const res = await supabase.from("athlete_performance").update(payload).eq("id", id);
       error = res.error;
     } else {
       const res = await supabase
@@ -59,6 +67,18 @@ export function useSaveSegmentPerformance() {
         .single();
       error = res.error;
       id = res.data?.id ?? id;
+
+      if (error && isUniqueViolation(error)) {
+        const existingId = await findExistingPerformanceId(ledgerKey);
+        if (existingId) {
+          const retry = await supabase
+            .from("athlete_performance")
+            .update(payload)
+            .eq("id", existingId);
+          error = retry.error;
+          id = existingId;
+        }
+      }
     }
 
     if (!error) {

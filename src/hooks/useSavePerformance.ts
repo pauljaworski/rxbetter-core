@@ -2,10 +2,15 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { Database } from "@/types/database";
+import type { WorkoutScale } from "@/lib/format";
+import {
+  findExistingPerformanceId,
+  isUniqueViolation,
+  resolvePerformanceIdForSave,
+} from "@/lib/performance/performance-ledger";
 
 type PerformanceInsert = Database["public"]["Tables"]["athlete_performance"]["Insert"];
 type PerformanceUpdate = Database["public"]["Tables"]["athlete_performance"]["Update"];
-import type { WorkoutScale } from "@/lib/format";
 
 export type SavePerformanceInput = {
   contactId: string;
@@ -44,14 +49,17 @@ export function useSavePerformance() {
       workout_scale: input.workoutScale,
     };
 
-    let id = input.existingId;
-    let error: { message: string } | null = null;
+    const ledgerKey = {
+      kind: "line_item" as const,
+      contactId: input.contactId,
+      lineItemId: input.lineItemId,
+    };
 
-    if (input.existingId) {
-      const res = await supabase
-        .from("athlete_performance")
-        .update(payload)
-        .eq("id", input.existingId);
+    let id = await resolvePerformanceIdForSave(input.existingId, ledgerKey);
+    let error: { message: string; code?: string } | null = null;
+
+    if (id) {
+      const res = await supabase.from("athlete_performance").update(payload).eq("id", id);
       error = res.error;
     } else {
       const res = await supabase
@@ -68,6 +76,18 @@ export function useSavePerformance() {
         .single();
       error = res.error;
       id = res.data?.id ?? id;
+
+      if (error && isUniqueViolation(error)) {
+        const existingId = await findExistingPerformanceId(ledgerKey);
+        if (existingId) {
+          const retry = await supabase
+            .from("athlete_performance")
+            .update(payload)
+            .eq("id", existingId);
+          error = retry.error;
+          id = existingId;
+        }
+      }
     }
 
     setSubmitting(false);
