@@ -3,6 +3,11 @@ import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
 import { tryMarkGroupBlockComplete } from "@/lib/programming/segment-completion";
+import {
+  findExistingPerformanceId,
+  isUniqueViolation,
+  resolvePerformanceIdForSave,
+} from "@/lib/performance/performance-ledger";
 
 export type SaveGroupPerformanceInput = {
   contactId: string;
@@ -34,14 +39,18 @@ export function useSaveGroupPerformance() {
       weight_lifted: null,
     };
 
-    let id = input.existingId;
-    let error: { message: string } | null = null;
+    const ledgerKey = {
+      kind: "group" as const,
+      contactId: input.contactId,
+      segmentGroupId: input.segmentGroupId,
+      performanceDate: input.wodDate,
+    };
 
-    if (input.existingId) {
-      const res = await supabase
-        .from("athlete_performance")
-        .update(payload)
-        .eq("id", input.existingId);
+    let id = await resolvePerformanceIdForSave(input.existingId, ledgerKey);
+    let error: { message: string; code?: string } | null = null;
+
+    if (id) {
+      const res = await supabase.from("athlete_performance").update(payload).eq("id", id);
       error = res.error;
     } else {
       const res = await supabase
@@ -56,6 +65,18 @@ export function useSaveGroupPerformance() {
         .single();
       error = res.error;
       id = res.data?.id ?? id;
+
+      if (error && isUniqueViolation(error)) {
+        const existingId = await findExistingPerformanceId(ledgerKey);
+        if (existingId) {
+          const retry = await supabase
+            .from("athlete_performance")
+            .update(payload)
+            .eq("id", existingId);
+          error = retry.error;
+          id = existingId;
+        }
+      }
     }
 
     if (!error) {
