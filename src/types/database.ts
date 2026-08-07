@@ -1589,6 +1589,10 @@ export type Database = {
         Args: { p_programming_id: string }
         Returns: undefined
       }
+      recompute_athlete_benchmark_summary: {
+        Args: { p_contact_id: string; p_benchmark_definition_id: string }
+        Returns: undefined
+      }
       sync_programming_library_assignments: {
         Args: { p_programming_id: string; p_library_ids: string[] }
         Returns: undefined

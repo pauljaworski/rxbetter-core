@@ -26,65 +26,19 @@ export function pickBestPerformanceRow(rows: PerformanceWeightRow[]): Performanc
   return best;
 }
 
+/**
+ * Refresh PR vault + is_pr flags for one athlete/definition.
+ * Uses an atomic DB RPC so concurrent set logs cannot leave a stale lighter PR.
+ */
 export async function recomputeBenchmarkSummary(
   contactId: string,
   benchmarkDefinitionId: string,
 ): Promise<{ error: string | null }> {
-  const { data: perfs, error: fetchErr } = await supabase
-    .from("athlete_performance")
-    .select("id, weight_lifted, performance_date, created_at")
-    .eq("contact_id", contactId)
-    .eq("benchmark_definition_id", benchmarkDefinitionId)
-    .not("weight_lifted", "is", null);
-
-  if (fetchErr) return { error: formatSupabaseError(fetchErr.message) };
-
-  const best = pickBestPerformanceRow((perfs ?? []) as PerformanceWeightRow[]);
-  if (!best) {
-    const { error: delErr } = await supabase
-      .from("athlete_benchmark_summary")
-      .delete()
-      .eq("contact_id", contactId)
-      .eq("benchmark_definition_id", benchmarkDefinitionId);
-    return { error: delErr ? formatSupabaseError(delErr.message) : null };
-  }
-
-  const bestWeight = Number(best.weight_lifted);
-  const bestDate = best.performance_date ?? best.created_at?.slice(0, 10) ?? null;
-
-  const { data: existing, error: sumFetchErr } = await supabase
-    .from("athlete_benchmark_summary")
-    .select("id")
-    .eq("contact_id", contactId)
-    .eq("benchmark_definition_id", benchmarkDefinitionId)
-    .maybeSingle();
-
-  if (sumFetchErr) return { error: formatSupabaseError(sumFetchErr.message) };
-
-  const summaryPayload = {
-    current_pr_weight: bestWeight,
-    date_pr_achieved: bestDate,
-  };
-
-  const { error: sumWriteErr } = existing
-    ? await supabase.from("athlete_benchmark_summary").update(summaryPayload).eq("id", existing.id)
-    : await supabase.from("athlete_benchmark_summary").insert({
-        contact_id: contactId,
-        benchmark_definition_id: benchmarkDefinitionId,
-        ...summaryPayload,
-      });
-
-  if (sumWriteErr) return { error: formatSupabaseError(sumWriteErr.message) };
-
-  await supabase
-    .from("athlete_performance")
-    .update({ is_pr: false })
-    .eq("contact_id", contactId)
-    .eq("benchmark_definition_id", benchmarkDefinitionId);
-
-  await supabase.from("athlete_performance").update({ is_pr: true }).eq("id", best.id);
-
-  return { error: null };
+  const { error } = await supabase.rpc("recompute_athlete_benchmark_summary", {
+    p_contact_id: contactId,
+    p_benchmark_definition_id: benchmarkDefinitionId,
+  });
+  return { error: error ? formatSupabaseError(error.message) : null };
 }
 
 export type RecordAthletePrInput = {
