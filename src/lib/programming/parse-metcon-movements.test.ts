@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseMetconMovements } from "./parse-metcon-movements";
+import {
+  editorLineItemsFromMetconMovements,
+  parseMetconMovements,
+} from "./parse-metcon-movements";
 
 const catalog = [
   { id: "bt-wb", name: "Wall Ball", stimulus: "strength", sub_stimulus: "squat", purpose_variation: null },
@@ -44,5 +47,18 @@ describe("parseMetconMovements", () => {
     const run = r.movements.find((m) => m.bench_name === "Run");
     expect(run?.reps_prescribed).toBe(200);
     expect(run?.prescription_unit).toBe("meters");
+  });
+
+  it("editor line items carry dual loads into rx_variants", () => {
+    const r = parseMetconMovements(
+      "21-18-15-12-9: Wall Balls (30/20), Chest-to-Bar",
+      catalog,
+    );
+    const items = editorLineItemsFromMetconMovements(r.movements);
+    const wb = items.find((m) => m.bench_name === "Wall Ball");
+    expect(wb?.rx_variants).toEqual({
+      male: { weight_lb: 30, load_label: "30 lb" },
+      female: { weight_lb: 20, load_label: "20 lb" },
+    });
   });
 });

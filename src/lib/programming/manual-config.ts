@@ -13,6 +13,7 @@ import {
   type MetconFormat,
   type ProgrammingSegment,
 } from "@/lib/wod-parser/intake-draft-schema";
+import { rxVariantsFromItemOrLegacyScore } from "@/lib/programming/rx-variants-schema";
 
 export type LineItemMode = "prescription" | "tracking_only";
 
@@ -218,11 +219,20 @@ export function normalizeEditorWodFields(wod: EditorWod): EditorWod {
     ? normalizeMetconFormat(wod.metcon_format)
     : null;
   const mode = getLineItemMode(segment);
-  const items = wod.items.map((it) => ({
-    ...it,
-    prescribed_score: mode === "tracking_only" ? null : it.prescribed_score,
-    prescribed_percentage: normalizePercentFraction(it.prescribed_percentage),
-  }));
+  const items = wod.items.map((it) => {
+    const prescribed_percentage = normalizePercentFraction(it.prescribed_percentage);
+    if (mode !== "tracking_only") {
+      return { ...it, prescribed_percentage };
+    }
+    // Metcon clears legacy prescribed_score; migrate dual M/F loads into rx_variants first.
+    const rx_variants = rxVariantsFromItemOrLegacyScore(it);
+    return {
+      ...it,
+      rx_variants,
+      prescribed_score: null,
+      prescribed_percentage,
+    };
+  });
   const ids =
     wod.program_library_ids?.length > 0
       ? wod.program_library_ids
