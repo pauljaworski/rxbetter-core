@@ -7,6 +7,7 @@ import type { PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import { inferUnitFromToken } from "@/lib/programming/prescription-unit";
 import type { WorkoutScheme } from "./workout-scheme-schema";
 import type { LineItemKind } from "./line-item-kind";
+import { parseDualLoadPrescription } from "./rx-variants-schema";
 
 export type ParsedMetconMovement = {
   label: string;
@@ -242,17 +243,22 @@ export function editorLineItemsFromMetconMovements(
   parsed: ParsedMetconMovement[],
   startSeq = 1,
 ): EditorLineItem[] {
-  return parsed.map((m, i) => ({
-    sequence_number: startSeq + i,
-    reps_prescribed: m.reps_prescribed,
-    prescription_unit: m.prescription_unit,
-    prescribed_weight: null,
-    prescribed_percentage: null,
-    prescribed_score: m.prescribed_score,
-    benchmark_type_id: m.benchmark_type_id,
-    bench_name: m.bench_name,
-    movement_label: m.benchmark_type_id ? null : m.label,
-    line_item_kind: "metcon_movement" as LineItemKind,
-    movement_components: [],
-  }));
+  return parsed.map((m, i) => {
+    const rx_variants = parseDualLoadPrescription(m.prescribed_score) ?? undefined;
+    return {
+      sequence_number: startSeq + i,
+      reps_prescribed: m.reps_prescribed,
+      prescription_unit: m.prescription_unit,
+      prescribed_weight: null,
+      prescribed_percentage: null,
+      // Keep dual string for display until save; structured variants survive normalize.
+      prescribed_score: m.prescribed_score,
+      benchmark_type_id: m.benchmark_type_id,
+      bench_name: m.bench_name,
+      movement_label: m.benchmark_type_id ? null : m.label,
+      line_item_kind: "metcon_movement" as LineItemKind,
+      movement_components: [],
+      ...(rx_variants ? { rx_variants } : {}),
+    };
+  });
 }

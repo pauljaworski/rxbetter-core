@@ -279,6 +279,56 @@ export function rxVariantsForSave(
   return { ...(male ? { male } : {}), ...(female ? { female } : {}) };
 }
 
+/**
+ * Recover M/F loads from legacy dual strings written by intake / bulk paste
+ * (e.g. "95/65 lb", "20/14 lb · 10/9 ft") before metcon save clears prescribed_score.
+ */
+export function parseDualLoadPrescription(raw: string | null | undefined): RxVariants | null {
+  if (!raw?.trim()) return null;
+  const s = raw.trim();
+
+  const loadMatch = s.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*(lb|lbs)\b/i);
+  const heightMatch = s.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*(ft|feet)\b/i);
+  if (!loadMatch && !heightMatch) {
+    const bare = s.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+    if (!bare) return null;
+    const maleLb = Number(bare[1]);
+    const femaleLb = Number(bare[2]);
+    if (!Number.isFinite(maleLb) || !Number.isFinite(femaleLb)) return null;
+    return {
+      male: { weight_lb: maleLb, load_label: `${bare[1]} lb` },
+      female: { weight_lb: femaleLb, load_label: `${bare[2]} lb` },
+    };
+  }
+
+  const male: RxVariant = {};
+  const female: RxVariant = {};
+  if (loadMatch) {
+    const maleLb = Number(loadMatch[1]);
+    const femaleLb = Number(loadMatch[2]);
+    if (!Number.isFinite(maleLb) || !Number.isFinite(femaleLb)) return null;
+    male.weight_lb = maleLb;
+    female.weight_lb = femaleLb;
+    male.load_label = `${loadMatch[1]} lb`;
+    female.load_label = `${loadMatch[2]} lb`;
+  }
+  if (heightMatch) {
+    male.height_label = `${heightMatch[1]} ft`;
+    female.height_label = `${heightMatch[2]} ft`;
+  }
+  return { male, female };
+}
+
+/** Prefer structured variants; otherwise lift dual loads out of prescribed_score. */
+export function rxVariantsFromItemOrLegacyScore(item: {
+  rx_variants?: unknown;
+  prescribed_score?: string | null;
+}): RxVariants {
+  const existing = parseRxVariants(item.rx_variants);
+  if (hasRxVariants(existing)) return existing;
+  return parseDualLoadPrescription(item.prescribed_score) ?? emptyRxVariants();
+}
+
 /** Rx suffix parts for display (amount + load + height, no duplicates). */
 export function formatResolvedRxParts(resolved: ResolvedPrescription): string[] {
   const parts: string[] = [];

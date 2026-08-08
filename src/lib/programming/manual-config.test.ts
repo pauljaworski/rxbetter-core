@@ -98,4 +98,27 @@ describe("manual-config", () => {
     );
     expect(w.items[0].prescribed_score).toBeNull();
   });
+
+  it("normalizeEditorWodFields migrates dual M/F loads into rx_variants before clearing", () => {
+    const w = normalizeEditorWodFields(
+      baseWod({
+        items: [
+          {
+            sequence_number: 1,
+            reps_prescribed: 10,
+            prescribed_weight: null,
+            prescribed_percentage: null,
+            prescribed_score: "95/65 lb",
+            benchmark_type_id: "3",
+            bench_name: "Thruster",
+          },
+        ],
+      }),
+    );
+    expect(w.items[0].prescribed_score).toBeNull();
+    expect(w.items[0].rx_variants).toEqual({
+      male: { weight_lb: 95, load_label: "95 lb" },
+      female: { weight_lb: 65, load_label: "65 lb" },
+    });
+  });
 });

@@ -5,7 +5,9 @@ import {
   formatDualModifierLabel,
   formatRxVariantsCompact,
   formatResolvedRxParts,
+  parseDualLoadPrescription,
   resolvePrescriptionForAthlete,
+  rxVariantsFromItemOrLegacyScore,
   syncLegacyFieldsFromVariants,
 } from "./rx-variants-schema";
 
@@ -116,5 +118,36 @@ describe("rx-variants-schema", () => {
         female: { reps: 80, load_label: "14 lb" },
       }),
     ).toBe("80 Reps · 20/14 lb");
+  });
+
+  it("parses dual load prescribed_score into M/F variants", () => {
+    expect(parseDualLoadPrescription("95/65 lb")).toEqual({
+      male: { weight_lb: 95, load_label: "95 lb" },
+      female: { weight_lb: 65, load_label: "65 lb" },
+    });
+    expect(parseDualLoadPrescription("20/14 lb · 10/9 ft")).toEqual({
+      male: { weight_lb: 20, load_label: "20 lb", height_label: "10 ft" },
+      female: { weight_lb: 14, load_label: "14 lb", height_label: "9 ft" },
+    });
+    expect(parseDualLoadPrescription("5:00")).toBeNull();
+  });
+
+  it("prefers existing rx_variants over legacy dual score", () => {
+    const existing = {
+      male: { load_label: "50 lb" },
+      female: { load_label: "35 lb" },
+    };
+    expect(
+      rxVariantsFromItemOrLegacyScore({
+        rx_variants: existing,
+        prescribed_score: "95/65 lb",
+      }),
+    ).toEqual(existing);
+    expect(
+      rxVariantsFromItemOrLegacyScore({
+        rx_variants: {},
+        prescribed_score: "95/65 lb",
+      }).male?.weight_lb,
+    ).toBe(95);
   });
 });

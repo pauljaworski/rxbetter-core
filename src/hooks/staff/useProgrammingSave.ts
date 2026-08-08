@@ -158,7 +158,9 @@ export async function saveWod(
       if (error) throw new Error(error.message);
       progId = data.id;
     } else {
-      const { error } = await supabase
+      // Scope by active gym so a stale editor card from another gym cannot
+      // rewrite that gym's programming after a gym switch.
+      const { data: updated, error } = await supabase
         .from("programming")
         .update({
           wod_date: dateKey,
@@ -179,8 +181,15 @@ export async function saveWod(
           program_library_id: lib,
           prescribed_scale: normalized.prescribed_scale ?? "rx",
         })
-        .eq("id", progId);
+        .eq("id", progId)
+        .eq("gym_id", activeGymId)
+        .select("id");
       if (error) throw new Error(error.message);
+      if (!updated?.length) {
+        throw new Error(
+          "This segment is not in the active gym. Reload programming and try again.",
+        );
+      }
     }
 
     await syncLibraryAssignments(progId!, libraryIds);

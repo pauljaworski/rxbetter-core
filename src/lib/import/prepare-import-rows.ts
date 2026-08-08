@@ -24,15 +24,65 @@ export type PreparedImportRow = {
   skipReason: string | null;
 };
 
-function parseNumber(raw: string | null): number | null {
-  if (!raw) return null;
-  const n = parseFloat(String(raw).replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : null;
+/**
+ * Parse a single lift weight in lb.
+ * Rejects dual M/F or range loads (e.g. 135/95) that would otherwise strip
+ * separators and concatenate into a catastrophic value like 13595.
+ */
+export function parseImportWeightLb(
+  raw: string | null,
+): { weight: number | null; error: string | null } {
+  if (!raw?.trim()) return { weight: null, error: null };
+  const s = raw.trim();
+
+  // Dual loads / ranges: 135/95, 20/14 lb, 185-125
+  if (/\d\s*[\/–—-]\s*\d/.test(s)) {
+    return {
+      weight: null,
+      error: "Ambiguous dual load (e.g. 135/95) — enter a single weight in lb",
+    };
+  }
+
+  const normalized = s.replace(/,/g, "");
+  const nums = normalized.match(/\d+(?:\.\d+)?/g) ?? [];
+  if (nums.length === 0) return { weight: null, error: null };
+  if (nums.length > 1) {
+    return {
+      weight: null,
+      error: "Ambiguous weight value — enter a single number in lb",
+    };
+  }
+
+  const n = parseFloat(nums[0]);
+  if (!Number.isFinite(n) || n <= 0) return { weight: null, error: null };
+  // Guard against concatenated garbage slipping past separator checks.
+  if (n > 2000) {
+    return {
+      weight: null,
+      error: "Weight out of range — check for dual M/F loads or wrong units",
+    };
+  }
+  return { weight: n, error: null };
 }
 
-function parseRepCount(raw: string | null): number | null {
-  if (!raw) return null;
-  const m = raw.match(/(\d+)/);
+/**
+ * Parse RM / rep-max count. For sets×reps notation (5x3, 5×3), use the reps
+ * (second number) so working sets are not filed under the wrong RM definition.
+ */
+export function parseImportRepCount(raw: string | null): number | null {
+  if (!raw?.trim()) return null;
+  const s = raw.trim();
+  const setsReps = s.match(/^(\d+)\s*[xX×]\s*(\d+)\s*$/);
+  if (setsReps) {
+    const reps = parseInt(setsReps[2], 10);
+    return Number.isFinite(reps) && reps > 0 ? reps : null;
+  }
+  const rm = s.match(/^(\d+)\s*(?:rm)?$/i);
+  if (rm) {
+    const n = parseInt(rm[1], 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  const m = s.match(/(\d+)/);
   if (!m) return null;
   const n = parseInt(m[1], 10);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -78,8 +128,12 @@ export function prepareImportRows(
 ): PreparedImportRow[] {
   return mapped.map((row, rowIndex) => {
     const date = parseImportDate(row.date);
-    const weightLb = parseNumber(row.weight);
-    const repCount = parseRepCount(row.reps) ?? (weightLb != null ? 1 : null);
+    const weightParsed = parseImportWeightLb(row.weight);
+    if (weightParsed.error) {
+      return emptyRow(rowIndex, weightParsed.error);
+    }
+    const weightLb = weightParsed.weight;
+    const repCount = parseImportRepCount(row.reps) ?? (weightLb != null ? 1 : null);
     const movementLabel = row.movement?.trim() || row.workout_name?.trim() || null;
     const score = row.score?.trim() || null;
     const workoutName = row.workout_name?.trim() || movementLabel;
