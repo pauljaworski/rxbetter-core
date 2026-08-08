@@ -3,6 +3,7 @@ import {
   cloneEditorWod,
   suggestDuplicateScale,
   isSegmentUnsaved,
+  isContextTransitionPending,
 } from "@/lib/programming/staff-programming-state";
 import type { EditorWod } from "@/hooks/staff/types";
 
@@ -48,5 +49,16 @@ describe("cloneEditorWod", () => {
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+  });
+});
+
+describe("isContextTransitionPending", () => {
+  it("is true while awaiting a date/gym sync apply", () => {
+    expect(isContextTransitionPending("date")).toBe(true);
+  });
+
+  it("is false once sync mode clears or after a save merge", () => {
+    expect(isContextTransitionPending(null)).toBe(false);
+    expect(isContextTransitionPending("save")).toBe(false);
   });
 });

@@ -1,9 +1,20 @@
 import type { EditorWod } from "@/hooks/staff/types";
 import type { PrescribedLevel } from "@/lib/format";
 
+export type ServerSyncMode = "date" | "save" | null;
+
 /** Segment exists only in local editor state (not yet in the database). */
 export function isSegmentUnsaved(wod: EditorWod): boolean {
   return wod._new === true || !wod.id;
+}
+
+/**
+ * True while Staff Programming is waiting to apply a fresh day/gym payload.
+ * `serverSyncMode === "date"` covers the gap before useAsyncState flips to
+ * refreshing after an active-gym switch.
+ */
+export function isContextTransitionPending(serverSyncMode: ServerSyncMode): boolean {
+  return serverSyncMode === "date";
 }
 
 /** Suggest the next prescribed tier when duplicating (e.g. Rx → Scaled). */

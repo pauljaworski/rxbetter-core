@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgramLibraries } from "@/hooks/useProgramLibraries";
@@ -23,15 +23,15 @@ import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
+  isContextTransitionPending,
   isSegmentUnsaved,
   suggestDuplicateScale,
+  type ServerSyncMode,
 } from "@/lib/programming/staff-programming-state";
 import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
-
-type ServerSyncMode = "date" | "save" | null;
 
 export default function StaffProgramming() {
   const { activeGymId } = useAuth();
@@ -40,6 +40,8 @@ export default function StaffProgramming() {
   const [wods, setWods] = useState<EditorWod[]>([]);
   const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
   const pendingDraftsRef = useRef<EditorWod[]>([]);
+  /** After gym/day changes, ignore cached serverWods until a new fetch starts. */
+  const waitForContextFetchRef = useRef(false);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
@@ -48,6 +50,10 @@ export default function StaffProgramming() {
   const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
 
   const dateKey = format(date, "yyyy-MM-dd");
+  const activeGymIdRef = useRef(activeGymId);
+  activeGymIdRef.current = activeGymId;
+  const dateKeyRef = useRef(dateKey);
+  dateKeyRef.current = dateKey;
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const {
@@ -62,13 +68,25 @@ export default function StaffProgramming() {
   const defaultLibId = libraries[0]?.id ?? null;
   const { saveWod, busy: saving } = useProgrammingSave(activeGymId, date, defaultLibId);
   const { publishDay, publishWeek, busy: publishing } = useProgrammingPublish(activeGymId);
+  const contextTransitionPending = isContextTransitionPending(serverSyncMode);
 
-  useEffect(() => {
-    setServerSyncMode("date");
+  // Drop previous gym/day rows before paint. Save/delete still target segment ids
+  // from local state, so stale cards must not remain after a context switch.
+  useLayoutEffect(() => {
     pendingDraftsRef.current = [];
-  }, [dateKey]);
+    waitForContextFetchRef.current = true;
+    setWods([]);
+    setServerSyncMode("date");
+  }, [activeGymId, dateKey]);
 
   useEffect(() => {
+    if (waitForContextFetchRef.current) {
+      // useAsyncState keeps prior data until the new loader finishes; do not apply
+      // that stale payload when sync mode flips back to "date".
+      if (!(isLoading || isRefreshing)) return;
+      waitForContextFetchRef.current = false;
+      return;
+    }
     if (isLoading || isRefreshing || !serverSyncMode) return;
     if (serverSyncMode === "date") {
       setWods(serverWods);
@@ -89,6 +107,10 @@ export default function StaffProgramming() {
       );
       if (!ok) return;
     }
+    pendingDraftsRef.current = [];
+    waitForContextFetchRef.current = true;
+    setWods([]);
+    setServerSyncMode("date");
     setDate(next);
   }
 
@@ -104,6 +126,7 @@ export default function StaffProgramming() {
 
   async function handleRemoveWod(idx: number) {
     const wod = wods[idx];
+    const removeGymId = activeGymId;
     if (wod.id) {
       const msg = wod.published_at
         ? `Remove "${wod.name ?? "this segment"}"? It is published — athletes will no longer see it on Today or Calendar.`
@@ -117,6 +140,8 @@ export default function StaffProgramming() {
       }
       toast.success(wod.published_at ? "Removed from athletes" : "Segment deleted");
     }
+    // If the coach switched gyms mid-delete, do not mutate the new gym's editor.
+    if (removeGymId !== activeGymIdRef.current) return;
     setServerSyncMode(null);
     setWods((prev) => prev.filter((_, i) => i !== idx));
     if (wod.id) {
@@ -259,6 +284,8 @@ export default function StaffProgramming() {
       return;
     }
 
+    const saveGymId = activeGymId;
+    const saveDateKey = dateKey;
     setSavingSectionIdx(idx);
     const { error: saveError } = await saveWod(wod, idx);
     setSavingSectionIdx(null);
@@ -269,6 +296,8 @@ export default function StaffProgramming() {
     }
 
     toast.success("Section saved");
+    // If the coach switched gym/day mid-save, do not merge drafts into the new context.
+    if (saveGymId !== activeGymIdRef.current || saveDateKey !== dateKeyRef.current) return;
     pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
     setServerSyncMode("save");
     refetch();
@@ -319,7 +348,7 @@ export default function StaffProgramming() {
     refetch();
   }
 
-  const busy = saving || publishing || isRefreshing;
+  const busy = saving || publishing || isRefreshing || contextTransitionPending;
   const unsavedCount = wods.filter(isSegmentUnsaved).length;
 
   return (
@@ -382,7 +411,12 @@ export default function StaffProgramming() {
 
       {/* Day actions */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
+        <Button
+          onClick={() => setSegmentAddOpen(true)}
+          size="sm"
+          variant="secondary"
+          disabled={contextTransitionPending}
+        >
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
         <Button
@@ -398,14 +432,14 @@ export default function StaffProgramming() {
         </Button>
       </div>
 
-      {isLoading && <PageSkeleton rows={4} />}
-      {!isLoading && !error && isEmpty && wods.length === 0 && (
+      {(isLoading || contextTransitionPending) && <PageSkeleton rows={4} />}
+      {!isLoading && !contextTransitionPending && !error && isEmpty && wods.length === 0 && (
         <EmptyState
           title="Nothing scheduled"
           description={`${format(date, "EEE, MMM d")} is empty. Click Segment to add or copy programming.`}
         />
       )}
-      {!isLoading && wods.length > 0 && (
+      {!isLoading && !contextTransitionPending && wods.length > 0 && (
         <div className="space-y-4">
           {wods.map((w, idx) => (
             <SegmentEditorCard
@@ -415,6 +449,7 @@ export default function StaffProgramming() {
               allWods={wods}
               libraries={libraries}
               saving={savingSectionIdx === idx}
+              actionsDisabled={contextTransitionPending}
               onUpdate={(patch) => updateWod(idx, patch)}
               onRemove={() => void handleRemoveWod(idx)}
               onSaveSection={() => void handleSaveSection(idx)}
