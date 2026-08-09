@@ -41,12 +41,17 @@ describe("suggestDuplicateScale", () => {
 
 describe("cloneEditorWod", () => {
   it("creates unsaved copy with new item ids", () => {
-    const clone = cloneEditorWod(baseWod, 1, { prescribedScale: "scaled" });
+    const clone = cloneEditorWod(
+      { ...baseWod, _knownLineItemIds: ["item-1"] },
+      1,
+      { prescribedScale: "scaled" },
+    );
     expect(isSegmentUnsaved(clone)).toBe(true);
     expect(clone.id).toBeUndefined();
     expect(clone.published_at).toBeNull();
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+    expect(clone._knownLineItemIds).toEqual([]);
   });
 });
