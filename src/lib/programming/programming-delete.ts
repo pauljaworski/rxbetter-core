@@ -35,10 +35,26 @@ export async function syncProgrammingLibraryAssignments(
   return { error: null };
 }
 
+/**
+ * Decide which DB line items a section save may delete.
+ * Only IDs the editor knew about at load/sync time are eligible — concurrent
+ * inserts from another coach/tab must not be wiped by a stale save.
+ */
+export function resolveLineItemIdsToDelete(
+  existingIds: string[],
+  keptLineItemIds: string[],
+  knownExistingIds: string[],
+): string[] {
+  const kept = new Set(keptLineItemIds);
+  const known = new Set(knownExistingIds);
+  return existingIds.filter((id) => known.has(id) && !kept.has(id));
+}
+
 /** Delete line items removed from the editor but still present in the database. */
 export async function syncDeletedLineItems(
   programmingId: string,
   keptLineItemIds: string[],
+  knownExistingIds: string[] = [],
 ): Promise<{ error: string | null }> {
   const { data: existing, error: fetchErr } = await supabase
     .from("programming_line_item")
@@ -47,8 +63,11 @@ export async function syncDeletedLineItems(
     .is("contact_id", null);
   if (fetchErr) return { error: formatSupabaseError(fetchErr.message) };
 
-  const kept = new Set(keptLineItemIds);
-  const toDelete = (existing ?? []).map((r) => r.id).filter((id) => !kept.has(id));
+  const toDelete = resolveLineItemIdsToDelete(
+    (existing ?? []).map((r) => r.id),
+    keptLineItemIds,
+    knownExistingIds,
+  );
   if (!toDelete.length) return { error: null };
 
   const { data: removed, error: delErr } = await supabase

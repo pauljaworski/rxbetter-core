@@ -142,6 +142,12 @@ export type EditorWod = {
   /** Rx+ / Rx / Fx / Scaled / N/A — prescribed tier for this segment. */
   prescribed_scale?: PrescribedLevel;
   items: EditorLineItem[];
+  /**
+   * Persisted line-item IDs known when this segment entered the editor
+   * (load or last server sync). Save only deletes IDs from this set that
+   * the coach removed locally — never rows another session inserted.
+   */
+  _knownLineItemIds?: string[];
 };
 
 export type BenchmarkTypeOption = {

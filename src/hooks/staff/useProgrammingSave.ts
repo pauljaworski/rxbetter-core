@@ -214,7 +214,11 @@ export async function saveWod(
       }
     }
 
-    const { error: syncErr } = await syncDeletedLineItems(progId!, keptIds);
+    const { error: syncErr } = await syncDeletedLineItems(
+      progId!,
+      keptIds,
+      normalized._knownLineItemIds ?? [],
+    );
     if (syncErr) throw new Error(syncErr);
 
     return { programmingId: progId, error: null };
