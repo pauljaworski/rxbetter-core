@@ -66,29 +66,6 @@ describe("syncDeletedLineItems", () => {
   });
 
   it("scopes DELETE to known baseline IDs missing from kept", async () => {
-    const selectEq = vi.fn().mockReturnValue({
-      is: vi.fn().mockResolvedValue({
-        data: [{ id: "a" }, { id: "b" }, { id: "concurrent" }],
-        error: null,
-      }),
-    });
-    const deleteIn = vi.fn().mockReturnValue({
-      select: vi.fn().mockResolvedValue({ data: [{ id: "b" }], error: null }),
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      expect(table).toBe("programming_line_item");
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: selectEq,
-        }),
-        delete: vi.fn().mockReturnValue({
-          in: deleteIn,
-        }),
-      };
-    });
-
-    // First from() is select path; second is delete path — mock both calls.
     let call = 0;
     mockFrom.mockImplementation(() => {
       call += 1;
