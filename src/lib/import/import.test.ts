@@ -32,11 +32,38 @@ describe("matchBenchmarkType", () => {
   const catalog = [
     { id: "1", name: "Back Squat" },
     { id: "2", name: "Deadlift" },
+    { id: "3", name: "Front Squat" },
+    { id: "4", name: "Overhead Squat" },
+    { id: "5", name: "Clean & Jerk" },
+    { id: "6", name: "Power Clean" },
+    { id: "7", name: "Push Jerk" },
+    { id: "8", name: "Strict Press" },
+    { id: "9", name: "Handstand Push-Up" },
+    { id: "10", name: "Thruster" },
+    { id: "11", name: "Kettlebell Swing" },
   ];
 
-  it("exact and fuzzy match", () => {
+  it("matches exact and plural labels", () => {
     expect(matchBenchmarkType("back squat", catalog)?.id).toBe("1");
     expect(matchBenchmarkType("Deadlift", catalog)?.id).toBe("2");
+    expect(matchBenchmarkType("Front Squats", catalog)?.name).toBe("Front Squat");
+    expect(matchBenchmarkType("Thrusters", catalog)?.name).toBe("Thruster");
+    expect(matchBenchmarkType("Clean and Jerk", catalog)?.name).toBe("Clean & Jerk");
+  });
+
+  it("resolves common abbreviations via aliases", () => {
+    expect(matchBenchmarkType("KB Swing", catalog)?.name).toBe("Kettlebell Swing");
+    expect(matchBenchmarkType("C&J", catalog)?.name).toBe("Clean & Jerk");
+    expect(matchBenchmarkType("Strict HSPU", catalog)?.name).toBe("Handstand Push-Up");
+  });
+
+  it("does not bind accessory / compound labels to the wrong PR vault", () => {
+    // Token/substring fuzzy used to map these onto squat/press/C&J definitions.
+    expect(matchBenchmarkType("Front Rack Lunges", catalog)).toBeNull();
+    expect(matchBenchmarkType("Back Rack Lunges", catalog)).toBeNull();
+    expect(matchBenchmarkType("Overhead Lunge", catalog)).toBeNull();
+    expect(matchBenchmarkType("Power Clean & Push Jerk", catalog)).toBeNull();
+    expect(matchBenchmarkType("Walking Lunges", catalog)).toBeNull();
   });
 });
 
