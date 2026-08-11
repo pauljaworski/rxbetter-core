@@ -76,10 +76,13 @@ export function GroupScoreRow({
       );
       return;
     }
-    const secs =
-      scoreMetric === "time" || scoreMetric === "sum_interval_times"
-        ? parseScoreToSeconds(value)
-        : null;
+    const needsTimeParse =
+      scoreMetric === "time" || scoreMetric === "sum_interval_times";
+    const secs = needsTimeParse ? parseScoreToSeconds(value) : null;
+    if (needsTimeParse && secs == null) {
+      toast.error("Enter time as mm:ss (e.g. 16:48)");
+      return;
+    }
     const { error } = await save({
       contactId,
       segmentGroupId: groupId,

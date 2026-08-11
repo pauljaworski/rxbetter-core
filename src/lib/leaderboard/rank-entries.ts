@@ -1,5 +1,5 @@
 import type { ScoreMetric } from "@/lib/programming/workout-scheme-schema";
-import { effectiveScoreMetric } from "@/lib/programming/metcon-score";
+import { effectiveScoreMetric, parseScoreToSeconds } from "@/lib/programming/metcon-score";
 
 export type LeaderboardPerfRow = {
   id: string;
@@ -22,6 +22,10 @@ export function parseRoundsRepsScore(score: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Ascending sort key: lower ranks first.
+ * For time metrics, unparsed / missing times must sort last (not as 0:00).
+ */
 export function sortKeyForScore(
   row: LeaderboardPerfRow,
   scoreMetric: ScoreMetric,
@@ -37,13 +41,9 @@ export function sortKeyForScore(
     return -parseRoundsRepsScore(score);
   }
   if (scoreMetric === "time" || scoreMetric === "sum_interval_times") {
-    const parsed = score.match(/(\d+):(\d{2})(?::(\d{2}))?/);
-    if (parsed) {
-      const h = parsed[3] != null ? Number(parsed[1]) : 0;
-      const m = parsed[3] != null ? Number(parsed[2]) : Number(parsed[1]);
-      const sec = parsed[3] != null ? Number(parsed[3]) : Number(parsed[2]);
-      return h * 3600 + m * 60 + sec;
-    }
+    const secs = parseScoreToSeconds(score);
+    // DNF / garbage strings previously fell through to 0 and won the board.
+    return secs != null ? secs : Number.POSITIVE_INFINITY;
   }
   return 0;
 }
