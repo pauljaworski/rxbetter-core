@@ -23,15 +23,16 @@ import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
+  collectUnsavedDrafts,
   isSegmentUnsaved,
+  shouldHoldServerSync,
   suggestDuplicateScale,
+  type ServerSyncMode,
 } from "@/lib/programming/staff-programming-state";
 import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
-
-type ServerSyncMode = "date" | "save" | null;
 
 export default function StaffProgramming() {
   const { activeGymId } = useAuth();
@@ -40,6 +41,8 @@ export default function StaffProgramming() {
   const [wods, setWods] = useState<EditorWod[]>([]);
   const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
   const pendingDraftsRef = useRef<EditorWod[]>([]);
+  /** True after we request a refetch until that fetch is observed in-flight. */
+  const awaitingServerSyncRef = useRef(false);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
@@ -63,13 +66,31 @@ export default function StaffProgramming() {
   const { saveWod, busy: saving } = useProgrammingSave(activeGymId, date, defaultLibId);
   const { publishDay, publishWeek, busy: publishing } = useProgrammingPublish(activeGymId);
 
+  function requestServerSync(mode: Exclude<ServerSyncMode, null>, drafts: EditorWod[] = []) {
+    pendingDraftsRef.current = drafts;
+    awaitingServerSyncRef.current = true;
+    setServerSyncMode(mode);
+    refetch();
+  }
+
   useEffect(() => {
     setServerSyncMode("date");
     pendingDraftsRef.current = [];
+    awaitingServerSyncRef.current = false;
   }, [dateKey]);
 
   useEffect(() => {
-    if (isLoading || isRefreshing || !serverSyncMode) return;
+    if (!serverSyncMode) return;
+    const hold = shouldHoldServerSync(
+      awaitingServerSyncRef.current,
+      isLoading,
+      isRefreshing,
+    );
+    if (hold === "wait") return;
+    if (hold === "arm") {
+      awaitingServerSyncRef.current = false;
+      return;
+    }
     if (serverSyncMode === "date") {
       setWods(serverWods);
     } else if (serverSyncMode === "save") {
@@ -117,12 +138,11 @@ export default function StaffProgramming() {
       }
       toast.success(wod.published_at ? "Removed from athletes" : "Segment deleted");
     }
+    // Local remove only — a date-mode refetch here discarded unsaved siblings
+    // (Duplicate clones / new segments) with no confirm.
     setServerSyncMode(null);
+    awaitingServerSyncRef.current = false;
     setWods((prev) => prev.filter((_, i) => i !== idx));
-    if (wod.id) {
-      setServerSyncMode("date");
-      refetch();
-    }
   }
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
@@ -269,9 +289,7 @@ export default function StaffProgramming() {
     }
 
     toast.success("Section saved");
-    pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
-    setServerSyncMode("save");
-    refetch();
+    requestServerSync("save", collectUnsavedDrafts(wods, { excludeIndex: idx }));
   }
 
   async function handlePublishDay() {
@@ -299,9 +317,7 @@ export default function StaffProgramming() {
           ? "All saved segments were already published"
           : "Nothing new to publish for this day",
     );
-    pendingDraftsRef.current = [];
-    setServerSyncMode("date");
-    refetch();
+    requestServerSync("date");
   }
 
   async function handlePublishWeek() {
@@ -315,8 +331,7 @@ export default function StaffProgramming() {
         ? `Published ${count} segment${count === 1 ? "" : "s"} this week`
         : "Nothing new to publish this week",
     );
-    setServerSyncMode("date");
-    refetch();
+    requestServerSync("date");
   }
 
   const busy = saving || publishing || isRefreshing;
@@ -471,8 +486,8 @@ export default function StaffProgramming() {
           defaultLib={defaultLibId}
           displayOrder={wods.length}
           onCommitted={() => {
-            setServerSyncMode("date");
-            refetch();
+            // Keep Duplicate / new unsaved siblings; date-mode replace discarded them.
+            requestServerSync("save", collectUnsavedDrafts(wods));
           }}
         />
       </div>
