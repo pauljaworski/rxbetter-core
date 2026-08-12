@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneEditorWod,
+  collectUnsavedDrafts,
   suggestDuplicateScale,
   isSegmentUnsaved,
+  shouldHoldServerSync,
 } from "@/lib/programming/staff-programming-state";
 import type { EditorWod } from "@/hooks/staff/types";
 
@@ -48,5 +50,30 @@ describe("cloneEditorWod", () => {
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+  });
+});
+
+describe("collectUnsavedDrafts", () => {
+  it("keeps Duplicate clones and excludes a removed index", () => {
+    const saved = baseWod;
+    const clone = cloneEditorWod(baseWod, 1, { prescribedScale: "scaled" });
+    const drafts = collectUnsavedDrafts([saved, clone], { excludeIndex: 0 });
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]).toBe(clone);
+  });
+
+  it("returns every unsaved segment when no index is excluded", () => {
+    const a = cloneEditorWod(baseWod, 0);
+    const b = cloneEditorWod(baseWod, 1);
+    expect(collectUnsavedDrafts([baseWod, a, b])).toEqual([a, b]);
+  });
+});
+
+describe("shouldHoldServerSync", () => {
+  it("waits until a requested refetch is in flight", () => {
+    expect(shouldHoldServerSync(true, false, false)).toBe("wait");
+    expect(shouldHoldServerSync(true, false, true)).toBe("arm");
+    expect(shouldHoldServerSync(false, false, true)).toBe("wait");
+    expect(shouldHoldServerSync(false, false, false)).toBe("ready");
   });
 });
