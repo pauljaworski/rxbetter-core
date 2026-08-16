@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneEditorWod,
-  suggestDuplicateScale,
   isSegmentUnsaved,
+  mergeServerWodsAfterSave,
+  suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import type { EditorWod } from "@/hooks/staff/types";
 
@@ -48,5 +49,72 @@ describe("cloneEditorWod", () => {
     expect(clone.prescribed_scale).toBe("scaled");
     expect(clone.items[0].id).toBeUndefined();
     expect(clone.items[0]._new).toBe(true);
+  });
+});
+
+describe("mergeServerWodsAfterSave", () => {
+  const strength: EditorWod = {
+    ...baseWod,
+    id: "seg-strength",
+    name: "Strength",
+    programming_segment: "weightlifting",
+    metcon_format: null,
+    athlete_notes: "Original strength notes",
+    items: [{ ...baseWod.items[0], id: "s1" }],
+  };
+  const metcon: EditorWod = {
+    ...baseWod,
+    id: "seg-metcon",
+    name: "Fran",
+    athlete_notes: "Original Fran notes",
+    items: [{ ...baseWod.items[0], id: "m1" }],
+  };
+
+  it("keeps dirty edits on other saved segments after saving one", () => {
+    const serverStrength: EditorWod = {
+      ...strength,
+      items: [
+        { ...strength.items[0], id: "s1" },
+        { ...strength.items[0], id: "s2", sequence_number: 2, reps_prescribed: 5 },
+      ],
+    };
+    const dirtyMetcon: EditorWod = {
+      ...metcon,
+      athlete_notes: "Scale pull-ups to ring rows",
+    };
+    const draft = cloneEditorWod(metcon, 2, { prescribedScale: "scaled" });
+
+    const merged = mergeServerWodsAfterSave(
+      [serverStrength, metcon],
+      [strength, dirtyMetcon, draft],
+      [draft],
+      "seg-strength",
+    );
+
+    expect(merged).toHaveLength(3);
+    expect(merged[0].id).toBe("seg-strength");
+    expect(merged[0].items).toHaveLength(2);
+    expect(merged[1].id).toBe("seg-metcon");
+    expect(merged[1].athlete_notes).toBe("Scale pull-ups to ring rows");
+    expect(isSegmentUnsaved(merged[2])).toBe(true);
+  });
+
+  it("uses the server row for the segment that was just saved", () => {
+    const localStale: EditorWod = {
+      ...strength,
+      name: "Strength (stale local)",
+      items: [{ ...strength.items[0], _new: true, id: undefined }],
+    };
+    const serverFresh: EditorWod = {
+      ...strength,
+      name: "Strength",
+      items: [{ ...strength.items[0], id: "s1-new" }],
+    };
+
+    const merged = mergeServerWodsAfterSave([serverFresh, metcon], [localStale, metcon], [], "seg-strength");
+
+    expect(merged[0].items[0].id).toBe("s1-new");
+    expect(merged[0].name).toBe("Strength");
+    expect(merged[1].id).toBe("seg-metcon");
   });
 });

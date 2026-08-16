@@ -24,6 +24,7 @@ import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
   isSegmentUnsaved,
+  mergeServerWodsAfterSave,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import {
@@ -40,6 +41,9 @@ export default function StaffProgramming() {
   const [wods, setWods] = useState<EditorWod[]>([]);
   const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
   const pendingDraftsRef = useRef<EditorWod[]>([]);
+  const wodsRef = useRef<EditorWod[]>([]);
+  const savedProgrammingIdRef = useRef<string | null>(null);
+  wodsRef.current = wods;
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
@@ -66,6 +70,7 @@ export default function StaffProgramming() {
   useEffect(() => {
     setServerSyncMode("date");
     pendingDraftsRef.current = [];
+    savedProgrammingIdRef.current = null;
   }, [dateKey]);
 
   useEffect(() => {
@@ -73,8 +78,16 @@ export default function StaffProgramming() {
     if (serverSyncMode === "date") {
       setWods(serverWods);
     } else if (serverSyncMode === "save") {
-      setWods([...serverWods, ...pendingDraftsRef.current]);
+      setWods(
+        mergeServerWodsAfterSave(
+          serverWods,
+          wodsRef.current,
+          pendingDraftsRef.current,
+          savedProgrammingIdRef.current,
+        ),
+      );
       pendingDraftsRef.current = [];
+      savedProgrammingIdRef.current = null;
     }
     setServerSyncMode(null);
   }, [serverWods, isLoading, isRefreshing, serverSyncMode]);
@@ -260,7 +273,7 @@ export default function StaffProgramming() {
     }
 
     setSavingSectionIdx(idx);
-    const { error: saveError } = await saveWod(wod, idx);
+    const { error: saveError, programmingId } = await saveWod(wod, idx);
     setSavingSectionIdx(null);
 
     if (saveError) {
@@ -270,6 +283,7 @@ export default function StaffProgramming() {
 
     toast.success("Section saved");
     pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
+    savedProgrammingIdRef.current = programmingId ?? wod.id ?? null;
     setServerSyncMode("save");
     refetch();
   }
