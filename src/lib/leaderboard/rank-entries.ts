@@ -11,14 +11,24 @@ export type LeaderboardPerfRow = {
   workout_scale: string | null;
 };
 
-/** Parse "12+5" or "12 rounds + 5" style scores to a sortable number (higher = better). */
+/**
+ * Parse AMRAP-style scores to a sortable number (higher = better).
+ * Encodes leftover reps in the last three digits so even rounds rank correctly:
+ * "12" / "12 rounds" → 12000, "11+15" → 11015.
+ */
 export function parseRoundsRepsScore(score: string): number {
   const s = score.trim().toLowerCase();
-  const plusMatch = s.match(/^(\d+)\s*\+\s*(\d+)/);
+  const plusMatch = s.match(/^(\d+)\s*(?:rounds?)?\s*\+\s*(\d+)/);
   if (plusMatch) return Number(plusMatch[1]) * 1000 + Number(plusMatch[2]);
-  const roundsMatch = s.match(/^(\d+)\s*(?:rounds?)?\s*\+\s*(\d+)/);
-  if (roundsMatch) return Number(roundsMatch[1]) * 1000 + Number(roundsMatch[2]);
+  const wholeRounds = s.match(/^(\d+)\s*(?:rounds?)?$/);
+  if (wholeRounds) return Number(wholeRounds[1]) * 1000;
   const n = Number(s.replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Total-rep scores (Cindy, chipper-for-reps) — raw count, not rounds+reps encoding. */
+export function parseTotalRepsScore(score: string): number {
+  const n = Number(score.trim().replace(/[^\d.]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -33,8 +43,11 @@ export function sortKeyForScore(
     return -row.result_value;
   }
   const score = row.score ?? "";
-  if (scoreMetric === "rounds_reps" || scoreMetric === "reps") {
+  if (scoreMetric === "rounds_reps") {
     return -parseRoundsRepsScore(score);
+  }
+  if (scoreMetric === "reps") {
+    return -parseTotalRepsScore(score);
   }
   if (scoreMetric === "time" || scoreMetric === "sum_interval_times") {
     const parsed = score.match(/(\d+):(\d{2})(?::(\d{2}))?/);
