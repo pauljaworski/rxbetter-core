@@ -2,6 +2,10 @@ import { useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "../useAsyncState";
+import {
+  countStaffClassScores,
+  partitionStaffClassPerformances,
+} from "@/lib/programming/staff-class-day";
 import type {
   StaffClassContact,
   StaffClassDayData,
@@ -14,6 +18,7 @@ const EMPTY: StaffClassDayData = {
   wods: [],
   itemsByWod: new Map(),
   perfByItem: new Map(),
+  perfBySegment: new Map(),
   contacts: new Map(),
   totalLogged: 0,
 };
@@ -38,11 +43,17 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
     const wods = (progs ?? []) as StaffClassWod[];
     const ids = wods.map((p) => p.id);
     const itemsByWod = new Map<string, StaffClassLineItem[]>();
-    const perfByItem = new Map<string, StaffClassPerformance[]>();
     const contacts = new Map<string, StaffClassContact>();
 
     if (!ids.length) {
-      return { wods, itemsByWod, perfByItem, contacts, totalLogged: 0 };
+      return {
+        wods,
+        itemsByWod,
+        perfByItem: new Map(),
+        perfBySegment: new Map(),
+        contacts,
+        totalLogged: 0,
+      };
     }
 
     const { data: items, error: itemErr } = await supabase
@@ -83,14 +94,10 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
 
     if (perfErr) throw new Error(perfErr.message);
 
-    let totalLogged = 0;
-    for (const p of perfs ?? []) {
-      if (!p.programming_line_item_id) continue;
-      totalLogged += 1;
-      const arr = perfByItem.get(p.programming_line_item_id) ?? [];
-      arr.push(p as StaffClassPerformance);
-      perfByItem.set(p.programming_line_item_id, arr);
-    }
+    const { perfByItem, perfBySegment } = partitionStaffClassPerformances(
+      (perfs ?? []) as StaffClassPerformance[],
+    );
+    const totalLogged = countStaffClassScores(perfByItem, perfBySegment);
 
     const contactIds = Array.from(new Set((perfs ?? []).map((p) => p.contact_id)));
     if (contactIds.length) {
@@ -107,7 +114,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
       }
     }
 
-    return { wods, itemsByWod, perfByItem, contacts, totalLogged };
+    return { wods, itemsByWod, perfByItem, perfBySegment, contacts, totalLogged };
   }, [activeGymId, dateKey]);
 
   const state = useAsyncState(loader, [activeGymId, dateKey], EMPTY, (d) => d.wods.length === 0);
@@ -115,11 +122,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
   const dataWithTotal = useMemo(
     (): StaffClassDayData => ({
       ...state.data,
-      totalLogged: (() => {
-        let n = 0;
-        for (const arr of state.data.perfByItem.values()) n += arr.length;
-        return n;
-      })(),
+      totalLogged: countStaffClassScores(state.data.perfByItem, state.data.perfBySegment),
     }),
     [state.data],
   );

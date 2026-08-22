@@ -91,6 +91,8 @@ export type StaffClassDayData = {
   wods: StaffClassWod[];
   itemsByWod: Map<string, StaffClassLineItem[]>;
   perfByItem: Map<string, StaffClassPerformance[]>;
+  /** Segment-level scores (metcon / group totals keyed by programming_id). */
+  perfBySegment: Map<string, StaffClassPerformance[]>;
   contacts: Map<string, StaffClassContact>;
   totalLogged: number;
 };
