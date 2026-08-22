@@ -20,13 +20,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { segmentLabel } from "@/lib/format";
+import { isMetconSegment } from "@/lib/programming/manual-config";
+import {
+  staffClassScoreDisplay,
+  workoutResultLineItem,
+} from "@/lib/programming/staff-class-day";
+import type { StaffClassContact, StaffClassPerformance } from "@/hooks/staff/types";
 
 export default function StaffClassDay() {
   const { activeGymId, activePersona } = useAuth();
   const canEditScores = activePersona === "admin" || activePersona === "coach";
   const [date, setDate] = useState<Date>(new Date());
   const { data, isLoading, error, isEmpty, refetch } = useStaffClassDay(activeGymId, date);
-  const { wods, itemsByWod, perfByItem, contacts, totalLogged } = data;
+  const { wods, itemsByWod, perfByItem, perfBySegment, contacts, totalLogged } = data;
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<EditScoreContext | null>(null);
 
@@ -99,86 +105,41 @@ export default function StaffClassDay() {
               )}
             </div>
             <div className="divide-y divide-border/60">
-              {(itemsByWod.get(w.id) ?? []).length === 0 && (
-                <div className="p-5 text-sm text-muted-foreground">No prescribed sets.</div>
-              )}
+              <ClassDayScoreSection
+                title="Workout result"
+                marker="W"
+                allPerfs={perfBySegment.get(w.id) ?? []}
+                searchNeedle={searchNeedle}
+                contacts={contacts}
+                canEditScores={canEditScores}
+                hideEmpty
+                onEdit={(p, c) =>
+                  setEditing({
+                    perf: p,
+                    item: workoutResultLineItem(w),
+                    wod: w,
+                    contact: c,
+                  })
+                }
+              />
+              {(itemsByWod.get(w.id) ?? []).length === 0 &&
+                !(perfBySegment.get(w.id) ?? []).length && (
+                  <div className="p-5 text-sm text-muted-foreground">No prescribed sets.</div>
+                )}
               {(itemsByWod.get(w.id) ?? []).map((it) => {
-                const allPerfs = perfByItem.get(it.id) ?? [];
-                const perfs = allPerfs.filter((p) => {
-                  if (!searchNeedle) return true;
-                  const c = contacts.get(p.contact_id);
-                  return c?.name.toLowerCase().includes(searchNeedle);
-                });
+                const isMetcon = isMetconSegment(w.programming_segment ?? "");
                 return (
-                  <div key={it.id} className="p-4">
-                    <div className="mb-2 flex items-baseline justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono-num inline-grid h-6 w-6 place-items-center rounded-md bg-secondary text-[11px] font-bold text-muted-foreground">
-                          {it.sequence_number ?? "·"}
-                        </span>
-                        <p className="text-sm font-bold">{it.bench_name ?? "Set"}</p>
-                      </div>
-                      <p className="font-mono-num text-[11px] text-muted-foreground">
-                        {allPerfs.length} logged
-                      </p>
-                    </div>
-                    {perfs.length === 0 ? (
-                      <p className="pl-8 text-[11px] italic text-muted-foreground">
-                        {searchNeedle ? "No matching athletes." : "No scores yet."}
-                      </p>
-                    ) : (
-                      <ul className="space-y-1 pl-8">
-                        {perfs.map((p) => {
-                          const c = contacts.get(p.contact_id);
-                          const display =
-                            p.weight_lifted != null ? `${p.weight_lifted} lb` : p.score ?? "—";
-                          return (
-                            <li
-                              key={p.id}
-                              className={cn(
-                                "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm",
-                                canEditScores && c && "cursor-pointer hover:bg-secondary/60",
-                              )}
-                              onClick={() =>
-                                canEditScores &&
-                                c &&
-                                setEditing({ perf: p, item: it, wod: w, contact: c })
-                              }
-                            >
-                              <div className="flex min-w-0 items-center gap-2">
-                                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[10px] font-bold uppercase">
-                                  {c?.name
-                                    .split(" ")
-                                    .map((s) => s[0])
-                                    .slice(0, 2)
-                                    .join("") ?? "—"}
-                                </div>
-                                <span className="truncate font-medium">{c?.name ?? "Athlete"}</span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                {p.rpe != null && (
-                                  <span className="font-mono-num text-[10px] text-muted-foreground">
-                                    RPE {p.rpe}
-                                  </span>
-                                )}
-                                {p.is_pr && (
-                                  <Badge className="gap-1 bg-accent text-accent-foreground hover:bg-accent">
-                                    <Flame className="h-3 w-3" /> PR
-                                  </Badge>
-                                )}
-                                <span className="font-mono-num text-sm font-bold text-primary">
-                                  {display}
-                                </span>
-                                {canEditScores && (
-                                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
+                  <ClassDayScoreSection
+                    key={it.id}
+                    title={it.bench_name ?? "Set"}
+                    marker={it.sequence_number}
+                    allPerfs={perfByItem.get(it.id) ?? []}
+                    searchNeedle={searchNeedle}
+                    contacts={contacts}
+                    canEditScores={canEditScores}
+                    suppressEmptyCopy={isMetcon}
+                    onEdit={(p, c) => setEditing({ perf: p, item: it, wod: w, contact: c })}
+                  />
                 );
               })}
             </div>
@@ -193,6 +154,101 @@ export default function StaffClassDay() {
           refetch();
         }}
       />
+    </div>
+  );
+}
+
+function ClassDayScoreSection({
+  title,
+  marker,
+  allPerfs,
+  searchNeedle,
+  contacts,
+  canEditScores,
+  hideEmpty,
+  suppressEmptyCopy,
+  onEdit,
+}: {
+  title: string;
+  marker: number | string | null;
+  allPerfs: StaffClassPerformance[];
+  searchNeedle: string;
+  contacts: Map<string, StaffClassContact>;
+  canEditScores: boolean;
+  hideEmpty?: boolean;
+  suppressEmptyCopy?: boolean;
+  onEdit: (perf: StaffClassPerformance, contact: StaffClassContact) => void;
+}) {
+  if (hideEmpty && allPerfs.length === 0) return null;
+
+  const perfs = allPerfs.filter((p) => {
+    if (!searchNeedle) return true;
+    const c = contacts.get(p.contact_id);
+    return c?.name.toLowerCase().includes(searchNeedle);
+  });
+
+  return (
+    <div className="p-4">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-mono-num inline-grid h-6 w-6 place-items-center rounded-md bg-secondary text-[11px] font-bold text-muted-foreground">
+            {marker ?? "·"}
+          </span>
+          <p className="text-sm font-bold">{title}</p>
+        </div>
+        <p className="font-mono-num text-[11px] text-muted-foreground">
+          {allPerfs.length} logged
+        </p>
+      </div>
+      {perfs.length === 0 ? (
+        suppressEmptyCopy ? null : (
+          <p className="pl-8 text-[11px] italic text-muted-foreground">
+            {searchNeedle ? "No matching athletes." : "No scores yet."}
+          </p>
+        )
+      ) : (
+        <ul className="space-y-1 pl-8">
+          {perfs.map((p) => {
+            const c = contacts.get(p.contact_id);
+            const display = staffClassScoreDisplay(p);
+            return (
+              <li
+                key={p.id}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm",
+                  canEditScores && c && "cursor-pointer hover:bg-secondary/60",
+                )}
+                onClick={() => canEditScores && c && onEdit(p, c)}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[10px] font-bold uppercase">
+                    {c?.name
+                      .split(" ")
+                      .map((s) => s[0])
+                      .slice(0, 2)
+                      .join("") ?? "—"}
+                  </div>
+                  <span className="truncate font-medium">{c?.name ?? "Athlete"}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {p.rpe != null && (
+                    <span className="font-mono-num text-[10px] text-muted-foreground">
+                      RPE {p.rpe}
+                    </span>
+                  )}
+                  {p.is_pr && (
+                    <Badge className="gap-1 bg-accent text-accent-foreground hover:bg-accent">
+                      <Flame className="h-3 w-3" /> PR
+                    </Badge>
+                  )}
+                  <span className="font-mono-num text-sm font-bold text-primary">{display}</span>
+                  {canEditScores && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
