@@ -1,5 +1,12 @@
 import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
+import { defaultLineItemKindForSegment } from "@/lib/programming/line-item-kind";
+import {
+  getTypeByUiKey,
+  programmingSubtypeForUiKey,
+} from "@/lib/programming/manual-config";
+import type { Json } from "@/types/database";
+import type { ProgrammingSegment } from "@/lib/wod-parser/intake-draft-schema";
 
 export type AthleteCustomWorkout = {
   id: string;
@@ -19,6 +26,37 @@ export type CreateCustomWorkoutInput = {
   notes?: string;
   movements: string[];
 };
+
+export const PROGRAMMING_SEGMENT_DB_VALUES = [
+  "weightlifting",
+  "metcon",
+  "skill",
+  "bodyweight",
+] as const;
+
+export type AthleteCustomPersist = {
+  programmingSegment: ProgrammingSegment;
+  programmingSubtype: string | null;
+  lineItemKind: ReturnType<typeof defaultLineItemKindForSegment>;
+  workoutScheme: Json;
+  metconFormat: "amrap" | null;
+};
+
+/** Map My Programming UI keys to CHECK-safe programming_segment values. */
+export function resolveAthleteCustomPersist(uiSegment: string): AthleteCustomPersist {
+  const type = getTypeByUiKey(uiSegment) ?? getTypeByUiKey("metcon");
+  const programmingSegment = type?.dbSegment ?? "metcon";
+  const isMetcon = programmingSegment === "metcon";
+  return {
+    programmingSegment,
+    programmingSubtype: programmingSubtypeForUiKey(uiSegment),
+    lineItemKind: defaultLineItemKindForSegment(programmingSegment),
+    workoutScheme: isMetcon
+      ? { kind: "amrap", timeCapMin: 20, scoreMetric: "rounds_reps" }
+      : {},
+    metconFormat: isMetcon ? "amrap" : null,
+  };
+}
 
 export async function fetchAthleteCustomWorkouts(
   contactId: string,
@@ -43,16 +81,15 @@ export async function createAthleteCustomWorkout(
   input: CreateCustomWorkoutInput,
 ): Promise<{ id: string | null; error: string | null }> {
   const now = new Date().toISOString();
-  const segment = input.segment || "metcon";
-  const isMetcon = segment === "metcon" || segment === "hiit";
+  const persist = resolveAthleteCustomPersist(input.segment || "metcon");
 
   const { data: prog, error: progErr } = await supabase
     .from("programming")
     .insert({
       name: input.name.trim(),
       wod_date: input.wodDate,
-      programming_segment: segment,
-      programming_subtype: segment === "strength" ? "strength" : null,
+      programming_segment: persist.programmingSegment,
+      programming_subtype: persist.programmingSubtype,
       athlete_notes: input.notes?.trim() || null,
       source: "athlete_custom",
       created_by_contact_id: input.contactId,
@@ -60,8 +97,8 @@ export async function createAthleteCustomWorkout(
       program_library_id: null,
       published_at: now,
       display_order: 0,
-      workout_scheme: isMetcon ? { kind: "amrap", durationMin: 20 } : {},
-      metcon_format: isMetcon ? "amrap" : null,
+      workout_scheme: persist.workoutScheme,
+      metcon_format: persist.metconFormat,
     })
     .select("id")
     .single();
@@ -74,7 +111,7 @@ export async function createAthleteCustomWorkout(
       programming_id: prog.id,
       sequence_number: idx + 1,
       movement_label: label.trim(),
-      line_item_kind: segment === "strength" ? "strength_set" : "metcon_movement",
+      line_item_kind: persist.lineItemKind,
       contact_id: null,
     }));
     const { error: itemErr } = await supabase.from("programming_line_item").insert(rows);
