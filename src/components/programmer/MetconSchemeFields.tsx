@@ -35,7 +35,7 @@ function withMetric<T extends WorkoutScheme>(
 ): T {
   return {
     ...scheme,
-    scoreMetric: scoreMetric as T["scoreMetric"],
+    scoreMetric,
     workoutIntent: workoutIntent ?? scheme.workoutIntent,
   };
 }
