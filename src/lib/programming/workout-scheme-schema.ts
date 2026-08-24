@@ -24,49 +24,49 @@ export const rftSchemeSchema = schemeBase.extend({
   rounds: z.number().int().min(1).max(99),
   /** Rest after each round except the last (seconds). Enables per-round split logging. */
   restBetweenRoundsSec: z.number().int().min(0).max(600).optional(),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: z.enum(SCORE_METRICS).default("time"),
 });
 
 export const forTimeSchemeSchema = schemeBase.extend({
   kind: z.literal("for_time"),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: z.enum(SCORE_METRICS).default("time"),
 });
 
 export const amrapSchemeSchema = schemeBase.extend({
   kind: z.literal("amrap"),
   timeCapMin: z.number().int().min(1).max(120),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: z.enum(SCORE_METRICS).default("rounds_reps"),
 });
 
 export const amrapRepeatSchemeSchema = schemeBase.extend({
   kind: z.literal("amrap_repeat"),
   timeCapMin: z.number().int().min(1).max(60),
   rounds: z.number().int().min(2).max(10),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: z.enum(SCORE_METRICS).default("rounds_reps"),
 });
 
 export const emomSchemeSchema = schemeBase.extend({
   kind: z.literal("emom"),
   minutes: z.number().int().min(1).max(60),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: z.enum(SCORE_METRICS).default("rounds_reps"),
 });
 
 export const emomCompletionSchemeSchema = schemeBase.extend({
   kind: z.literal("emom_completion"),
   minutes: z.number().int().min(1).max(60),
-  scoreMetric: z.literal("completion").default("completion"),
+  scoreMetric: z.enum(SCORE_METRICS).default("completion"),
 });
 
 export const chipperSchemeSchema = schemeBase.extend({
   kind: z.literal("chipper"),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: z.enum(SCORE_METRICS).default("time"),
 });
 
 export const intervalSeriesSchemeSchema = schemeBase.extend({
   kind: z.literal("interval_series"),
   intervalSec: z.number().int().min(30).max(600),
   rounds: z.number().int().min(1).max(30),
-  scoreMetric: z.literal("sum_interval_times").default("sum_interval_times"),
+  scoreMetric: z.enum(SCORE_METRICS).default("sum_interval_times"),
 });
 
 export const tabataSchemeSchema = schemeBase.extend({
@@ -74,7 +74,7 @@ export const tabataSchemeSchema = schemeBase.extend({
   rounds: z.number().int().min(1).max(20).default(8),
   workSec: z.number().int().min(10).max(60).default(20),
   restSec: z.number().int().min(0).max(60).default(10),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: z.enum(SCORE_METRICS).default("rounds_reps"),
 });
 
 const betweenRoundSchema = z
@@ -88,7 +88,7 @@ const betweenRoundSchema = z
 export const repLadderSchemeSchema = schemeBase.extend({
   kind: z.literal("rep_ladder"),
   repSequence: z.array(z.number().int().min(1)).min(2).max(12),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: z.enum(SCORE_METRICS).default("time"),
   betweenRounds: betweenRoundSchema,
 });
 
