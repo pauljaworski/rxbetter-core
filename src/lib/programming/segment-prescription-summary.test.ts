@@ -116,4 +116,38 @@ describe("segment-prescription-summary", () => {
     expect(lines[0]).toContain("Wall Ball");
     expect(footer).toBe("3 RFT");
   });
+
+  it("falls back to metcon_format when workout_scheme is empty", () => {
+    const { footer } = summarizeSegmentPrescription(
+      {
+        programming_segment: "metcon",
+        metcon_format: "amrap",
+        workout_scheme: {},
+      },
+      [],
+    );
+    expect(footer).toBeNull();
+    const withItems = summarizeSegmentPrescription(
+      {
+        programming_segment: "metcon",
+        metcon_format: "amrap",
+        workout_scheme: {},
+      },
+      [
+        {
+          id: "a",
+          sequence_number: 1,
+          reps_prescribed: 10,
+          prescribed_percentage: null,
+          prescribed_weight: null,
+          prescribed_score: null,
+          status: null,
+          benchmark_definition_id: null,
+          benchmark_type_id: null,
+          bench_name: "Pull-up",
+        },
+      ],
+    );
+    expect(withItems.footer).toBe("AMRAP 12");
+  });
 });

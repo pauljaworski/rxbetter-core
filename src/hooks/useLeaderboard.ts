@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useAsyncState } from "./useAsyncState";
 import { prescribedLevelLabel, type WorkoutScale } from "@/lib/format";
-import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import { resolveEditorWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { rankLeaderboardEntries } from "@/lib/leaderboard/rank-entries";
 import { segmentLabel } from "@/lib/format";
 
@@ -212,7 +212,10 @@ export function useLeaderboard(
 
       if (!boardPerfs.length) continue;
 
-      const scheme = parseWorkoutScheme(prog.workout_scheme);
+      const scheme = resolveEditorWorkoutScheme({
+        workout_scheme: prog.workout_scheme,
+        metcon_format: prog.metcon_format,
+      });
       const ranked = rankLeaderboardEntries(boardPerfs, scheme?.scoreMetric, scheme?.kind);
 
       const buildEntries = (scaleFilter: LevelFilter): LeaderboardEntry[] => {

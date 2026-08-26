@@ -20,7 +20,7 @@ import {
   parseScoreToSeconds,
   scoreFieldLabel,
 } from "@/lib/programming/metcon-score";
-import { parseWorkoutScheme, schemeSummaryLabel } from "@/lib/programming/workout-scheme-schema";
+import { resolveEditorWorkoutScheme, schemeSummaryLabel } from "@/lib/programming/workout-scheme-schema";
 import { useSaveGroupPerformance } from "@/hooks/useSaveGroupPerformance";
 import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
@@ -33,6 +33,7 @@ type Props = {
   existing: SegmentPerformance | null;
   prescribedScale?: string | null;
   workoutScheme?: unknown;
+  metconFormat?: string | null;
   onLogged?: () => void;
 };
 
@@ -44,13 +45,17 @@ export function GroupScoreRow({
   existing,
   prescribedScale,
   workoutScheme,
+  metconFormat,
   onLogged,
 }: Props) {
   const { defaultWorkoutScale } = useAuth();
   const [score, setScore] = useState("");
   const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
-  const scheme = parseWorkoutScheme(workoutScheme);
+  const scheme = resolveEditorWorkoutScheme({
+    workout_scheme: workoutScheme,
+    metcon_format: metconFormat,
+  });
   const schemeLabel = schemeSummaryLabel(scheme);
   const scoreMetric = effectiveScoreMetric(scheme?.scoreMetric, scheme?.kind);
   const { save, submitting } = useSaveGroupPerformance();

@@ -404,6 +404,8 @@ function GroupBlockCard({
 
         workoutScheme={block.anchor.workout_scheme}
 
+        metconFormat={block.anchor.metcon_format}
+
         onLogged={onLogged}
 
       />

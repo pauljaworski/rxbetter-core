@@ -306,6 +306,7 @@ export default function CalendarPage() {
                             programming_segment: w.programming_segment,
                             prescribed_scale: w.prescribed_scale,
                             workout_scheme: w.workout_scheme,
+                            metcon_format: w.metcon_format,
                           }}
                           items={items}
                           contactId={contactId}

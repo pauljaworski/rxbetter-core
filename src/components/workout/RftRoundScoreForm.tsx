@@ -36,7 +36,7 @@ import type { LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
 type Props = {
-  wod: LogWodContext & { workout_scheme?: unknown };
+  wod: LogWodContext;
   scheme: RftScheme;
   contactId: string | null;
   existing: SegmentPerformance | null;

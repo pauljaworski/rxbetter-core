@@ -8,7 +8,7 @@ import {
   percentRepMaxLabel,
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
-import { schemeSummaryLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import { schemeSummaryLabel, resolveEditorWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { formatPrescriptionFromResolved } from "@/lib/programming/prescription-display";
 import { resolvePrescriptionForAthlete } from "@/lib/programming/rx-variants-schema";
 
@@ -51,7 +51,7 @@ export function summarizeSegmentPrescription(
   items: LogLineItem[],
 ): { lines: string[]; footer: string | null } {
   if (isMetconSegment(wod.programming_segment)) {
-    const scheme = parseWorkoutScheme(wod.workout_scheme);
+    const scheme = resolveEditorWorkoutScheme(wod);
     const schemeLabel = schemeSummaryLabel(scheme);
     const lines = items.length
       ? items.map((it) => summarizeLineItemBrief(it))
