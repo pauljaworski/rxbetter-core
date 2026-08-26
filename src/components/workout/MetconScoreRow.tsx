@@ -21,7 +21,7 @@ import {
   scoreFieldLabel,
 } from "@/lib/programming/metcon-score";
 import {
-  parseWorkoutScheme,
+  resolveEditorWorkoutScheme,
   schemeSummaryLabel,
 } from "@/lib/programming/workout-scheme-schema";
 import { useSaveSegmentPerformance } from "@/hooks/useSaveSegmentPerformance";
@@ -30,7 +30,7 @@ import type { LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 
 type Props = {
-  wod: LogWodContext & { workout_scheme?: unknown };
+  wod: LogWodContext;
   contactId: string | null;
   existing: SegmentPerformance | null;
   onLogged?: () => void;
@@ -41,7 +41,7 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
   const [score, setScore] = useState("");
   const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
-  const scheme = parseWorkoutScheme(wod.workout_scheme);
+  const scheme = resolveEditorWorkoutScheme(wod);
   const schemeLabel = schemeSummaryLabel(scheme);
   const scoreMetric = effectiveScoreMetric(scheme?.scoreMetric, scheme?.kind);
   const { save, submitting } = useSaveSegmentPerformance();

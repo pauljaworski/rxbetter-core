@@ -10,12 +10,12 @@ import { RftRoundScoreForm } from "@/components/workout/RftRoundScoreForm";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { rftUsesRoundSplits } from "@/lib/programming/rft-score";
-import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import { resolveEditorWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
 
 type Props = {
-  wod: LogWodContext & { workout_scheme?: unknown };
+  wod: LogWodContext;
   items: LogLineItem[];
   contactId: string | null;
   rxGender?: RxGender | null;
@@ -41,7 +41,7 @@ export function WorkoutSegmentItems({
   }
 
   if (isMetconSegment(wod.programming_segment ?? "")) {
-    const scheme = parseWorkoutScheme(wod.workout_scheme);
+    const scheme = resolveEditorWorkoutScheme(wod);
     const useRftRounds = rftUsesRoundSplits(scheme);
     return (
       <>

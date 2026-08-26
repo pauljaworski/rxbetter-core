@@ -46,6 +46,8 @@ export type LogWodContext = {
   wod_date: string;
   programming_segment: string | null;
   prescribed_scale?: string | null;
+  workout_scheme?: unknown;
+  metcon_format?: string | null;
 };
 
 export type ExistingPerformance = {

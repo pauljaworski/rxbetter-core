@@ -176,7 +176,7 @@ export function defaultSchemeForKind(kind: WorkoutScheme["kind"]): WorkoutScheme
 
 /** Scheme for editor UI — falls back from metcon_format when workout_scheme not saved yet. */
 export function resolveEditorWorkoutScheme(wod: {
-  workout_scheme?: WorkoutScheme | null;
+  workout_scheme?: unknown;
   metcon_format?: string | null;
 }): WorkoutScheme | null {
   return parseWorkoutScheme(wod.workout_scheme) ?? defaultSchemeForMetconFormat(wod.metcon_format ?? null);
