@@ -9,6 +9,16 @@ export type StaffPerformanceUpdateInput = {
   rpe: number | null;
 };
 
+export const STAFF_SCORE_UPDATE_DENIED =
+  "Score wasn't saved. Confirm you have coach or admin access at this gym, then try again.";
+
+/** PostgREST returns no error when RLS filters every UPDATE row. */
+export function staffPerformanceUpdateApplied(
+  updatedRows: { id: string }[] | null | undefined,
+): boolean {
+  return (updatedRows?.length ?? 0) > 0;
+}
+
 export function useStaffPerformanceUpdate() {
   const [submitting, setSubmitting] = useState(false);
 
@@ -16,7 +26,7 @@ export function useStaffPerformanceUpdate() {
     input: StaffPerformanceUpdateInput,
   ): Promise<{ error: string | null }> {
     setSubmitting(true);
-    const { error } = await supabase
+    const { data: updatedRows, error } = await supabase
       .from("athlete_performance")
       .update({
         score: input.score,
@@ -24,10 +34,15 @@ export function useStaffPerformanceUpdate() {
         result_value: input.weightLifted,
         rpe: input.rpe,
       })
-      .eq("id", input.performanceId);
+      .eq("id", input.performanceId)
+      .select("id");
 
     setSubmitting(false);
-    return { error: error ? formatSupabaseError(error.message) : null };
+    if (error) return { error: formatSupabaseError(error.message) };
+    if (!staffPerformanceUpdateApplied(updatedRows)) {
+      return { error: STAFF_SCORE_UPDATE_DENIED };
+    }
+    return { error: null };
   }
 
   return { updatePerformance, submitting };
