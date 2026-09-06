@@ -132,3 +132,105 @@ export function createBuyInMainCashOutDrafts(
     }),
   ];
 }
+
+export type ProgrammingUnit =
+  | { kind: "single"; indices: number[] }
+  | { kind: "group"; groupId: string; indices: number[] };
+
+/** Contiguous singles / multi-part blocks in current editor order. */
+export function buildProgrammingUnits(wods: EditorWod[]): ProgrammingUnit[] {
+  const units: ProgrammingUnit[] = [];
+  let i = 0;
+  while (i < wods.length) {
+    const gid = wods[i].segment_group_id;
+    if (!gid) {
+      units.push({ kind: "single", indices: [i] });
+      i += 1;
+      continue;
+    }
+    const indices: number[] = [i];
+    i += 1;
+    while (i < wods.length && wods[i].segment_group_id === gid) {
+      indices.push(i);
+      i += 1;
+    }
+    units.push({ kind: "group", groupId: gid, indices });
+  }
+  return units;
+}
+
+function withRenumberedOrder(wods: EditorWod[]): EditorWod[] {
+  return wods.map((w, i) => ({ ...w, display_order: i }));
+}
+
+function swapAdjacent(wods: EditorWod[], a: number, b: number): EditorWod[] {
+  if (a < 0 || b < 0 || a >= wods.length || b >= wods.length || a === b) return wods;
+  const next = [...wods];
+  const tmp = next[a];
+  next[a] = next[b];
+  next[b] = tmp;
+  return withRenumberedOrder(next);
+}
+
+export function canMoveSegment(
+  wods: EditorWod[],
+  wodIdx: number,
+  direction: "up" | "down",
+): boolean {
+  if (wodIdx < 0 || wodIdx >= wods.length) return false;
+  const units = buildProgrammingUnits(wods);
+  const unitIdx = units.findIndex((u) => u.indices.includes(wodIdx));
+  if (unitIdx < 0) return false;
+  const unit = units[unitIdx];
+  const posInUnit = unit.indices.indexOf(wodIdx);
+  const dir = direction === "up" ? -1 : 1;
+
+  if (unit.kind === "group") {
+    const targetPos = posInUnit + dir;
+    if (targetPos >= 0 && targetPos < unit.indices.length) return true;
+  }
+
+  const targetUnit = unitIdx + dir;
+  return targetUnit >= 0 && targetUnit < units.length;
+}
+
+/**
+ * Move a segment up/down for the day.
+ * - Inside a multi-part block: reorders parts within the block.
+ * - At a block edge (or for a single): moves the whole unit past the neighboring unit.
+ */
+export function moveSegmentInDay(
+  wods: EditorWod[],
+  wodIdx: number,
+  direction: "up" | "down",
+): EditorWod[] {
+  if (!canMoveSegment(wods, wodIdx, direction)) return wods;
+  const dir = direction === "up" ? -1 : 1;
+  const units = buildProgrammingUnits(wods);
+  const unitIdx = units.findIndex((u) => u.indices.includes(wodIdx));
+  const unit = units[unitIdx];
+  const posInUnit = unit.indices.indexOf(wodIdx);
+
+  if (unit.kind === "group") {
+    const targetPos = posInUnit + dir;
+    if (targetPos >= 0 && targetPos < unit.indices.length) {
+      return swapAdjacent(wods, unit.indices[posInUnit], unit.indices[targetPos]);
+    }
+  }
+
+  const targetUnitIdx = unitIdx + dir;
+  if (targetUnitIdx < 0 || targetUnitIdx >= units.length) return wods;
+
+  const reorderedUnits = [...units];
+  const tmp = reorderedUnits[unitIdx];
+  reorderedUnits[unitIdx] = reorderedUnits[targetUnitIdx];
+  reorderedUnits[targetUnitIdx] = tmp;
+
+  const flattened: EditorWod[] = [];
+  for (const u of reorderedUnits) {
+    for (const idx of u.indices) {
+      flattened.push(wods[idx]);
+    }
+  }
+  return withRenumberedOrder(flattened);
+}

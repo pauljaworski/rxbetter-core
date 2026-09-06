@@ -65,3 +65,17 @@ export async function syncDeletedLineItems(
   }
   return { error: null };
 }
+
+/** Persist day order after programmer reorder (saved segments only). */
+export async function persistProgrammingDisplayOrders(
+  entries: { id: string; display_order: number }[],
+): Promise<{ error: string | null }> {
+  for (const e of entries) {
+    const { error } = await supabase
+      .from("programming")
+      .update({ display_order: e.display_order })
+      .eq("id", e.id);
+    if (error) return { error: formatSupabaseError(error.message) };
+  }
+  return { error: null };
+}

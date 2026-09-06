@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Copy, Save, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Trash2, Plus, Copy, Save, Sparkles, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import type { ProgramLibrary } from "@/hooks/staff/types";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
@@ -68,6 +68,10 @@ type Props = {
   onOpenComplexEditor: () => void;
   /** Link this segment with the previous one as one athlete score. */
   onLinkWithPrevious?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 };
 
 export function SegmentEditorCard({
@@ -86,6 +90,10 @@ export function SegmentEditorCard({
   allWods,
   onOpenComplexEditor,
   onLinkWithPrevious,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: Props) {
   const { data: catalog } = useBenchmarkCatalog();
   const [bulkPaste, setBulkPaste] = useState("");
@@ -216,6 +224,32 @@ export function SegmentEditorCard({
               <ChevronDown className="h-4 w-4" />
             )}
           </Button>
+          <div className="flex shrink-0 flex-col gap-0.5">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-4 w-8"
+              disabled={!canMoveUp || !onMoveUp}
+              onClick={onMoveUp}
+              aria-label="Move segment up"
+              title="Move up"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-4 w-8"
+              disabled={!canMoveDown || !onMoveDown}
+              onClick={onMoveDown}
+              aria-label="Move segment down"
+              title="Move down"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           <Select value={uiKey} onValueChange={setTypeUiKey}>
             <SelectTrigger className="h-9 w-40">
               <SelectValue placeholder="Type" />

@@ -20,12 +20,14 @@ import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
 import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
-import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
+import { deleteProgrammingSegment, persistProgrammingDisplayOrders } from "@/lib/programming/programming-delete";
 import {
+  canMoveSegment,
   cloneEditorWod,
   createBuyInMainCashOutDrafts,
   isSegmentUnsaved,
   linkSegmentWithPrevious,
+  moveSegmentInDay,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import {
@@ -219,6 +221,25 @@ export default function StaffProgramming() {
     toast.message("Parts linked", {
       description: "Athletes will see one workout with one total score. Save each linked section.",
     });
+  }
+
+  async function handleMoveSegment(wodIdx: number, direction: "up" | "down") {
+    if (!canMoveSegment(wods, wodIdx, direction)) return;
+    setServerSyncMode(null);
+    const next = moveSegmentInDay(wods, wodIdx, direction);
+    setWods(next);
+
+    const entries = next
+      .map((w, i) => (w.id ? { id: w.id, display_order: i } : null))
+      .filter((e): e is { id: string; display_order: number } => e != null);
+    if (!entries.length) return;
+
+    const { error } = await persistProgrammingDisplayOrders(entries);
+    if (error) {
+      toast.error("Order updated locally, but couldn't save to the server", {
+        description: error,
+      });
+    }
   }
 
   function addBuyInMainCashOut() {
@@ -451,6 +472,10 @@ export default function StaffProgramming() {
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
               onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
               onLinkWithPrevious={() => linkWithPrevious(idx)}
+              canMoveUp={canMoveSegment(wods, idx, "up")}
+              canMoveDown={canMoveSegment(wods, idx, "down")}
+              onMoveUp={() => void handleMoveSegment(idx, "up")}
+              onMoveDown={() => void handleMoveSegment(idx, "down")}
             />
           ))}
         </div>
