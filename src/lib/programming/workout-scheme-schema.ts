@@ -28,11 +28,15 @@ export const rftSchemeSchema = schemeBase.extend({
   rounds: z.number().int().min(1).max(99),
   /** Rest after each round except the last (seconds). Enables per-round split logging. */
   restBetweenRoundsSec: z.number().int().min(0).max(600).optional(),
+  /** Optional overall time cap (minutes), e.g. 20-minute cap on a 5 RFT. */
+  timeCapMin: z.number().int().min(1).max(120).optional(),
   scoreMetric: scoreMetricField("time"),
 });
 
 export const forTimeSchemeSchema = schemeBase.extend({
   kind: z.literal("for_time"),
+  /** Optional overall time cap (minutes). */
+  timeCapMin: z.number().int().min(1).max(120).optional(),
   scoreMetric: scoreMetricField("time"),
 });
 
@@ -63,6 +67,8 @@ export const emomCompletionSchemeSchema = schemeBase.extend({
 
 export const chipperSchemeSchema = schemeBase.extend({
   kind: z.literal("chipper"),
+  /** Optional overall time cap (minutes). */
+  timeCapMin: z.number().int().min(1).max(120).optional(),
   scoreMetric: scoreMetricField("time"),
 });
 
@@ -95,6 +101,8 @@ const betweenRoundSchema = z
 export const repLadderSchemeSchema = schemeBase.extend({
   kind: z.literal("rep_ladder"),
   repSequence: z.array(z.number().int().min(1)).min(2).max(12),
+  /** Optional overall time cap (minutes). */
+  timeCapMin: z.number().int().min(1).max(120).optional(),
   scoreMetric: scoreMetricField("time"),
   betweenRounds: betweenRoundSchema,
 });
@@ -220,6 +228,12 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
       : scheme.workoutIntent === "for_completion"
         ? " · Completion"
         : "";
+  const optionalCap =
+    "timeCapMin" in scheme && typeof scheme.timeCapMin === "number" && scheme.timeCapMin > 0
+      ? scheme.kind === "amrap" || scheme.kind === "amrap_repeat"
+        ? ""
+        : ` · ${scheme.timeCapMin} min cap`
+      : "";
   switch (scheme.kind) {
     case "rft": {
       const restSec = scheme.restBetweenRoundsSec ?? 0;
@@ -230,10 +244,10 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
         const formatted = s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m}:00`;
         restLabel = ` · ${formatted} rest between rounds`;
       }
-      return `${scheme.rounds} RFT${restLabel}${intent}`;
+      return `${scheme.rounds} RFT${restLabel}${optionalCap}${intent}`;
     }
     case "for_time":
-      return `For time${intent}`;
+      return `For time${optionalCap}${intent}`;
     case "amrap":
       return `AMRAP ${scheme.timeCapMin}${intent}`;
     case "amrap_repeat":
@@ -243,7 +257,7 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
     case "emom_completion":
       return `EMOM ${scheme.minutes} (completion)${intent}`;
     case "chipper":
-      return `Chipper${intent}`;
+      return `Chipper${optionalCap}${intent}`;
     case "interval_series": {
       const m = Math.floor(scheme.intervalSec / 60);
       const s = scheme.intervalSec % 60;
@@ -268,11 +282,24 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
             : "";
         between = ` + ${amountPart}${br.label ?? "movement"} between rounds`.trimEnd();
       }
-      return `${seq}${between}${intent}`;
+      return `${seq}${between}${optionalCap}${intent}`;
     }
     default:
       return null;
   }
+}
+
+/** Formats that support an optional overall time cap (for-time style metcons). */
+export function supportsOptionalTimeCap(kind: WorkoutScheme["kind"]): boolean {
+  return kind === "for_time" || kind === "rft" || kind === "chipper" || kind === "rep_ladder";
+}
+
+export function optionalTimeCapMin(
+  scheme: WorkoutScheme | null | undefined,
+): number | null {
+  if (!scheme || !supportsOptionalTimeCap(scheme.kind)) return null;
+  const cap = "timeCapMin" in scheme ? scheme.timeCapMin : undefined;
+  return typeof cap === "number" && cap > 0 ? cap : null;
 }
 
 export function normalizeWorkoutSchemeForSave(

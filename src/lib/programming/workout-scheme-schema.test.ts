@@ -65,4 +65,30 @@ describe("parseWorkoutScheme scoreMetric", () => {
     expect(label).toMatch(/200m/);
     expect(label).toMatch(/Run/);
   });
+
+  it("accepts and summarizes optional time caps on for-time formats", () => {
+    const rft = parseWorkoutScheme({
+      kind: "rft",
+      rounds: 5,
+      timeCapMin: 20,
+      scoreMetric: "time",
+    });
+    expect(rft?.kind).toBe("rft");
+    if (rft?.kind === "rft") expect(rft.timeCapMin).toBe(20);
+    expect(schemeSummaryLabel(rft)).toMatch(/20 min cap/);
+
+    const forTime = parseWorkoutScheme({
+      kind: "for_time",
+      timeCapMin: 12,
+      scoreMetric: "time",
+    });
+    expect(schemeSummaryLabel(forTime)).toBe("For time · 12 min cap");
+
+    const chipper = parseWorkoutScheme({
+      kind: "chipper",
+      timeCapMin: 15,
+      scoreMetric: "time",
+    });
+    expect(schemeSummaryLabel(chipper)).toMatch(/15 min cap/);
+  });
 });

@@ -14,6 +14,7 @@ import {
   resolveEditorWorkoutScheme,
   SCORE_METRIC_OPTIONS,
   schemeSummaryLabel,
+  supportsOptionalTimeCap,
   WORKOUT_INTENT_OPTIONS,
   type ScoreMetric,
   type WorkoutIntent,
@@ -134,6 +135,7 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
                       kind: "rft",
                       rounds: Math.max(1, Number(e.target.value) || 1),
                       restBetweenRoundsSec: scheme.restBetweenRoundsSec,
+                      timeCapMin: scheme.timeCapMin,
                       scoreMetric: "time",
                     },
                     scoreMetric,
@@ -163,6 +165,7 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
                       rounds: scheme.rounds,
                       restBetweenRoundsSec:
                         v === "" ? undefined : Math.max(0, Number(v) || 0),
+                      timeCapMin: scheme.timeCapMin,
                       scoreMetric: "time",
                     },
                     scoreMetric,
@@ -175,6 +178,33 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
               Athletes log working time per round; rest is excluded from the score.
             </p>
           </div>
+        </div>
+      )}
+
+      {supportsOptionalTimeCap(scheme.kind) && (
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Time cap (min, optional)
+          </Label>
+          <Input
+            type="number"
+            min={1}
+            max={120}
+            className="h-8 w-24 font-mono-num"
+            value={
+              "timeCapMin" in scheme && scheme.timeCapMin != null ? scheme.timeCapMin : ""
+            }
+            placeholder="e.g. 20"
+            onChange={(e) => {
+              const v = e.target.value;
+              const timeCapMin =
+                v === "" ? undefined : Math.min(120, Math.max(1, Number(v) || 1));
+              setScheme({ ...scheme, timeCapMin } as WorkoutScheme);
+            }}
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Shown to athletes (e.g. 20-minute cap). Leave blank for no cap.
+          </p>
         </div>
       )}
 
