@@ -44,6 +44,8 @@ export default function StaffProgramming() {
   const [wods, setWods] = useState<EditorWod[]>([]);
   const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
   const pendingDraftsRef = useRef<EditorWod[]>([]);
+  /** True until the first successful load for the current dateKey is applied to `wods`. */
+  const awaitingDateSyncRef = useRef(true);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [showQuickIntake, setShowQuickIntake] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
@@ -60,7 +62,6 @@ export default function StaffProgramming() {
     isLoading,
     isRefreshing,
     error,
-    isEmpty,
     refetch,
   } = useStaffProgrammingDay(activeGymId, date);
   const { data: libraries } = useProgramLibraries(activeGymId);
@@ -71,17 +72,28 @@ export default function StaffProgramming() {
   useEffect(() => {
     setServerSyncMode("date");
     pendingDraftsRef.current = [];
+    awaitingDateSyncRef.current = true;
+    // Clear immediately so the previous day's segments never linger on an empty day.
+    setWods([]);
   }, [dateKey]);
 
   useEffect(() => {
-    if (isLoading || isRefreshing || !serverSyncMode) return;
-    if (serverSyncMode === "date") {
-      setWods(serverWods);
-    } else if (serverSyncMode === "save") {
+    if (isLoading || isRefreshing) return;
+
+    if (serverSyncMode === "save") {
       setWods([...serverWods, ...pendingDraftsRef.current]);
       pendingDraftsRef.current = [];
+      setServerSyncMode(null);
+      awaitingDateSyncRef.current = false;
+      return;
     }
-    setServerSyncMode(null);
+
+    // Apply server day once load finishes — even if sync mode was cleared by a race.
+    if (serverSyncMode === "date" || awaitingDateSyncRef.current) {
+      setWods(serverWods);
+      setServerSyncMode(null);
+      awaitingDateSyncRef.current = false;
+    }
   }, [serverWods, isLoading, isRefreshing, serverSyncMode]);
 
   function selectDate(next: Date) {
@@ -445,8 +457,8 @@ export default function StaffProgramming() {
         </Button>
       </div>
 
-      {isLoading && <PageSkeleton rows={4} />}
-      {!isLoading && !error && isEmpty && wods.length === 0 && (
+      {(isLoading || (isRefreshing && wods.length === 0)) && <PageSkeleton rows={4} />}
+      {!isLoading && !isRefreshing && !error && wods.length === 0 && (
         <EmptyState
           title="Nothing scheduled"
           description={`${format(date, "EEE, MMM d")} is empty. Click Segment to add or copy programming.`}
