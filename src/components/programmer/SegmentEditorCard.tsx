@@ -66,6 +66,8 @@ type Props = {
   onDuplicate: () => void;
   onAddMovement: () => void;
   onOpenComplexEditor: () => void;
+  /** Link this segment with the previous one as one athlete score. */
+  onLinkWithPrevious?: () => void;
 };
 
 export function SegmentEditorCard({
@@ -83,23 +85,27 @@ export function SegmentEditorCard({
   wodIndex,
   allWods,
   onOpenComplexEditor,
+  onLinkWithPrevious,
 }: Props) {
   const { data: catalog } = useBenchmarkCatalog();
   const [bulkPaste, setBulkPaste] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [showBulkPaste, setShowBulkPaste] = useState(false);
   const uiKey = resolveProgrammingUiKey(wod);
   const lineMode = getLineItemMode(wod.programming_segment);
   const addEnabled = canAddMovement(wod);
   const metcon = isMetconSegment(wod.programming_segment);
   const isStrength =
     wod.programming_segment === "weightlifting" || wod.programming_segment === "strength";
-  const priorGroupId =
-    wodIndex > 0 ? allWods[wodIndex - 1]?.segment_group_id ?? null : null;
+  const priorExists = wodIndex > 0;
   const libIds = wod.program_library_ids?.length
     ? wod.program_library_ids
     : wod.program_library_id
       ? [wod.program_library_id]
       : [];
+  const groupMateCount = wod.segment_group_id
+    ? allWods.filter((w) => w.segment_group_id === wod.segment_group_id).length
+    : 0;
 
   function setTypeUiKey(key: string) {
     const t = getTypeByUiKey(key);
@@ -383,70 +389,71 @@ export function SegmentEditorCard({
         )}
 
         {!collapsed && (metcon || wod.segment_group_id) && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border/80 p-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Multi-part block
-            </span>
-            {wod.segment_group_id ? (
-              <>
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  {wod.segment_group_id.slice(0, 8)}…
-                </Badge>
-                <label className="flex items-center gap-1.5 text-xs">
-                  <Checkbox
-                    checked={wod.group_score_anchor ?? false}
-                    onCheckedChange={(c) =>
-                      onUpdate({ group_score_anchor: c === true })
-                    }
-                  />
-                  Total score anchor
-                </label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={() =>
-                    onUpdate({ segment_group_id: null, group_score_anchor: false })
-                  }
-                >
-                  Leave block
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-7 text-xs"
-                  onClick={() =>
-                    onUpdate({
-                      segment_group_id: crypto.randomUUID(),
-                      group_score_anchor: true,
-                    })
-                  }
-                >
-                  Start block
-                </Button>
-                {priorGroupId && (
+          <div className="space-y-2 rounded-md border border-dashed border-border/80 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Multi-part · one athlete score
+              </span>
+              {wod.segment_group_id ? (
+                <>
+                  <Badge variant="secondary" className="text-[10px]">
+                    Linked ({groupMateCount} part{groupMateCount === 1 ? "" : "s"})
+                  </Badge>
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={wod.group_score_anchor ?? false}
+                      onCheckedChange={(c) =>
+                        onUpdate({ group_score_anchor: c === true })
+                      }
+                    />
+                    Total score anchor
+                  </label>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    onClick={() =>
+                      onUpdate({ segment_group_id: null, group_score_anchor: false })
+                    }
+                  >
+                    Leave block
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
                     className="h-7 text-xs"
                     onClick={() =>
                       onUpdate({
-                        segment_group_id: priorGroupId,
-                        group_score_anchor: false,
+                        segment_group_id: crypto.randomUUID(),
+                        group_score_anchor: true,
                       })
                     }
                   >
-                    Join previous block
+                    Start block
                   </Button>
-                )}
-              </>
-            )}
+                  {priorExists && onLinkWithPrevious && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={onLinkWithPrevious}
+                    >
+                      Link with previous (one score)
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Use for buy-in → main → cash-out. Athletes see one workout and log one time. Save
+              every linked part after joining.
+            </p>
           </div>
         )}
 
@@ -456,20 +463,36 @@ export function SegmentEditorCard({
 
         {!collapsed && metcon && (
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <button
+              type="button"
+              className="flex w-full items-center gap-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              onClick={() => setShowBulkPaste((v) => !v)}
+              aria-expanded={showBulkPaste}
+            >
+              {showBulkPaste ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
               Bulk paste movements
-            </Label>
-            <Textarea
-              value={bulkPaste}
-              onChange={(e) => setBulkPaste(e.target.value)}
-              placeholder={'e.g. 3 RFT: 400m Run, 20 Wall Balls, 15 T2B\nor AMRAP 12 — one movement per line'}
-              rows={3}
-              className="text-sm font-mono"
-            />
-            <Button type="button" size="sm" variant="secondary" onClick={parseBulkMovements}>
-              <Sparkles className="mr-1 h-3.5 w-3.5" />
-              Parse into movements
-            </Button>
+            </button>
+            {showBulkPaste && (
+              <>
+                <Textarea
+                  value={bulkPaste}
+                  onChange={(e) => setBulkPaste(e.target.value)}
+                  placeholder={
+                    "e.g. 3 RFT: 400m Run, 20 Wall Balls, 15 T2B\nor AMRAP 12 — one movement per line"
+                  }
+                  rows={3}
+                  className="text-sm font-mono"
+                />
+                <Button type="button" size="sm" variant="secondary" onClick={parseBulkMovements}>
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  Parse into movements
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>

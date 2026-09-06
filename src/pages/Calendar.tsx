@@ -4,7 +4,7 @@ import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronDown, Clock, Flame, Users, Trophy } from "lucide-react";
 import { seededHash, seededSample, segmentLabel } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProgrammingWeek } from "@/hooks/useProgrammingWeek";
+import { useProgrammingWeek, type WeekWod } from "@/hooks/useProgrammingWeek";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,14 @@ import {
 import { cn } from "@/lib/utils";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
+import { GroupBlockCard } from "@/components/workout/GroupBlockCard";
+import {
+  buildWorkoutDayBlocks,
+  groupScoreForBlock,
+} from "@/lib/programming/workout-segment-groups";
+import type { WorkoutDayProgramming, WorkoutLineItem } from "@/hooks/useWorkoutDay";
 import type { GymAthlete } from "@/hooks/useProgrammingWeek";
+import type { LogLineItem } from "@/components/rx/LogScoreSheet";
 
 type ClassSlot = {
   key: string;
@@ -81,6 +88,35 @@ function dayKey(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+function weekWodToDayProgramming(
+  w: WeekWod,
+  items: LogLineItem[],
+): WorkoutDayProgramming {
+  const lineItems: WorkoutLineItem[] = items.map((it) => ({
+    ...it,
+    programming_id: w.id,
+    contact_id: null,
+  }));
+  return {
+    id: w.id,
+    name: w.name,
+    description: w.description,
+    athlete_notes: w.athlete_notes,
+    coaches_notes: w.coaches_notes,
+    programming_segment: w.programming_segment,
+    metcon_format: w.metcon_format,
+    workout_scheme: w.workout_scheme,
+    segment_group_id: w.segment_group_id ?? null,
+    group_score_anchor: w.group_score_anchor ?? false,
+    programming_subtype: null,
+    display_order: w.display_order,
+    wod_date: w.wod_date,
+    prescribed_scale: w.prescribed_scale ?? null,
+    source: w.source,
+    items: lineItems,
+  };
+}
+
 export default function CalendarPage() {
   const { contactId, activeGymId, mode } = useAuth();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -89,7 +125,7 @@ export default function CalendarPage() {
   const [openClass, setOpenClass] = useState<{ date: Date; slot: ClassSlot } | null>(null);
 
   const { data, isLoading, error, refetch } = useProgrammingWeek(activeGymId, contactId, weekStart);
-  const { wods, itemsByWod, perfByItem, perfBySegment, athletes } = data;
+  const { wods, itemsByWod, perfByItem, perfBySegment, perfByGroup, athletes } = data;
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -117,8 +153,18 @@ export default function CalendarPage() {
 
   const selectedKey = dayKey(selected);
   const selectedWods = wodsByDay.get(selectedKey) ?? [];
+  const selectedDayProgramming = useMemo(
+    () =>
+      selectedWods.map((w) => weekWodToDayProgramming(w, itemsByWod.get(w.id) ?? [])),
+    [selectedWods, itemsByWod],
+  );
+  const selectedBlocks = useMemo(
+    () => buildWorkoutDayBlocks(selectedDayProgramming),
+    [selectedDayProgramming],
+  );
   const selectedClasses = classesForDay(selected);
   const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d, yyyy")}`;
+  const blockCount = selectedBlocks.length;
 
   if (mode === "personal") {
     return (
@@ -215,8 +261,8 @@ export default function CalendarPage() {
           <h2 className="text-xl font-bold tracking-tight">{format(selected, "EEEE, MMM d")}</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {selectedClasses.length} classes · {selectedWods.length} WOD
-              {selectedWods.length === 1 ? "" : "s"}
+              {selectedClasses.length} classes · {blockCount} workout
+              {blockCount === 1 ? "" : "s"}
             </span>
             <Button asChild variant="secondary" size="sm" className="h-8 gap-1 text-xs">
               <Link to={`/leaderboard?date=${selectedKey}`}>
@@ -232,81 +278,91 @@ export default function CalendarPage() {
             <Flame className="h-3 w-3" /> Programming
           </p>
           {isLoading && <PageSkeleton rows={2} />}
-          {!isLoading && !error && selectedWods.length === 0 && (
+          {!isLoading && !error && selectedBlocks.length === 0 && (
             <EmptyState
               title="No workouts this day"
               description="Programming may not be published yet for this date."
             />
           )}
-          {!isLoading && !error && selectedWods.length > 0 && (
+          {!isLoading && !error && selectedBlocks.length > 0 && (
             <div className="grid grid-cols-1 gap-2">
-              {selectedWods.map((w) => {
-                const items = itemsByWod.get(w.id) ?? [];
+              {selectedBlocks.map((block) => {
+                if (block.kind === "group") {
+                  const groupPerf = groupScoreForBlock(block, perfByGroup);
+                  return (
+                    <GroupBlockCard
+                      key={block.groupId}
+                      block={block}
+                      wodDate={selectedKey}
+                      contactId={contactId}
+                      perfByItem={perfByItem}
+                      perfBySegment={perfBySegment}
+                      groupPerf={groupPerf}
+                      isComplete={!!groupPerf?.score}
+                      onLogged={refetch}
+                    />
+                  );
+                }
+
+                const w = block.wod;
+                const items = w.items;
                 const summary = summarizeSegmentPrescription(w, items);
                 const isOpen = expanded.has(w.id);
                 return (
-                <Card key={w.id} className="glass-card overflow-hidden p-0">
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(w.id)}
-                    className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
-                    aria-expanded={isOpen}
-                  >
-                    <div>
-                      <p className="eyebrow">
-                        {segmentLabel(w.programming_segment)}
-                        {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
-                        {w.source === "athlete_custom" && (
-                          <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
-                            Personal
-                          </Badge>
-                        )}
-                      </p>
-                      <h3 className="mt-1 text-base font-bold leading-tight">
-                        {w.name ?? "Untitled"}
-                      </h3>
-                      {!isOpen && (
-                        <div className="mt-2 space-y-0.5">
-                          {summary.lines.map((line, i) => (
-                            <p key={i} className="text-xs text-muted-foreground">
-                              {line}
-                            </p>
-                          ))}
-                          {summary.footer && (
-                            <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
+                  <Card key={w.id} className="glass-card overflow-hidden p-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(w.id)}
+                      className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
+                      aria-expanded={isOpen}
+                    >
+                      <div>
+                        <p className="eyebrow">
+                          {segmentLabel(w.programming_segment)}
+                          {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
+                          {w.source === "athlete_custom" && (
+                            <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
+                              Personal
+                            </Badge>
                           )}
-                          {w.description && (
-                            <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
-                              {w.description}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                        isOpen && "rotate-180",
-                      )}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="border-t border-border/60">
-                      {w.description && (
-                        <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
-                          {w.description}
                         </p>
-                      )}
-                      <div className="divide-y divide-border/60">
+                        <h3 className="mt-1 text-base font-bold leading-tight">
+                          {w.name ?? "Untitled"}
+                        </h3>
+                        {!isOpen && (
+                          <div className="mt-2 space-y-0.5">
+                            {summary.lines.map((line, i) => (
+                              <p key={i} className="text-xs text-muted-foreground">
+                                {line}
+                              </p>
+                            ))}
+                            {summary.footer && (
+                              <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
+                            )}
+                            {w.description && (
+                              <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
+                                {w.description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                          isOpen && "rotate-180",
+                        )}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="border-t border-border/60">
+                        {w.description && (
+                          <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
+                            {w.description}
+                          </p>
+                        )}
                         <WorkoutSegmentItems
-                          wod={{
-                            id: w.id,
-                            name: w.name,
-                            wod_date: w.wod_date,
-                            programming_segment: w.programming_segment,
-                            prescribed_scale: w.prescribed_scale,
-                            workout_scheme: w.workout_scheme,
-                          }}
+                          wod={w}
                           items={items}
                           contactId={contactId}
                           perfByItem={perfByItem}
@@ -314,10 +370,9 @@ export default function CalendarPage() {
                           onLogged={refetch}
                         />
                       </div>
-                    </div>
-                  )}
-                </Card>
-              );
+                    )}
+                  </Card>
+                );
               })}
             </div>
           )}

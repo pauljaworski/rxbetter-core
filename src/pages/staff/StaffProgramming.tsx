@@ -23,7 +23,9 @@ import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { deleteProgrammingSegment } from "@/lib/programming/programming-delete";
 import {
   cloneEditorWod,
+  createBuyInMainCashOutDrafts,
   isSegmentUnsaved,
+  linkSegmentWithPrevious,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import {
@@ -41,6 +43,7 @@ export default function StaffProgramming() {
   const [serverSyncMode, setServerSyncMode] = useState<ServerSyncMode>("date");
   const pendingDraftsRef = useRef<EditorWod[]>([]);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
+  const [showQuickIntake, setShowQuickIntake] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
   const { data: benchmarkCatalog } = useBenchmarkCatalog();
@@ -208,6 +211,28 @@ export default function StaffProgramming() {
     } else {
       toast.success("Segment duplicated");
     }
+  }
+
+  function linkWithPrevious(wodIdx: number) {
+    setServerSyncMode(null);
+    setWods((prev) => linkSegmentWithPrevious(prev, wodIdx));
+    toast.message("Parts linked", {
+      description: "Athletes will see one workout with one total score. Save each linked section.",
+    });
+  }
+
+  function addBuyInMainCashOut() {
+    const libIds = defaultLibId ? [defaultLibId] : [];
+    if (!libIds.length) {
+      toast.error("Add a program track first, then create the buy-in structure.");
+      return;
+    }
+    const drafts = createBuyInMainCashOutDrafts(wods.length, libIds);
+    setServerSyncMode(null);
+    setWods((prev) => [...prev, ...drafts]);
+    toast.message("Buy-in · Main · Cash-out added", {
+      description: "Already linked as one score. Add movements to each part, then save all three.",
+    });
   }
 
   function cloneItem(wodIdx: number, itemIdx: number) {
@@ -383,6 +408,9 @@ export default function StaffProgramming() {
         <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
+        <Button onClick={addBuyInMainCashOut} size="sm" variant="outline">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Buy-in · Main · Cash-out
+        </Button>
         <Button
           onClick={() => void handlePublishDay()}
           disabled={busy}
@@ -422,6 +450,7 @@ export default function StaffProgramming() {
               onDuplicate={() => duplicateWod(idx)}
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
               onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
+              onLinkWithPrevious={() => linkWithPrevious(idx)}
             />
           ))}
         </div>
@@ -461,18 +490,32 @@ export default function StaffProgramming() {
         }}
       />
 
-      {/* Quick intake — secondary workflow */}
+      {/* Quick intake — collapsed by default */}
       <div className="border-t border-border/60 pt-6">
-        <p className="eyebrow mb-3">Quick intake (optional)</p>
-        <WodIntakePanel
-          date={date}
-          defaultLib={defaultLibId}
-          displayOrder={wods.length}
-          onCommitted={() => {
-            setServerSyncMode("date");
-            refetch();
-          }}
-        />
+        <button
+          type="button"
+          className="mb-3 flex items-center gap-1.5 text-left"
+          onClick={() => setShowQuickIntake((v) => !v)}
+          aria-expanded={showQuickIntake}
+        >
+          {showQuickIntake ? (
+            <ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          <span className="eyebrow">Quick intake (optional)</span>
+        </button>
+        {showQuickIntake && (
+          <WodIntakePanel
+            date={date}
+            defaultLib={defaultLibId}
+            displayOrder={wods.length}
+            onCommitted={() => {
+              setServerSyncMode("date");
+              refetch();
+            }}
+          />
+        )}
       </div>
     </div>
   );
