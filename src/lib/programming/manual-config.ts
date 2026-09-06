@@ -185,7 +185,6 @@ export function movementDisplayName(item: EditorLineItem): string {
 export function validateEditorWod(wod: EditorWod): string | null {
   const name = (wod.name ?? "").trim();
   if (!name) return "Segment name is required.";
-  if (!wod.items.length) return "Add at least one programming line item.";
   const libs = wod.program_library_ids?.length
     ? wod.program_library_ids
     : wod.program_library_id
@@ -195,8 +194,9 @@ export function validateEditorWod(wod: EditorWod): string | null {
   if (requiresMetconFormat(wod.programming_segment) && !wod.metcon_format) {
     return "Metcon and HIIT segments require a format (For Time, AMRAP, etc.).";
   }
+  // Description-only sections (e.g. Warm-up) are allowed — no line items required.
   for (const it of wod.items) {
-    if (!it.benchmark_type_id && !(it.movement_label ?? "").trim()) {
+    if (!it.benchmark_type_id && !(it.movement_label ?? "").trim() && !(it.bench_name ?? "").trim()) {
       return "Each movement needs a name (library pick or New movement label).";
     }
   }

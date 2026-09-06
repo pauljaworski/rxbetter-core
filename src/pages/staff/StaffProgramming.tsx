@@ -127,37 +127,35 @@ export default function StaffProgramming() {
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
     setServerSyncMode(null);
+    const setCount = Math.max(1, pick.sets || 1);
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
-        const base = {
-          _new: true as const,
-          sequence_number: w.items.length + 1,
-          reps_prescribed: null,
-          prescribed_weight: null,
-          prescribed_percentage: null,
-          prescribed_score: null,
-        };
-        const item: EditorLineItem =
+        const baseFields =
           pick.kind === "catalog"
             ? {
-                ...base,
                 benchmark_type_id: pick.bench.id,
                 bench_name: pick.bench.name,
-                movement_label: null,
-                percent_rep_max: 1,
-                line_item_kind: "strength_set",
-                movement_components: [],
+                movement_label: null as string | null,
               }
             : {
-                ...base,
-                benchmark_type_id: null,
+                benchmark_type_id: null as string | null,
                 bench_name: pick.label,
                 movement_label: pick.label,
-                line_item_kind: "strength_set",
-                movement_components: [],
               };
-        return { ...w, items: [...w.items, item] };
+        const items: EditorLineItem[] = Array.from({ length: setCount }, (_, j) => ({
+          _new: true as const,
+          sequence_number: w.items.length + j + 1,
+          reps_prescribed: pick.reps,
+          prescribed_weight: null,
+          prescribed_percentage: pick.prescribedPercentage,
+          prescribed_score: null,
+          percent_rep_max: 1,
+          line_item_kind: "strength_set",
+          movement_components: [],
+          ...baseFields,
+        }));
+        return { ...w, items: [...w.items, ...items] };
       }),
     );
   }

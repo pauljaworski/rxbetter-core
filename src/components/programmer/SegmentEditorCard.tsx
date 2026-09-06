@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Copy, Save, Sparkles } from "lucide-react";
+import { Trash2, Plus, Copy, Save, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import type { ProgramLibrary } from "@/hooks/staff/types";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
@@ -38,7 +38,6 @@ import {
 } from "@/lib/programming/manual-config";
 import { PRESCRIBED_LEVEL_OPTIONS, type PrescribedLevel } from "@/lib/format";
 import {
-  parseWorkoutScheme,
   resolveEditorWorkoutScheme,
   schemeSummaryLabel,
   type WorkoutScheme,
@@ -50,6 +49,7 @@ import {
 import { applyWorkoutFormatKind, MetconSchemeFields } from "./MetconSchemeFields";
 import { LineItemFields } from "./LineItemFields";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type Props = {
   wod: EditorWod;
@@ -86,6 +86,7 @@ export function SegmentEditorCard({
 }: Props) {
   const { data: catalog } = useBenchmarkCatalog();
   const [bulkPaste, setBulkPaste] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
   const uiKey = resolveProgrammingUiKey(wod);
   const lineMode = getLineItemMode(wod.programming_segment);
   const addEnabled = canAddMovement(wod);
@@ -191,8 +192,24 @@ export function SegmentEditorCard({
   return (
     <Card className="glass-card overflow-hidden p-0">
       {/* Type, name, add movement */}
-      <div className="space-y-3 border-b border-border/60 p-4">
+      <div className={cn("space-y-3 p-4", !collapsed && "border-b border-border/60")}>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 shrink-0"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand segment" : "Collapse segment"}
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
           <Select value={uiKey} onValueChange={setTypeUiKey}>
             <SelectTrigger className="h-9 w-40">
               <SelectValue placeholder="Type" />
@@ -304,6 +321,11 @@ export function SegmentEditorCard({
               Saved · not published
             </Badge>
           )}
+          {collapsed && wod.items.length > 0 && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              {wod.items.length} movement{wod.items.length === 1 ? "" : "s"}
+            </Badge>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -333,7 +355,7 @@ export function SegmentEditorCard({
           </Button>
         </div>
 
-        {libraries.length > 0 && (
+        {!collapsed && libraries.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Tracks
@@ -353,14 +375,14 @@ export function SegmentEditorCard({
           </div>
         )}
 
-        {lineMode === "tracking_only" && (
+        {!collapsed && lineMode === "tracking_only" && (
           <p className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
             Athletes log one workout score on this segment (time/reps). Movements below are for
-            tracking only.
+            tracking only — or leave empty and use the description only (e.g. Warm-up).
           </p>
         )}
 
-        {(metcon || wod.segment_group_id) && (
+        {!collapsed && (metcon || wod.segment_group_id) && (
           <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border/80 p-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Multi-part block
@@ -428,11 +450,11 @@ export function SegmentEditorCard({
           </div>
         )}
 
-        {metcon && wod.metcon_format && (
+        {!collapsed && metcon && wod.metcon_format && (
           <MetconSchemeFields wod={wod} onUpdate={onUpdate} />
         )}
 
-        {metcon && (
+        {!collapsed && metcon && (
           <div className="space-y-2">
             <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Bulk paste movements
@@ -452,94 +474,99 @@ export function SegmentEditorCard({
         )}
       </div>
 
-      {/* Line items */}
-      <div className="divide-y divide-border/60">
-        {wod.items.length === 0 && (
-          <p className="px-4 py-3 text-xs italic text-muted-foreground">
-            No movements yet. Add at least one line item, then save this section.
-          </p>
-        )}
-        {wod.items.map((it, j) => (
-          <div key={it.id ?? `i-${j}`} className="space-y-2 p-3">
-            <div className="flex items-center gap-2">
-              <span className="font-mono-num inline-grid h-6 w-6 place-items-center rounded-md bg-secondary text-[11px] font-bold text-muted-foreground">
-                {j + 1}
-              </span>
-              <p className="flex-1 text-sm font-bold">{movementDisplayName(it)}</p>
-              {!it.benchmark_type_id && (
-                <Badge variant="secondary" className="text-[10px]">
-                  Custom
-                </Badge>
-              )}
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => onCloneItem(j)}
-                aria-label="Clone line item"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => onRemoveItem(j)}
-                aria-label="Remove movement"
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <LineItemFields
-              mode={lineMode}
-              item={it}
-              onChange={(patch) => onUpdateItem(j, patch)}
-            />
+      {!collapsed && (
+        <>
+          {/* Line items */}
+          <div className="divide-y divide-border/60">
+            {wod.items.length === 0 && (
+              <p className="px-4 py-3 text-xs italic text-muted-foreground">
+                No movements yet — optional. Save with a name and description only (e.g. Warm-up), or
+                add movements above.
+              </p>
+            )}
+            {wod.items.map((it, j) => (
+              <div key={it.id ?? `i-${j}`} className="space-y-2 p-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono-num inline-grid h-6 w-6 place-items-center rounded-md bg-secondary text-[11px] font-bold text-muted-foreground">
+                    {j + 1}
+                  </span>
+                  <p className="flex-1 text-sm font-bold">{movementDisplayName(it)}</p>
+                  {!it.benchmark_type_id && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Custom
+                    </Badge>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => onCloneItem(j)}
+                    aria-label="Clone line item"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => onRemoveItem(j)}
+                    aria-label="Remove movement"
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <LineItemFields
+                  mode={lineMode}
+                  item={it}
+                  onChange={(patch) => onUpdateItem(j, patch)}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Description and notes */}
-      <div className="space-y-3 border-t border-border/60 p-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Workout description
-          </Label>
-          <Textarea
-            value={wod.description ?? ""}
-            onChange={(e) => onUpdate({ description: e.target.value })}
-            placeholder="Optional workout text…"
-            rows={2}
-            className="text-sm"
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Coach&apos;s notes
-            </Label>
-            <Textarea
-              value={wod.coaches_notes ?? ""}
-              onChange={(e) => onUpdate({ coaches_notes: e.target.value })}
-              rows={2}
-              placeholder="Cues, demo focus…"
-              className="text-sm"
-            />
+          {/* Description and notes */}
+          <div className="space-y-3 border-t border-border/60 p-4">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Workout description
+              </Label>
+              <Textarea
+                value={wod.description ?? ""}
+                onChange={(e) => onUpdate({ description: e.target.value })}
+                placeholder="Optional workout text…"
+                rows={2}
+                className="text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Coach&apos;s notes
+                </Label>
+                <Textarea
+                  value={wod.coaches_notes ?? ""}
+                  onChange={(e) => onUpdate({ coaches_notes: e.target.value })}
+                  rows={2}
+                  placeholder="Cues, demo focus…"
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Athlete notes
+                </Label>
+                <Textarea
+                  value={wod.athlete_notes ?? ""}
+                  onChange={(e) => onUpdate({ athlete_notes: e.target.value })}
+                  rows={2}
+                  placeholder="Scaling options, intent…"
+                  className="text-sm"
+                />
+              </div>
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Athlete notes
-            </Label>
-            <Textarea
-              value={wod.athlete_notes ?? ""}
-              onChange={(e) => onUpdate({ athlete_notes: e.target.value })}
-              rows={2}
-              placeholder="Scaling options, intent…"
-              className="text-sm"
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </Card>
   );
 }

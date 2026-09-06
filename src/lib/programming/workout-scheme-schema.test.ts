@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveEditorWorkoutScheme } from "./workout-scheme-schema";
+import {
+  parseWorkoutScheme,
+  resolveEditorWorkoutScheme,
+  schemeSummaryLabel,
+} from "./workout-scheme-schema";
 
 describe("resolveEditorWorkoutScheme", () => {
   it("defaults AMRAP time cap from metcon_format before save", () => {
@@ -22,5 +26,43 @@ describe("resolveEditorWorkoutScheme", () => {
     if (scheme?.kind === "amrap") {
       expect(scheme.timeCapMin).toBe(18);
     }
+  });
+});
+
+describe("parseWorkoutScheme scoreMetric", () => {
+  it("accepts non-time scoreMetric on for_time", () => {
+    const scheme = parseWorkoutScheme({
+      kind: "for_time",
+      scoreMetric: "completion",
+      workoutIntent: "for_completion",
+    });
+    expect(scheme?.kind).toBe("for_time");
+    expect(scheme?.scoreMetric).toBe("completion");
+  });
+
+  it("accepts rounds_reps on rft and rep_ladder", () => {
+    expect(
+      parseWorkoutScheme({ kind: "rft", rounds: 5, scoreMetric: "rounds_reps" })?.scoreMetric,
+    ).toBe("rounds_reps");
+    expect(
+      parseWorkoutScheme({
+        kind: "rep_ladder",
+        repSequence: [21, 15, 9],
+        scoreMetric: "reps",
+        betweenRounds: { label: "Run", amount: 200, prescriptionUnit: "meters" },
+      })?.scoreMetric,
+    ).toBe("reps");
+  });
+
+  it("summarizes between-rounds with unit", () => {
+    const label = schemeSummaryLabel({
+      kind: "rep_ladder",
+      repSequence: [21, 15, 9],
+      scoreMetric: "time",
+      betweenRounds: { label: "Run", amount: 200, prescriptionUnit: "meters" },
+    });
+    expect(label).toMatch(/21-15-9/);
+    expect(label).toMatch(/200m/);
+    expect(label).toMatch(/Run/);
   });
 });

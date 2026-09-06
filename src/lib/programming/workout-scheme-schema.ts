@@ -19,54 +19,58 @@ const schemeBase = z.object({
   workoutIntent: z.enum(WORKOUT_INTENTS).optional(),
 });
 
+/** Any score metric is allowed on every format; defaults keep sensible UX. */
+const scoreMetricField = (fallback: ScoreMetric) =>
+  z.enum(SCORE_METRICS).default(fallback);
+
 export const rftSchemeSchema = schemeBase.extend({
   kind: z.literal("rft"),
   rounds: z.number().int().min(1).max(99),
   /** Rest after each round except the last (seconds). Enables per-round split logging. */
   restBetweenRoundsSec: z.number().int().min(0).max(600).optional(),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: scoreMetricField("time"),
 });
 
 export const forTimeSchemeSchema = schemeBase.extend({
   kind: z.literal("for_time"),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: scoreMetricField("time"),
 });
 
 export const amrapSchemeSchema = schemeBase.extend({
   kind: z.literal("amrap"),
   timeCapMin: z.number().int().min(1).max(120),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: scoreMetricField("rounds_reps"),
 });
 
 export const amrapRepeatSchemeSchema = schemeBase.extend({
   kind: z.literal("amrap_repeat"),
   timeCapMin: z.number().int().min(1).max(60),
   rounds: z.number().int().min(2).max(10),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: scoreMetricField("rounds_reps"),
 });
 
 export const emomSchemeSchema = schemeBase.extend({
   kind: z.literal("emom"),
   minutes: z.number().int().min(1).max(60),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: scoreMetricField("rounds_reps"),
 });
 
 export const emomCompletionSchemeSchema = schemeBase.extend({
   kind: z.literal("emom_completion"),
   minutes: z.number().int().min(1).max(60),
-  scoreMetric: z.literal("completion").default("completion"),
+  scoreMetric: scoreMetricField("completion"),
 });
 
 export const chipperSchemeSchema = schemeBase.extend({
   kind: z.literal("chipper"),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: scoreMetricField("time"),
 });
 
 export const intervalSeriesSchemeSchema = schemeBase.extend({
   kind: z.literal("interval_series"),
   intervalSec: z.number().int().min(30).max(600),
   rounds: z.number().int().min(1).max(30),
-  scoreMetric: z.literal("sum_interval_times").default("sum_interval_times"),
+  scoreMetric: scoreMetricField("sum_interval_times"),
 });
 
 export const tabataSchemeSchema = schemeBase.extend({
@@ -74,13 +78,16 @@ export const tabataSchemeSchema = schemeBase.extend({
   rounds: z.number().int().min(1).max(20).default(8),
   workSec: z.number().int().min(10).max(60).default(20),
   restSec: z.number().int().min(0).max(60).default(10),
-  scoreMetric: z.literal("rounds_reps").default("rounds_reps"),
+  scoreMetric: scoreMetricField("rounds_reps"),
 });
+
+export const PRESCRIPTION_UNITS_BETWEEN = ["reps", "meters", "calories", "feet"] as const;
+export type BetweenRoundPrescriptionUnit = (typeof PRESCRIPTION_UNITS_BETWEEN)[number];
 
 const betweenRoundSchema = z
   .object({
     amount: z.number().nullable().optional(),
-    prescriptionUnit: z.enum(["reps", "meters", "calories", "feet"]).optional(),
+    prescriptionUnit: z.enum(PRESCRIPTION_UNITS_BETWEEN).optional(),
     label: z.string().optional(),
   })
   .optional();
@@ -88,7 +95,7 @@ const betweenRoundSchema = z
 export const repLadderSchemeSchema = schemeBase.extend({
   kind: z.literal("rep_ladder"),
   repSequence: z.array(z.number().int().min(1)).min(2).max(12),
-  scoreMetric: z.literal("time").default("time"),
+  scoreMetric: scoreMetricField("time"),
   betweenRounds: betweenRoundSchema,
 });
 
@@ -247,9 +254,20 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
       return `Tabata ${scheme.workSec}/${scheme.restSec} × ${scheme.rounds}${intent}`;
     case "rep_ladder": {
       const seq = scheme.repSequence.join("-");
-      const between = scheme.betweenRounds?.amount
-        ? ` + ${scheme.betweenRounds.amount}${scheme.betweenRounds.prescriptionUnit === "meters" ? "m" : ""} ${scheme.betweenRounds.label ?? ""}`
-        : "";
+      const br = scheme.betweenRounds;
+      let between = "";
+      if (br?.label || br?.amount != null) {
+        const unit = br.prescriptionUnit ?? "reps";
+        const unitSuffix =
+          unit === "meters" ? "m" : unit === "feet" ? "ft" : unit === "calories" ? " cal" : "";
+        const amountPart =
+          br.amount != null
+            ? unit === "reps"
+              ? `${br.amount} `
+              : `${br.amount}${unitSuffix} `
+            : "";
+        between = ` + ${amountPart}${br.label ?? "movement"} between rounds`.trimEnd();
+      }
       return `${seq}${between}${intent}`;
     }
     default:

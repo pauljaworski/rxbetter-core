@@ -1,4 +1,5 @@
 import type { EditorWod } from "@/hooks/staff/types";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -346,7 +347,7 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
       )}
 
       {scheme.kind === "rep_ladder" && (
-        <div className="space-y-2">
+        <div className="space-y-3 rounded-md border border-dashed border-border/80 bg-background/60 p-3">
           <div className="space-y-1">
             <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Rep sequence (e.g. 21-18-15-12-9)
@@ -356,7 +357,7 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
               value={scheme.repSequence.join("-")}
               onChange={(e) => {
                 const seq = e.target.value
-                  .split(/[-–—]/)
+                  .split(/[-–—,\s]+/)
                   .map((s) => Number(s.trim()))
                   .filter((n) => Number.isFinite(n) && n > 0);
                 if (seq.length >= 2) {
@@ -365,47 +366,96 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
               }}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Between rounds
-              </Label>
-              <Input
-                className="h-8 w-32 text-xs"
-                placeholder="Run"
-                value={scheme.betweenRounds?.label ?? ""}
-                onChange={(e) =>
-                  setScheme({
-                    ...scheme,
-                    betweenRounds: {
-                      ...scheme.betweenRounds,
-                      label: e.target.value,
-                    },
-                  })
-                }
-              />
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Between rounds (optional)
+            </p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Movement done between each ladder set (e.g. 200m Run, 10 Burpees).
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Movement
+                </Label>
+                <Input
+                  className="h-8 text-xs"
+                  placeholder="e.g. Run"
+                  value={scheme.betweenRounds?.label ?? ""}
+                  onChange={(e) =>
+                    setScheme({
+                      ...scheme,
+                      betweenRounds: {
+                        amount: scheme.betweenRounds?.amount ?? null,
+                        prescriptionUnit: scheme.betweenRounds?.prescriptionUnit ?? "meters",
+                        label: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Distance / reps
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  className="h-8 font-mono-num"
+                  value={scheme.betweenRounds?.amount ?? ""}
+                  placeholder="200"
+                  onChange={(e) =>
+                    setScheme({
+                      ...scheme,
+                      betweenRounds: {
+                        label: scheme.betweenRounds?.label ?? "",
+                        prescriptionUnit: scheme.betweenRounds?.prescriptionUnit ?? "meters",
+                        amount: e.target.value === "" ? null : Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Unit
+                </Label>
+                <Select
+                  value={scheme.betweenRounds?.prescriptionUnit ?? "meters"}
+                  onValueChange={(v) =>
+                    setScheme({
+                      ...scheme,
+                      betweenRounds: {
+                        label: scheme.betweenRounds?.label ?? "",
+                        amount: scheme.betweenRounds?.amount ?? null,
+                        prescriptionUnit: v as "reps" | "meters" | "calories" | "feet",
+                      },
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meters">Meters</SelectItem>
+                    <SelectItem value="feet">Feet</SelectItem>
+                    <SelectItem value="reps">Reps</SelectItem>
+                    <SelectItem value="calories">Calories</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Distance / reps
-              </Label>
-              <Input
-                type="number"
-                className="h-8 w-20 font-mono-num"
-                value={scheme.betweenRounds?.amount ?? ""}
-                onChange={(e) =>
-                  setScheme({
-                    ...scheme,
-                    betweenRounds: {
-                      ...scheme.betweenRounds,
-                      amount: e.target.value === "" ? null : Number(e.target.value),
-                      prescriptionUnit:
-                        scheme.betweenRounds?.prescriptionUnit ?? "meters",
-                    },
-                  })
-                }
-              />
-            </div>
+            {(scheme.betweenRounds?.label || scheme.betweenRounds?.amount != null) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="mt-2 h-7 text-xs"
+                onClick={() => setScheme({ ...scheme, betweenRounds: undefined })}
+              >
+                Clear between-rounds movement
+              </Button>
+            )}
           </div>
         </div>
       )}

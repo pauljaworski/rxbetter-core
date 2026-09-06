@@ -54,10 +54,21 @@ describe("manual-config", () => {
     expect(getLineItemMode("weightlifting")).toBe("prescription");
   });
 
-  it("validateEditorWod requires name, items, libraries, metcon format", () => {
+  it("validateEditorWod requires name, libraries, metcon format; items optional", () => {
     expect(validateEditorWod(baseWod())).toBeNull();
     expect(validateEditorWod(baseWod({ name: "" }))).toMatch(/name/i);
-    expect(validateEditorWod(baseWod({ items: [] }))).toMatch(/line item/i);
+    expect(validateEditorWod(baseWod({ items: [] }))).toBeNull();
+    expect(
+      validateEditorWod(
+        baseWod({
+          programming_segment: "skill",
+          metcon_format: null,
+          items: [],
+          name: "Warm-up",
+          description: "Jump rope + openers",
+        }),
+      ),
+    ).toBeNull();
     expect(validateEditorWod(baseWod({ metcon_format: null }))).toMatch(/format/i);
     expect(
       validateEditorWod(baseWod({ program_library_ids: [], program_library_id: null })),

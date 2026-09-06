@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -15,10 +16,18 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
+import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
+
+export type MovementPrescription = {
+  sets: number;
+  reps: number | null;
+  /** Stored fraction 0–1 */
+  prescribedPercentage: number | null;
+};
 
 export type MovementPick =
-  | { kind: "catalog"; bench: BenchmarkTypeOption }
-  | { kind: "new"; label: string };
+  | ({ kind: "catalog"; bench: BenchmarkTypeOption } & MovementPrescription)
+  | ({ kind: "new"; label: string } & MovementPrescription);
 
 type Props = {
   open: boolean;
@@ -33,12 +42,22 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
   const [loading, setLoading] = useState(false);
   const [newMode, setNewMode] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [sets, setSets] = useState(1);
+  const [reps, setReps] = useState<number | null>(null);
+  const [pctWhole, setPctWhole] = useState<number | null>(null);
+  const [pending, setPending] = useState<
+    { kind: "catalog"; bench: BenchmarkTypeOption } | { kind: "new"; label: string } | null
+  >(null);
 
   useEffect(() => {
     if (!open) {
       setQ("");
       setNewMode(false);
       setNewLabel("");
+      setSets(1);
+      setReps(null);
+      setPctWhole(null);
+      setPending(null);
       return;
     }
     let cancelled = false;
@@ -69,12 +88,33 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
     return results.filter((r) => r.name.toLowerCase().includes(lower));
   }, [results, q]);
 
+  function prescription(): MovementPrescription {
+    return {
+      sets: Math.max(1, sets || 1),
+      reps,
+      prescribedPercentage: percentFractionFromWhole(pctWhole),
+    };
+  }
+
+  function confirmPending() {
+    if (!pending) return;
+    onPick({ ...pending, ...prescription() });
+    onOpenChange(false);
+  }
+
+  function selectCatalog(bench: BenchmarkTypeOption) {
+    setPending({ kind: "catalog", bench });
+  }
+
   function confirmNew() {
     const label = newLabel.trim();
     if (!label) return;
-    onPick({ kind: "new", label });
-    onOpenChange(false);
+    setPending({ kind: "new", label });
+    setNewMode(false);
   }
+
+  const pendingName =
+    pending?.kind === "catalog" ? pending.bench.name : pending?.kind === "new" ? pending.label : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,70 +122,135 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
         <DialogHeader>
           <DialogTitle>Add movement</DialogTitle>
           <DialogDescription>
-            Picks are filtered by programming type. Use New for gym-specific movements not in the
-            catalog.
+            Pick a movement, then set sets, reps, and optional % before adding (same flow as Complex
+            set).
           </DialogDescription>
         </DialogHeader>
 
-        <button
-          type="button"
-          onClick={() => setNewMode((v) => !v)}
-          className="flex w-full items-center gap-2 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-left text-sm transition-colors hover:bg-primary/10"
-        >
-          <Plus className="h-4 w-4 shrink-0 text-primary" />
-          <span className="font-semibold">New movement</span>
-          <span className="text-xs text-muted-foreground">(not in library)</span>
-        </button>
+        {!pending && (
+          <>
+            <button
+              type="button"
+              onClick={() => setNewMode((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-left text-sm transition-colors hover:bg-primary/10"
+            >
+              <Plus className="h-4 w-4 shrink-0 text-primary" />
+              <span className="font-semibold">New movement</span>
+              <span className="text-xs text-muted-foreground">(not in library)</span>
+            </button>
 
-        {newMode && (
-          <div className="space-y-2 rounded-md border border-border/60 p-3">
-            <Label className="text-xs">Movement name</Label>
-            <Input
-              autoFocus
-              placeholder="e.g. Tempo KB swing"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-            />
-            <Button size="sm" onClick={confirmNew} disabled={!newLabel.trim()}>
-              Add custom movement
-            </Button>
-          </div>
+            {newMode && (
+              <div className="space-y-2 rounded-md border border-border/60 p-3">
+                <Label className="text-xs">Movement name</Label>
+                <Input
+                  autoFocus
+                  placeholder="e.g. Tempo KB swing"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                />
+                <Button size="sm" onClick={confirmNew} disabled={!newLabel.trim()}>
+                  Continue
+                </Button>
+              </div>
+            )}
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search movements…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="max-h-56 space-y-1 overflow-y-auto">
+              {loading && <Skeleton className="h-10 w-full" />}
+              {!loading &&
+                filtered.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => selectCatalog(b)}
+                    className="flex w-full items-center justify-between rounded-md p-2 text-left text-sm transition-colors hover:bg-secondary"
+                  >
+                    <span className="font-medium">{b.name}</span>
+                    {b.stimulus && (
+                      <Badge variant="outline" className="text-[10px] uppercase">
+                        {b.stimulus}
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              {!loading && !filtered.length && (
+                <p className="px-2 py-4 text-center text-xs text-muted-foreground">No matches.</p>
+              )}
+            </div>
+          </>
         )}
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search movements…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="max-h-72 space-y-1 overflow-y-auto">
-          {loading && <Skeleton className="h-10 w-full" />}
-          {!loading &&
-            filtered.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => {
-                  onPick({ kind: "catalog", bench: b });
-                  onOpenChange(false);
-                }}
-                className="flex w-full items-center justify-between rounded-md p-2 text-left text-sm transition-colors hover:bg-secondary"
-              >
-                <span className="font-medium">{b.name}</span>
-                {b.stimulus && (
-                  <Badge variant="outline" className="text-[10px] uppercase">
-                    {b.stimulus}
-                  </Badge>
-                )}
-              </button>
-            ))}
-          {!loading && !filtered.length && (
-            <p className="px-2 py-4 text-center text-xs text-muted-foreground">No matches.</p>
-          )}
-        </div>
+        {pending && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Movement
+                </p>
+                <p className="text-sm font-semibold">{pendingName}</p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setPending(null)}>
+                Change
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Sets</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  className="h-8 font-mono-num"
+                  value={sets}
+                  onChange={(e) => setSets(Math.max(1, Number(e.target.value) || 1))}
+                />
+                <p className="text-[10px] text-muted-foreground">One row per set</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reps</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  className="h-8 font-mono-num"
+                  value={reps ?? ""}
+                  onChange={(e) =>
+                    setReps(e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1))
+                  }
+                  placeholder="—"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">% (optional)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="h-8 font-mono-num"
+                  value={pctWhole ?? ""}
+                  onChange={(e) =>
+                    setPctWhole(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                  placeholder="e.g. 75"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={confirmPending}>
+                Add {sets > 1 ? `${sets} sets` : "movement"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
