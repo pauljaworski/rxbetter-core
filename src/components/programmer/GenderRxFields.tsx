@@ -57,11 +57,29 @@ function seedVariant(item: EditorLineItem): RxVariant {
   };
 }
 
-/** Editor display: persisted variants or legacy columns seeded into Male. */
+/** Editor display: persisted variants or legacy columns seeded into Male and Female. */
 function displayVariants(item: EditorLineItem): RxVariants {
   const parsed = parseRxVariants(item.rx_variants);
-  if (hasRxVariants(parsed)) return parsed;
-  return { male: seedVariant(item), female: {} };
+  if (hasRxVariants(parsed)) {
+    const male = parsed.male ?? {};
+    const female = parsed.female ?? {};
+    const maleHas =
+      male.reps != null ||
+      male.weight_lb != null ||
+      (male.load_label?.trim().length ?? 0) > 0 ||
+      (male.height_label?.trim().length ?? 0) > 0;
+    const femaleHas =
+      female.reps != null ||
+      female.weight_lb != null ||
+      (female.load_label?.trim().length ?? 0) > 0 ||
+      (female.height_label?.trim().length ?? 0) > 0;
+    // Prefill empty gender from the other so amounts aren't blank on one side.
+    if (maleHas && !femaleHas) return { male, female: { ...male } };
+    if (femaleHas && !maleHas) return { male: { ...female }, female };
+    return { male, female };
+  }
+  const seed = seedVariant(item);
+  return { male: { ...seed }, female: { ...seed } };
 }
 
 function updateVariant(

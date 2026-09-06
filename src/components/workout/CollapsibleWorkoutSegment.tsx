@@ -101,14 +101,14 @@ export function CollapsibleWorkoutSegment({
             </h3>
             {!expanded && (
               <div className="mt-2 space-y-0.5">
+                {summary.header && (
+                  <p className="text-xs font-medium text-primary/80">{summary.header}</p>
+                )}
                 {summary.lines.map((line, i) => (
                   <p key={i} className="text-xs text-muted-foreground">
                     {line}
                   </p>
                 ))}
-                {summary.footer && (
-                  <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
-                )}
                 {wod.description && (
                   <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                     {wod.description}
@@ -135,6 +135,11 @@ export function CollapsibleWorkoutSegment({
 
       {expanded && (
         <div className="border-t border-border/60 bg-card/50">
+          {summary.header && (
+            <p className="border-b border-border/60 px-5 py-2.5 text-sm font-semibold text-primary">
+              {summary.header}
+            </p>
+          )}
           {wod.description && (
             <p className="whitespace-pre-line border-b border-border/60 px-5 py-3 text-sm leading-relaxed text-muted-foreground">
               {wod.description}

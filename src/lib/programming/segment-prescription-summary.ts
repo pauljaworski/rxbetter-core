@@ -46,35 +46,32 @@ export function summarizeLineItemBrief(item: LogLineItem): string {
   return rxTitle;
 }
 
+export type SegmentPrescriptionSummary = {
+  /** Format / count shown above the movement list (e.g. "4 RFT · 22 min cap" or "5 sets"). */
+  header: string | null;
+  lines: string[];
+};
+
 export function summarizeSegmentPrescription(
   wod: SegmentSummaryInput,
   items: LogLineItem[],
-): { lines: string[]; footer: string | null } {
+): SegmentPrescriptionSummary {
   if (isMetconSegment(wod.programming_segment)) {
     const scheme = parseWorkoutScheme(wod.workout_scheme);
     const schemeLabel = schemeSummaryLabel(scheme);
-    const lines = items.length
-      ? items.map((it) => summarizeLineItemBrief(it))
-      : schemeLabel
-        ? []
-        : [];
-    const footer =
-      schemeLabel && items.length
-        ? schemeLabel
-        : schemeLabel
-          ? null
-          : items.length
-            ? `${items.length} movement${items.length === 1 ? "" : "s"}`
-            : null;
-    return { lines, footer };
+    const lines = items.length ? items.map((it) => summarizeLineItemBrief(it)) : [];
+    return {
+      header: schemeLabel,
+      lines,
+    };
   }
 
   if (!items.length) {
-    return { lines: [], footer: "No prescribed sets" };
+    return { header: "No prescribed sets", lines: [] };
   }
 
   return {
+    header: `${items.length} ${items.length === 1 ? "set" : "sets"}`,
     lines: items.map((it) => summarizeLineItemBrief(it)),
-    footer: `${items.length} line item${items.length === 1 ? "" : "s"}`,
   };
 }

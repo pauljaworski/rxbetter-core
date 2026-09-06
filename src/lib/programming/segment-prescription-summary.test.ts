@@ -90,12 +90,12 @@ describe("segment-prescription-summary", () => {
     expect(line).toContain("Ski Erg");
   });
 
-  it("summarizes metcon with scheme footer", () => {
-    const { lines, footer } = summarizeSegmentPrescription(
+  it("summarizes metcon with scheme header above movements", () => {
+    const { lines, header } = summarizeSegmentPrescription(
       {
         programming_segment: "metcon",
         metcon_format: "for_time",
-        workout_scheme: { kind: "rft", rounds: 3, scoreMetric: "time" },
+        workout_scheme: { kind: "rft", rounds: 3, scoreMetric: "time", timeCapMin: 22 },
       },
       [
         {
@@ -114,6 +114,41 @@ describe("segment-prescription-summary", () => {
       ],
     );
     expect(lines[0]).toContain("Wall Ball");
-    expect(footer).toBe("3 RFT");
+    expect(header).toMatch(/3 RFT/);
+    expect(header).toMatch(/22 min cap/);
+  });
+
+  it("summarizes weightlifting with sets header", () => {
+    const { header, lines } = summarizeSegmentPrescription(
+      { programming_segment: "weightlifting" },
+      [
+        {
+          id: "1",
+          sequence_number: 1,
+          reps_prescribed: 5,
+          prescribed_percentage: null,
+          prescribed_weight: null,
+          prescribed_score: null,
+          status: null,
+          benchmark_definition_id: null,
+          benchmark_type_id: null,
+          bench_name: "Back Squat",
+        },
+        {
+          id: "2",
+          sequence_number: 2,
+          reps_prescribed: 5,
+          prescribed_percentage: null,
+          prescribed_weight: null,
+          prescribed_score: null,
+          status: null,
+          benchmark_definition_id: null,
+          benchmark_type_id: null,
+          bench_name: "Back Squat",
+        },
+      ],
+    );
+    expect(header).toBe("2 sets");
+    expect(lines).toHaveLength(2);
   });
 });

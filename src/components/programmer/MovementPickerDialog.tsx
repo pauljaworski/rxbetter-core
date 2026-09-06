@@ -15,12 +15,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
+import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
 
 export type MovementPrescription = {
   sets: number;
   reps: number | null;
+  prescriptionUnit: PrescriptionUnit;
   /** Stored fraction 0–1 */
   prescribedPercentage: number | null;
 };
@@ -36,6 +45,17 @@ type Props = {
   onPick: (pick: MovementPick) => void;
 };
 
+/** Suggest meters for monostructural cardio; otherwise reps. */
+export function suggestPrescriptionUnit(movementName: string): PrescriptionUnit {
+  const n = movementName.trim().toLowerCase();
+  if (
+    /\b(run|row|bike|ski|swim|walk|echo|assault|erg|c2|concept\s*2|airbike|fan\s*bike)\b/.test(n)
+  ) {
+    return "meters";
+  }
+  return "reps";
+}
+
 export function MovementPickerDialog({ open, onOpenChange, programmingSegment, onPick }: Props) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<BenchmarkTypeOption[]>([]);
@@ -44,6 +64,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
   const [newLabel, setNewLabel] = useState("");
   const [sets, setSets] = useState(1);
   const [reps, setReps] = useState<number | null>(null);
+  const [unit, setUnit] = useState<PrescriptionUnit>("reps");
   const [pctWhole, setPctWhole] = useState<number | null>(null);
   const [pending, setPending] = useState<
     { kind: "catalog"; bench: BenchmarkTypeOption } | { kind: "new"; label: string } | null
@@ -56,6 +77,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
       setNewLabel("");
       setSets(1);
       setReps(null);
+      setUnit("reps");
       setPctWhole(null);
       setPending(null);
       return;
@@ -92,6 +114,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
     return {
       sets: Math.max(1, sets || 1),
       reps,
+      prescriptionUnit: unit,
       prescribedPercentage: percentFractionFromWhole(pctWhole),
     };
   }
@@ -104,17 +127,28 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
 
   function selectCatalog(bench: BenchmarkTypeOption) {
     setPending({ kind: "catalog", bench });
+    setUnit(suggestPrescriptionUnit(bench.name));
   }
 
   function confirmNew() {
     const label = newLabel.trim();
     if (!label) return;
     setPending({ kind: "new", label });
+    setUnit(suggestPrescriptionUnit(label));
     setNewMode(false);
   }
 
   const pendingName =
     pending?.kind === "catalog" ? pending.bench.name : pending?.kind === "new" ? pending.label : null;
+
+  const amountLabel =
+    unit === "meters"
+      ? "Meters"
+      : unit === "calories"
+        ? "Calories"
+        : unit === "feet"
+          ? "Feet"
+          : "Reps";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -122,8 +156,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
         <DialogHeader>
           <DialogTitle>Add movement</DialogTitle>
           <DialogDescription>
-            Pick a movement, then set sets, reps, and optional % before adding (same flow as Complex
-            set).
+            Pick a movement, then set sets, amount, unit, and optional % before adding.
           </DialogDescription>
         </DialogHeader>
 
@@ -201,7 +234,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
                 Change
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="space-y-1">
                 <Label className="text-xs">Sets</Label>
                 <Input
@@ -214,7 +247,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
                 <p className="text-[10px] text-muted-foreground">One row per set</p>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Reps</Label>
+                <Label className="text-xs">{amountLabel}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -225,6 +258,21 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
                   }
                   placeholder="—"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Unit</Label>
+                <Select value={unit} onValueChange={(v) => setUnit(v as PrescriptionUnit)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRESCRIPTION_UNITS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">% (optional)</Label>
@@ -241,6 +289,10 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
                 />
               </div>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              Male and female Rx amounts default to the same value; adjust either after adding if
+              needed.
+            </p>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel

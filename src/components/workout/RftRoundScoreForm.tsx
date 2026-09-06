@@ -24,7 +24,6 @@ import {
   roundInputsFromMeta,
 } from "@/lib/programming/rft-score";
 import {
-  schemeSummaryLabel,
   type rftSchemeSchema,
 } from "@/lib/programming/workout-scheme-schema";
 import type { z } from "zod";
@@ -48,7 +47,6 @@ export function RftRoundScoreForm({ wod, scheme, contactId, existing, onLogged }
   const rounds = scheme.rounds;
   const restSec = scheme.restBetweenRoundsSec ?? 0;
   const restTotalSec = rftRestTotalSec(rounds, restSec);
-  const schemeLabel = schemeSummaryLabel(scheme);
   const { save, submitting } = useSaveSegmentPerformance();
 
   const [roundInputs, setRoundInputs] = useState<string[]>(() => emptyRoundInputs(rounds));
@@ -109,9 +107,6 @@ export function RftRoundScoreForm({ wod, scheme, contactId, existing, onLogged }
     <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
         <p className="eyebrow">Your result</p>
-        {schemeLabel && (
-          <p className="mt-1 text-lg font-black tracking-tight text-primary">{schemeLabel}</p>
-        )}
         {restTotalSec > 0 && (
           <p className="mt-1 text-xs text-muted-foreground">
             Prescribed rest: {formatRestLabel(restTotalSec)} total (excluded from working time)

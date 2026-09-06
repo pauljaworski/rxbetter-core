@@ -331,14 +331,14 @@ export default function CalendarPage() {
                         </h3>
                         {!isOpen && (
                           <div className="mt-2 space-y-0.5">
+                            {summary.header && (
+                              <p className="text-xs font-medium text-primary/80">{summary.header}</p>
+                            )}
                             {summary.lines.map((line, i) => (
                               <p key={i} className="text-xs text-muted-foreground">
                                 {line}
                               </p>
                             ))}
-                            {summary.footer && (
-                              <p className="text-xs font-medium text-primary/80">{summary.footer}</p>
-                            )}
                             {w.description && (
                               <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                                 {w.description}
@@ -356,6 +356,11 @@ export default function CalendarPage() {
                     </button>
                     {isOpen && (
                       <div className="border-t border-border/60">
+                        {summary.header && (
+                          <p className="border-b border-border/60 px-4 py-2.5 text-sm font-semibold text-primary">
+                            {summary.header}
+                          </p>
+                        )}
                         {w.description && (
                           <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
                             {w.description}

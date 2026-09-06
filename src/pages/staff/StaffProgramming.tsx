@@ -145,6 +145,23 @@ export default function StaffProgramming() {
   function addLineItem(wodIdx: number, pick: MovementPick) {
     setServerSyncMode(null);
     const setCount = Math.max(1, pick.sets || 1);
+    const unit = pick.prescriptionUnit ?? "reps";
+    const genderRx = {
+      male: {
+        reps: pick.reps,
+        prescription_unit: unit,
+        weight_lb: null as number | null,
+        load_label: null as string | null,
+        height_label: null as string | null,
+      },
+      female: {
+        reps: pick.reps,
+        prescription_unit: unit,
+        weight_lb: null as number | null,
+        load_label: null as string | null,
+        height_label: null as string | null,
+      },
+    };
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -164,12 +181,14 @@ export default function StaffProgramming() {
           _new: true as const,
           sequence_number: w.items.length + j + 1,
           reps_prescribed: pick.reps,
+          prescription_unit: unit,
           prescribed_weight: null,
           prescribed_percentage: pick.prescribedPercentage,
           prescribed_score: null,
           percent_rep_max: 1,
           line_item_kind: "strength_set",
           movement_components: [],
+          rx_variants: genderRx,
           ...baseFields,
         }));
         return { ...w, items: [...w.items, ...items] };

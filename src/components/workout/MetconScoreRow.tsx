@@ -22,7 +22,6 @@ import {
 } from "@/lib/programming/metcon-score";
 import {
   parseWorkoutScheme,
-  schemeSummaryLabel,
 } from "@/lib/programming/workout-scheme-schema";
 import { useSaveSegmentPerformance } from "@/hooks/useSaveSegmentPerformance";
 import { useAuth, resolveDefaultWorkoutScale } from "@/contexts/AuthContext";
@@ -42,7 +41,6 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
   const [completed, setCompleted] = useState(false);
   const [workoutScale, setWorkoutScale] = useState<WorkoutScale | "">("");
   const scheme = parseWorkoutScheme(wod.workout_scheme);
-  const schemeLabel = schemeSummaryLabel(scheme);
   const scoreMetric = effectiveScoreMetric(scheme?.scoreMetric, scheme?.kind);
   const { save, submitting } = useSaveSegmentPerformance();
 
@@ -100,9 +98,6 @@ export function MetconScoreRow({ wod, contactId, existing, onLogged }: Props) {
     <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
         <p className="eyebrow">Your result</p>
-        {schemeLabel && (
-          <p className="mt-1 text-lg font-black tracking-tight text-primary">{schemeLabel}</p>
-        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
