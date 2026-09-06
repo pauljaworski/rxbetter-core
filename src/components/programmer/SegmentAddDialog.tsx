@@ -44,6 +44,8 @@ type Props = {
   currentDateKey?: string;
   currentDayWods?: EditorWod[];
   onAdd: (wod: EditorWod) => void;
+  /** Add linked buy-in / main / cash-out drafts (one athlete score). */
+  onAddBuyInMainCashOut?: () => void;
 };
 
 export function SegmentAddDialog({
@@ -56,6 +58,7 @@ export function SegmentAddDialog({
   currentDateKey,
   currentDayWods = [],
   onAdd,
+  onAddBuyInMainCashOut,
 }: Props) {
   const [mode, setMode] = useState<Mode>("choose");
   const [uiKey, setUiKey] = useState("metcon");
@@ -175,21 +178,38 @@ export function SegmentAddDialog({
         </DialogHeader>
 
         {mode === "choose" && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => setMode("copy")}>
-              <Copy className="h-5 w-5" />
-              <span className="font-semibold">Copy from date</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                Clone a segment from another day
-              </span>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => setMode("new")}>
-              <Plus className="h-5 w-5" />
-              <span className="font-semibold">New segment</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                Pick type, format, and tracks
-              </span>
-            </Button>
+          <div className="grid gap-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => setMode("copy")}>
+                <Copy className="h-5 w-5" />
+                <span className="font-semibold">Copy from date</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  Clone a segment from another day
+                </span>
+              </Button>
+              <Button variant="outline" className="h-auto flex-col gap-2 py-4" onClick={() => setMode("new")}>
+                <Plus className="h-5 w-5" />
+                <span className="font-semibold">New segment</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  Pick type, format, and tracks
+                </span>
+              </Button>
+            </div>
+            {onAddBuyInMainCashOut && (
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1 py-3"
+                onClick={() => {
+                  onAddBuyInMainCashOut();
+                  onOpenChange(false);
+                }}
+              >
+                <span className="font-semibold">Buy-in · Main · Cash-out</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  Three linked parts, one total score (e.g. run + RFT + run)
+                </span>
+              </Button>
+            )}
           </div>
         )}
 

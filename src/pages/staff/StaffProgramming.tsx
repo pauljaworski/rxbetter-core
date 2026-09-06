@@ -441,9 +441,6 @@ export default function StaffProgramming() {
         <Button onClick={() => setSegmentAddOpen(true)} size="sm" variant="secondary">
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
-        <Button onClick={addBuyInMainCashOut} size="sm" variant="outline">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Buy-in · Main · Cash-out
-        </Button>
         <Button
           onClick={() => void handlePublishDay()}
           disabled={busy}
@@ -503,6 +500,7 @@ export default function StaffProgramming() {
         currentDateKey={dateKey}
         currentDayWods={wods}
         onAdd={addWod}
+        onAddBuyInMainCashOut={addBuyInMainCashOut}
       />
 
       {movementPicker && (
