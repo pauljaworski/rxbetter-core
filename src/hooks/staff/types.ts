@@ -114,6 +114,8 @@ export type EditorLineItem = {
   movement_label?: string | null;
   line_item_kind?: LineItemKind;
   movement_components?: MovementComponent[];
+  /** Rest after this set / between multi-move sets (seconds). */
+  rest_sec?: number | null;
   /** Male / female Rx amounts and loads (both tiers are Rx). */
   rx_variants?: RxVariants;
 };
@@ -150,6 +152,8 @@ export type BenchmarkTypeOption = {
   stimulus: string | null;
   sub_stimulus?: string | null;
   purpose_variation?: string | null;
+  /** Set when this movement belongs to a single gym (not platform catalog). */
+  gym_id?: string | null;
 };
 
 /** Client-side draft from plain-text intake before commit. */

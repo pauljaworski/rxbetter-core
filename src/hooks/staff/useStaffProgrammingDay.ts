@@ -67,6 +67,7 @@ function mapWodsFromRows(
     line_item_kind: string | null;
     movement_components: unknown;
     rx_variants: unknown;
+    rest_sec?: number | null;
   }>,
   typeMap: Map<string, string>,
   assignmentMap: Map<string, string[]>,
@@ -109,7 +110,9 @@ function mapWodsFromRows(
             const components = parseMovementComponents(i.movement_components);
             const complexTitle =
               kind === "complex_set" && components.length
-                ? formatComplexMovementTitle(components)
+                ? formatComplexMovementTitle(components, {
+                    restBetweenSetsSec: i.rest_sec,
+                  })
                 : null;
             return {
               ...(markNew ? { _new: true as const } : { id: i.id }),
@@ -128,9 +131,12 @@ function mapWodsFromRows(
               movement_label: i.movement_label,
               line_item_kind: kind,
               movement_components: components,
+              rest_sec: i.rest_sec ?? null,
               bench_name: complexTitle
                 ? complexTitle
-                : i.benchmark_type_id
+                : kind === "rest"
+                  ? "Rest"
+                  : i.benchmark_type_id
                   ? typeMap.get(i.benchmark_type_id)
                   : (i.movement_label ?? undefined),
               rx_variants: parseRxVariants(i.rx_variants),
@@ -177,7 +183,7 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants",
+        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants, rest_sec",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
@@ -227,7 +233,7 @@ export async function fetchProgrammingDayForCopy(
   const { data: items } = await supabase
     .from("programming_line_item")
     .select(
-      "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants",
+      "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_weight, prescribed_percentage, prescribed_score, benchmark_type_id, benchmark_definition_id, movement_label, line_item_kind, movement_components, rx_variants, rest_sec",
     )
     .in("programming_id", srcIds)
     .is("contact_id", null)

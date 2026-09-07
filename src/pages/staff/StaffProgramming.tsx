@@ -253,6 +253,31 @@ export default function StaffProgramming() {
     );
   }
 
+  function addRestItem(wodIdx: number) {
+    setServerSyncMode(null);
+    setWods((prev) =>
+      prev.map((w, i) => {
+        if (i !== wodIdx) return w;
+        const rest: EditorLineItem = {
+          _new: true,
+          sequence_number: w.items.length + 1,
+          reps_prescribed: 90,
+          prescription_unit: null,
+          prescribed_weight: null,
+          prescribed_percentage: null,
+          prescribed_score: null,
+          benchmark_type_id: null,
+          bench_name: "Rest 1:30",
+          movement_label: "Rest",
+          line_item_kind: "rest",
+          movement_components: [],
+          rest_sec: 90,
+        };
+        return { ...w, items: [...w.items, rest] };
+      }),
+    );
+  }
+
   function duplicateWod(wodIdx: number) {
     const src = wods[wodIdx];
     if (!src) return;
@@ -505,6 +530,7 @@ export default function StaffProgramming() {
               onDuplicate={() => duplicateWod(idx)}
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
               onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
+              onAddRest={() => addRestItem(idx)}
               onLinkWithPrevious={() => linkWithPrevious(idx)}
               canMoveUp={canMoveSegment(wods, idx, "up")}
               canMoveDown={canMoveSegment(wods, idx, "down")}
@@ -532,6 +558,7 @@ export default function StaffProgramming() {
           open
           onOpenChange={(o) => !o && setMovementPicker(null)}
           programmingSegment={wods[movementPicker.wodIdx]?.programming_segment ?? "metcon"}
+          gymId={activeGymId}
           onPick={(pick) => {
             addLineItem(movementPicker.wodIdx, pick);
             setMovementPicker(null);
@@ -543,6 +570,12 @@ export default function StaffProgramming() {
         open={complexEditor != null}
         onOpenChange={(o) => !o && setComplexEditor(null)}
         catalog={strengthCatalog}
+        gymId={activeGymId}
+        programmingSegment={
+          complexEditor != null
+            ? (wods[complexEditor.wodIdx]?.programming_segment ?? "weightlifting")
+            : "weightlifting"
+        }
         onSave={(items) => {
           if (complexEditor) addComplexItems(complexEditor.wodIdx, items);
           setComplexEditor(null);

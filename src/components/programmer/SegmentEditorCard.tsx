@@ -66,6 +66,7 @@ type Props = {
   onDuplicate: () => void;
   onAddMovement: () => void;
   onOpenComplexEditor: () => void;
+  onAddRest?: () => void;
   /** Link this segment with the previous one as one athlete score. */
   onLinkWithPrevious?: () => void;
   onMoveUp?: () => void;
@@ -89,6 +90,7 @@ export function SegmentEditorCard({
   wodIndex,
   allWods,
   onOpenComplexEditor,
+  onAddRest,
   onLinkWithPrevious,
   onMoveUp,
   onMoveDown,
@@ -321,9 +323,16 @@ export function SegmentEditorCard({
             className="h-9 min-w-[10rem] flex-1"
           />
           {isStrength && (
-            <Button size="sm" variant="outline" onClick={onOpenComplexEditor}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Complex set
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={onOpenComplexEditor}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Multi-move set
+              </Button>
+              {onAddRest && (
+                <Button size="sm" variant="outline" onClick={onAddRest}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Rest
+                </Button>
+              )}
+            </>
           )}
           <TooltipProvider>
             <Tooltip>
@@ -548,11 +557,15 @@ export function SegmentEditorCard({
                     {j + 1}
                   </span>
                   <p className="flex-1 text-sm font-bold">{movementDisplayName(it)}</p>
-                  {!it.benchmark_type_id && (
+                  {it.line_item_kind === "rest" ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      Rest
+                    </Badge>
+                  ) : !it.benchmark_type_id ? (
                     <Badge variant="secondary" className="text-[10px]">
                       Custom
                     </Badge>
-                  )}
+                  ) : null}
                   <Button
                     size="icon"
                     variant="ghost"

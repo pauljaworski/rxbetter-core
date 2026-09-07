@@ -71,9 +71,19 @@ export function useIntakeCommit(
       })),
     };
 
-    if (wod.items.some((it) => !it.benchmark_type_id) && wod.programming_segment === "weightlifting") {
+    if (
+      wod.programming_segment === "weightlifting" &&
+      wod.items.some(
+        (it) =>
+          it.line_item_kind !== "rest" &&
+          !it.benchmark_type_id &&
+          !(it.movement_label ?? "").trim() &&
+          !(it.bench_name ?? "").trim() &&
+          !(it.movement_components?.length),
+      )
+    ) {
       return {
-        error: "Each strength movement needs a catalog match before saving.",
+        error: "Each strength movement needs a name or catalog match before saving.",
         programmingId: null,
       };
     }

@@ -129,7 +129,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
     const { data: items, error: itemErr } = await supabase
       .from("programming_line_item")
       .select(
-        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label, line_item_kind, movement_components, rx_variants",
+        "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label, line_item_kind, movement_components, rx_variants, rest_sec",
       )
       .in("programming_id", ids)
       .is("contact_id", null)
@@ -153,13 +153,16 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
           const t = i.benchmark_type_id ? typeMap.get(i.benchmark_type_id) : undefined;
           const components = parseMovementComponents(i.movement_components);
           const complexTitle =
-            components.length > 0 ? formatComplexMovementTitle(components) : null;
+            components.length > 0
+              ? formatComplexMovementTitle(components, { restBetweenSetsSec: i.rest_sec })
+              : null;
           return {
             ...i,
             bench_name: complexTitle ?? t?.name ?? i.movement_label ?? undefined,
             stimulus: t?.stimulus ?? undefined,
             line_item_kind: i.line_item_kind,
             movement_components: i.movement_components,
+            rest_sec: i.rest_sec,
           } as WorkoutLineItem;
         });
       const enriched = (await enrichLogLineItems(rawItems)) as WorkoutLineItem[];

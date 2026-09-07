@@ -16,6 +16,10 @@ import {
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
 import { GenderRxFields } from "@/components/programmer/GenderRxFields";
+import {
+  formatRestDuration,
+  parseRestDuration,
+} from "@/lib/programming/gym-benchmark-type";
 
 function NumInput({
   label,
@@ -51,6 +55,31 @@ type Props = {
 };
 
 export function LineItemFields({ mode, item, onChange }: Props) {
+  if (item.line_item_kind === "rest") {
+    return (
+      <div className="space-y-1 pl-8">
+        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+          Rest (m:ss)
+        </Label>
+        <Input
+          className="h-8 w-28 font-mono-num text-xs"
+          placeholder="1:30"
+          defaultValue={formatRestDuration(item.rest_sec ?? item.reps_prescribed) ?? ""}
+          key={`rest-line-${item.id ?? item.sequence_number}-${item.rest_sec ?? "x"}`}
+          onBlur={(e) => {
+            const sec = parseRestDuration(e.target.value);
+            onChange({
+              rest_sec: sec,
+              reps_prescribed: sec,
+              movement_label: "Rest",
+              bench_name: sec != null ? `Rest ${formatRestDuration(sec)}` : "Rest",
+            });
+          }}
+        />
+      </div>
+    );
+  }
+
   if (mode === "tracking_only") {
     return (
       <div className="space-y-2 pl-8">
@@ -66,7 +95,7 @@ export function LineItemFields({ mode, item, onChange }: Props) {
   return (
     <div className="space-y-2 pl-8">
       {!complexSet && (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
           <NumInput
             label="reps"
             value={item.reps_prescribed}
@@ -103,6 +132,18 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             value={item.prescribed_weight}
             onChange={(v) => onChange({ prescribed_weight: v })}
           />
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              Rest after
+            </Label>
+            <Input
+              className="h-8 font-mono-num text-xs"
+              placeholder="1:30"
+              defaultValue={formatRestDuration(item.rest_sec) ?? ""}
+              key={`rest-${item.id ?? item.sequence_number}-${item.rest_sec ?? "x"}`}
+              onBlur={(e) => onChange({ rest_sec: parseRestDuration(e.target.value) })}
+            />
+          </div>
         </div>
       )}
       {complexSet && (
@@ -138,11 +179,23 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             value={item.prescribed_weight}
             onChange={(v) => onChange({ prescribed_weight: v })}
           />
+          <div className="space-y-1">
+            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              Rest between sets
+            </Label>
+            <Input
+              className="h-8 font-mono-num text-xs"
+              placeholder="1:30"
+              defaultValue={formatRestDuration(item.rest_sec) ?? ""}
+              key={`crest-${item.id ?? item.sequence_number}-${item.rest_sec ?? "x"}`}
+              onBlur={(e) => onChange({ rest_sec: parseRestDuration(e.target.value) })}
+            />
+          </div>
         </div>
       )}
       <p className="text-[10px] text-muted-foreground">
         {complexSet
-          ? "One line item = one set. Reps per movement are in the complex title (e.g. 1 Snatch + 1 Hang Snatch)."
+          ? "One line item = one set. Movement amounts are in the title (e.g. 8 BSS, 12 RDL, Rest 1:30)."
           : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
       </p>
     </div>

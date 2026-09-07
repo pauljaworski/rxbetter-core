@@ -25,6 +25,8 @@ import {
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
 import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import { ensureGymBenchmarkType } from "@/lib/programming/gym-benchmark-type";
+import { toast } from "sonner";
 
 export type MovementPrescription = {
   sets: number;
@@ -42,6 +44,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   programmingSegment: string;
+  gymId: string | null;
   onPick: (pick: MovementPick) => void;
 };
 
@@ -56,7 +59,13 @@ export function suggestPrescriptionUnit(movementName: string): PrescriptionUnit 
   return "reps";
 }
 
-export function MovementPickerDialog({ open, onOpenChange, programmingSegment, onPick }: Props) {
+export function MovementPickerDialog({
+  open,
+  onOpenChange,
+  programmingSegment,
+  gymId,
+  onPick,
+}: Props) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<BenchmarkTypeOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +78,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
   const [pending, setPending] = useState<
     { kind: "catalog"; bench: BenchmarkTypeOption } | { kind: "new"; label: string } | null
   >(null);
+  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -87,7 +97,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
       setLoading(true);
       const query = supabase
         .from("benchmark_type")
-        .select("id, name, stimulus, sub_stimulus, purpose_variation")
+        .select("id, name, stimulus, sub_stimulus, purpose_variation, gym_id")
         .order("name")
         .limit(80);
       if (q) query.ilike("name", `%${q}%`);
@@ -119,10 +129,28 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
     };
   }
 
-  function confirmPending() {
+  async function confirmPending() {
     if (!pending) return;
-    onPick({ ...pending, ...prescription() });
-    onOpenChange(false);
+    const rx = prescription();
+    if (pending.kind === "catalog") {
+      onPick({ ...pending, ...rx });
+      onOpenChange(false);
+      return;
+    }
+    if (!gymId) {
+      toast.error("Select a gym before adding a custom movement");
+      return;
+    }
+    setCommitting(true);
+    try {
+      const bench = await ensureGymBenchmarkType(gymId, pending.label, programmingSegment);
+      onPick({ kind: "catalog", bench, ...rx });
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save movement to gym library");
+    } finally {
+      setCommitting(false);
+    }
   }
 
   function selectCatalog(bench: BenchmarkTypeOption) {
@@ -169,7 +197,7 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
             >
               <Plus className="h-4 w-4 shrink-0 text-primary" />
               <span className="font-semibold">New movement</span>
-              <span className="text-xs text-muted-foreground">(not in library)</span>
+              <span className="text-xs text-muted-foreground">(saves to this gym&apos;s library)</span>
             </button>
 
             {newMode && (
@@ -207,11 +235,18 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
                     className="flex w-full items-center justify-between rounded-md p-2 text-left text-sm transition-colors hover:bg-secondary"
                   >
                     <span className="font-medium">{b.name}</span>
-                    {b.stimulus && (
-                      <Badge variant="outline" className="text-[10px] uppercase">
-                        {b.stimulus}
-                      </Badge>
-                    )}
+                    <span className="flex items-center gap-1">
+                      {b.gym_id && (
+                        <Badge variant="secondary" className="text-[10px] uppercase">
+                          Gym
+                        </Badge>
+                      )}
+                      {b.stimulus && (
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {b.stimulus}
+                        </Badge>
+                      )}
+                    </span>
                   </button>
                 ))}
               {!loading && !filtered.length && (
@@ -297,8 +332,10 @@ export function MovementPickerDialog({ open, onOpenChange, programmingSegment, o
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={confirmPending}>
-                Add {sets > 1 ? `${sets} sets` : "movement"}
+              <Button onClick={confirmPending} disabled={committing}>
+                {committing
+                  ? "Saving…"
+                  : `Add ${sets > 1 ? `${sets} sets` : "movement"}`}
               </Button>
             </DialogFooter>
           </div>

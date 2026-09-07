@@ -59,6 +59,7 @@ export type CatalogEntry = {
   stimulus: string | null;
   sub_stimulus?: string | null;
   purpose_variation?: string | null;
+  gym_id?: string | null;
 };
 
 const STRENGTH_SUB_STIMULI = new Set(["clean", "jerk", "press", "pull", "snatch", "squat"]);
@@ -176,8 +177,20 @@ export function canAddMovement(wod: Pick<EditorWod, "programming_segment" | "met
 }
 
 export function movementDisplayName(item: EditorLineItem): string {
+  if (item.line_item_kind === "rest") {
+    const sec = item.rest_sec ?? item.reps_prescribed;
+    if (sec != null && sec > 0) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      const label = m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `:${String(s).padStart(2, "0")}`;
+      return `Rest ${label}`;
+    }
+    return "Rest";
+  }
   if (item.line_item_kind === "complex_set" && item.movement_components?.length) {
-    return formatComplexMovementTitle(item.movement_components);
+    return formatComplexMovementTitle(item.movement_components, {
+      restBetweenSetsSec: item.rest_sec,
+    });
   }
   return item.bench_name ?? item.movement_label ?? "Movement";
 }
@@ -196,13 +209,13 @@ export function validateEditorWod(wod: EditorWod): string | null {
   }
   // Description-only sections (e.g. Warm-up) are allowed — no line items required.
   for (const it of wod.items) {
+    if (it.line_item_kind === "rest" || it.line_item_kind === "note") continue;
+    if (it.line_item_kind === "complex_set" && (it.movement_components?.length ?? 0) >= 2) {
+      continue;
+    }
     if (!it.benchmark_type_id && !(it.movement_label ?? "").trim() && !(it.bench_name ?? "").trim()) {
       return "Each movement needs a name (library pick or New movement label).";
     }
-  }
-  if (wod.programming_segment === "weightlifting") {
-    const missing = wod.items.some((it) => !it.benchmark_type_id);
-    if (missing) return "Weightlifting movements must be linked to the catalog.";
   }
   return null;
 }

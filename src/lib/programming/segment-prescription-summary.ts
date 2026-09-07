@@ -24,7 +24,20 @@ export type SegmentSummaryInput = {
 
 function loadLabel(item: LogLineItem): string {
   const components = parseMovementComponents(item.movement_components);
-  if (components.length) return formatComplexMovementTitle(components);
+  if (components.length) {
+    return formatComplexMovementTitle(components, {
+      restBetweenSetsSec: item.rest_sec,
+    });
+  }
+  if (item.line_item_kind === "rest") {
+    const sec = item.rest_sec ?? item.reps_prescribed;
+    if (sec != null && sec > 0) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `Rest ${m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `:${String(s).padStart(2, "0")}`}`;
+    }
+    return "Rest";
+  }
   return item.bench_name ?? "Movement";
 }
 

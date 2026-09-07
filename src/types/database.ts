@@ -439,6 +439,7 @@ export type Database = {
       benchmark_type: {
         Row: {
           created_at: string
+          gym_id: string | null
           id: string
           name: string
           purpose_variation: string | null
@@ -448,6 +449,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          gym_id?: string | null
           id?: string
           name: string
           purpose_variation?: string | null
@@ -457,6 +459,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          gym_id?: string | null
           id?: string
           name?: string
           purpose_variation?: string | null
@@ -464,7 +467,15 @@ export type Database = {
           sub_stimulus?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "benchmark_type_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contact: {
         Row: {
@@ -1382,6 +1393,7 @@ export type Database = {
           prescription_unit: string | null
           programming_id: string
           reps_prescribed: number | null
+          rest_sec: number | null
           rx_variants: Json
           sequence_number: number | null
           status: string | null
@@ -1407,6 +1419,7 @@ export type Database = {
           prescription_unit?: string | null
           programming_id: string
           reps_prescribed?: number | null
+          rest_sec?: number | null
           rx_variants?: Json
           sequence_number?: number | null
           status?: string | null
@@ -1432,6 +1445,7 @@ export type Database = {
           prescription_unit?: string | null
           programming_id?: string
           reps_prescribed?: number | null
+          rest_sec?: number | null
           rx_variants?: Json
           sequence_number?: number | null
           status?: string | null
@@ -1551,6 +1565,16 @@ export type Database = {
       claim_fitness_track_link: {
         Args: { p_link_id: string; p_membership_offering_term_id: string }
         Returns: Json
+      }
+      ensure_gym_benchmark_type: {
+        Args: {
+          p_gym_id: string
+          p_name: string
+          p_purpose_variation?: string
+          p_stimulus?: string
+          p_sub_stimulus?: string
+        }
+        Returns: string
       }
       get_fitness_track_link_public: {
         Args: { p_link_id: string }

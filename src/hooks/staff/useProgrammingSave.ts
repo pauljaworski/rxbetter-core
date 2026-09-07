@@ -14,6 +14,7 @@ import type { Json } from "@/types/database";
 import {
   formatComplexMovementTitle,
   movementComponentsForSave,
+  type MovementComponent,
 } from "@/lib/programming/movement-components-schema";
 import { defaultLineItemKindForSegment, isLineItemKind } from "@/lib/programming/line-item-kind";
 import {
@@ -24,6 +25,63 @@ import {
   rxVariantsForSave,
   syncLegacyFieldsFromVariants,
 } from "@/lib/programming/rx-variants-schema";
+import { ensureGymBenchmarkType } from "@/lib/programming/gym-benchmark-type";
+
+async function linkCustomMovementsToGymCatalog(
+  gymId: string,
+  programmingSegment: string,
+  items: EditorLineItem[],
+): Promise<EditorLineItem[]> {
+  const out: EditorLineItem[] = [];
+  for (const it of items) {
+    if (it.line_item_kind === "rest" || it.line_item_kind === "note") {
+      out.push(it);
+      continue;
+    }
+
+    let next = { ...it };
+
+    if (next.line_item_kind === "complex_set" && next.movement_components?.length) {
+      const comps: MovementComponent[] = [];
+      for (const c of next.movement_components) {
+        if (c.benchmark_type_id || !c.label.trim()) {
+          comps.push(c);
+          continue;
+        }
+        const created = await ensureGymBenchmarkType(gymId, c.label, programmingSegment);
+        comps.push({ ...c, benchmark_type_id: created.id, label: created.name });
+      }
+      next = {
+        ...next,
+        movement_components: comps,
+        benchmark_type_id:
+          next.benchmark_type_id ??
+          comps.find((c) => c.benchmark_type_id)?.benchmark_type_id ??
+          null,
+        movement_label: formatComplexMovementTitle(comps, {
+          restBetweenSetsSec: next.rest_sec,
+        }),
+        bench_name: formatComplexMovementTitle(comps, {
+          restBetweenSetsSec: next.rest_sec,
+        }),
+      };
+    } else if (!next.benchmark_type_id) {
+      const label = (next.movement_label ?? next.bench_name ?? "").trim();
+      if (label) {
+        const created = await ensureGymBenchmarkType(gymId, label, programmingSegment);
+        next = {
+          ...next,
+          benchmark_type_id: created.id,
+          bench_name: created.name,
+          movement_label: null,
+        };
+      }
+    }
+
+    out.push(next);
+  }
+  return out;
+}
 
 export async function loadDefinitionMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase
@@ -49,6 +107,7 @@ function resolveLineItemForSave(
   line_item_kind: string;
   movement_components: Json;
   rx_variants: Json;
+  rest_sec: number | null;
 } {
   const kind = isLineItemKind(it.line_item_kind ?? "")
     ? it.line_item_kind
@@ -64,28 +123,37 @@ function resolveLineItemForSave(
     resolveDefinitionId(defMap, prTypeId, repMax) ?? it.benchmark_definition_id ?? null;
   const complexLabel =
     kind === "complex_set" && components.length
-      ? formatComplexMovementTitle(components)
+      ? formatComplexMovementTitle(components, { restBetweenSetsSec: it.rest_sec })
       : null;
   const rxVariants = rxVariantsForSave(it.rx_variants);
   const legacy = syncLegacyFieldsFromVariants({ ...it, rx_variants: rxVariants });
+  const restSec =
+    kind === "rest"
+      ? (it.rest_sec ?? it.reps_prescribed ?? null)
+      : (it.rest_sec ?? null);
   return {
-    reps_prescribed: legacy.reps_prescribed,
+    reps_prescribed: kind === "rest" ? restSec : legacy.reps_prescribed,
     prescription_unit:
-      kind === "complex_set" ? null : (legacy.prescription_unit ?? it.prescription_unit ?? null),
-    prescribed_weight: legacy.prescribed_weight,
-    prescribed_percentage: it.prescribed_percentage,
-    prescribed_score: legacy.prescribed_score,
-    benchmark_type_id: prTypeId,
-    benchmark_definition_id: defId,
+      kind === "complex_set" || kind === "rest"
+        ? null
+        : (legacy.prescription_unit ?? it.prescription_unit ?? null),
+    prescribed_weight: kind === "rest" ? null : legacy.prescribed_weight,
+    prescribed_percentage: kind === "rest" ? null : it.prescribed_percentage,
+    prescribed_score: kind === "rest" ? null : legacy.prescribed_score,
+    benchmark_type_id: kind === "rest" ? null : prTypeId,
+    benchmark_definition_id: kind === "rest" ? null : defId,
     movement_label:
-      kind === "complex_set"
-        ? complexLabel
-        : prTypeId
-          ? null
-          : (it.movement_label ?? it.bench_name ?? null),
+      kind === "rest"
+        ? "Rest"
+        : kind === "complex_set"
+          ? complexLabel
+          : prTypeId
+            ? null
+            : (it.movement_label ?? it.bench_name ?? null),
     line_item_kind: kind,
     movement_components: components as unknown as Json,
     rx_variants: rxVariants as unknown as Json,
+    rest_sec: restSec,
   };
 }
 
@@ -116,16 +184,31 @@ export async function saveWod(
   const validationErr = validateEditorWod(normalized);
   if (validationErr) return { programmingId: null, error: validationErr };
 
+  let itemsLinked = normalized.items;
+  try {
+    itemsLinked = await linkCustomMovementsToGymCatalog(
+      activeGymId,
+      normalized.programming_segment,
+      normalized.items,
+    );
+  } catch (e) {
+    return {
+      programmingId: null,
+      error: e instanceof Error ? e.message : "Failed to save custom movement to gym library",
+    };
+  }
+  const withLinked: EditorWod = { ...normalized, items: itemsLinked };
+
   const lib =
-    normalized.program_library_ids[0] ??
-    normalized.program_library_id ??
+    withLinked.program_library_ids[0] ??
+    withLinked.program_library_id ??
     defaultLib;
-  const libraryIds = normalized.program_library_ids.length
-    ? normalized.program_library_ids
+  const libraryIds = withLinked.program_library_ids.length
+    ? withLinked.program_library_ids
     : lib
       ? [lib]
       : [];
-  let progId = normalized.id;
+  let progId = withLinked.id;
 
   try {
     if (normalized._new || !progId) {
@@ -186,11 +269,11 @@ export async function saveWod(
     await syncLibraryAssignments(progId!, libraryIds);
 
     const keptIds: string[] = [];
-    for (let j = 0; j < normalized.items.length; j++) {
-      const it = normalized.items[j];
+    for (let j = 0; j < withLinked.items.length; j++) {
+      const it = withLinked.items[j];
       const payload = {
         sequence_number: j + 1,
-        ...resolveLineItemForSave(it, defMap, normalized.programming_segment),
+        ...resolveLineItemForSave(it, defMap, withLinked.programming_segment),
         contact_id: null,
       };
       if (it._new || !it.id) {

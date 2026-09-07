@@ -38,6 +38,7 @@ export type LogLineItem = {
   line_item_kind?: string | null;
   movement_components?: unknown;
   rx_variants?: unknown;
+  rest_sec?: number | null;
 };
 
 export type LogWodContext = {

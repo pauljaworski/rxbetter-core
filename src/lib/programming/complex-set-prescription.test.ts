@@ -10,10 +10,25 @@ import { formatPrescriptionTitle } from "./prescription-display";
 describe("complex set prescription", () => {
   it("formats component reps independently", () => {
     const title = formatComplexMovementTitle([
-      { reps: 2, label: "Snatch Pull", benchmark_type_id: null },
-      { reps: 1, label: "Power Snatch", benchmark_type_id: null },
+      { reps: 2, label: "Snatch Pull", benchmark_type_id: null, unit: "reps" },
+      { reps: 1, label: "Power Snatch", benchmark_type_id: null, unit: "reps" },
     ]);
     expect(title).toBe("2 Snatch Pull + 1 Power Snatch");
+  });
+
+  it("formats strength circuits with mixed units and rest", () => {
+    const title = formatComplexMovementTitle(
+      [
+        { reps: 8, label: "Heavy Bulgarian Split Squats/leg", benchmark_type_id: null, unit: "reps" },
+        { reps: 12, label: "DB Romanian Deadlifts", benchmark_type_id: null, unit: "reps" },
+        { reps: 60, label: "Heavy Farmer Carry", benchmark_type_id: null, unit: "feet" },
+        { reps: 20, label: "Reverse Crunches", benchmark_type_id: null, unit: "reps" },
+      ],
+      { restBetweenSetsSec: 90 },
+    );
+    expect(title).toContain("60' Heavy Farmer Carry");
+    expect(title).toContain("Rest 1:30");
+    expect(title).toContain(", ");
   });
 
   it("uses reps unit for complex_set line items (one row per set)", () => {
