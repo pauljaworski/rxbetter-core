@@ -1,8 +1,14 @@
 import type { ScoreMetric } from "@/lib/programming/workout-scheme-schema";
 
-/** Parse mm:ss or h:mm:ss to seconds for result_value storage. */
+/** Parse mm:ss, h:mm:ss, or plain seconds for result_value storage. */
 export function parseScoreToSeconds(score: string): number | null {
   const s = score.trim();
+  if (!s) return null;
+  // Plain seconds (e.g. "240" or "90")
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.round(n) : null;
+  }
   const parts = s.split(":").map((x) => Number(x));
   if (parts.length >= 2 && parts.every((n) => Number.isFinite(n))) {
     if (parts.length === 2) return parts[0] * 60 + parts[1];

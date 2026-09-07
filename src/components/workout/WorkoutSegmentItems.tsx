@@ -7,9 +7,11 @@ import {
 import { StrengthLiftRow } from "@/components/workout/StrengthLiftRow";
 import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
 import { RftRoundScoreForm } from "@/components/workout/RftRoundScoreForm";
+import { IntervalRoundScoreForm } from "@/components/workout/IntervalRoundScoreForm";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { rftUsesRoundSplits } from "@/lib/programming/rft-score";
+import { isIntervalSeriesScheme } from "@/lib/programming/interval-score";
 import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
@@ -43,12 +45,21 @@ export function WorkoutSegmentItems({
   if (isMetconSegment(wod.programming_segment ?? "")) {
     const scheme = parseWorkoutScheme(wod.workout_scheme);
     const useRftRounds = rftUsesRoundSplits(scheme);
+    const useIntervalRounds = isIntervalSeriesScheme(scheme);
     return (
       <>
         <MetconMovementList items={items} rxGender={rxGender} />
         {!hideSegmentScore &&
           (useRftRounds ? (
             <RftRoundScoreForm
+              wod={wod}
+              scheme={scheme}
+              contactId={contactId}
+              existing={segmentPerf ?? null}
+              onLogged={onLogged}
+            />
+          ) : useIntervalRounds ? (
+            <IntervalRoundScoreForm
               wod={wod}
               scheme={scheme}
               contactId={contactId}

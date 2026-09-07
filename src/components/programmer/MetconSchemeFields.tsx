@@ -20,6 +20,7 @@ import {
   type WorkoutIntent,
   type WorkoutScheme,
 } from "@/lib/programming/workout-scheme-schema";
+import { DurationSecInput } from "@/components/programmer/DurationSecInput";
 
 type Props = {
   wod: EditorWod;
@@ -293,24 +294,13 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
 
       {scheme.kind === "interval_series" && (
         <div className="flex flex-wrap gap-3">
-          <div className="space-y-1">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Interval (sec)
-            </Label>
-            <Input
-              type="number"
-              min={30}
-              max={600}
-              className="h-8 w-24 font-mono-num"
-              value={scheme.intervalSec}
-              onChange={(e) =>
-                setScheme({
-                  ...scheme,
-                  intervalSec: Math.max(30, Number(e.target.value) || 90),
-                })
-              }
-            />
-          </div>
+          <DurationSecInput
+            label="Interval"
+            valueSec={scheme.intervalSec}
+            minSec={30}
+            maxSec={600}
+            onChange={(intervalSec) => setScheme({ ...scheme, intervalSec })}
+          />
           <div className="space-y-1">
             <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Rounds

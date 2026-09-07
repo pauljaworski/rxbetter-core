@@ -24,7 +24,6 @@ import { deleteProgrammingSegment, persistProgrammingDisplayOrders } from "@/lib
 import {
   canMoveSegment,
   cloneEditorWod,
-  createBuyInMainCashOutDrafts,
   isSegmentUnsaved,
   linkSegmentWithPrevious,
   moveSegmentInDay,
@@ -34,6 +33,7 @@ import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
+import { isMetconSegment } from "@/lib/programming/manual-config";
 
 type ServerSyncMode = "date" | "save" | null;
 
@@ -46,6 +46,11 @@ export default function StaffProgramming() {
   const pendingDraftsRef = useRef<EditorWod[]>([]);
   /** True until the first successful load for the current dateKey is applied to `wods`. */
   const awaitingDateSyncRef = useRef(true);
+  /**
+   * When true, a save/publish requested refetch but the refresh hasn't started yet.
+   * Prevents applying stale `serverWods` and wiping newly saved segments.
+   */
+  const awaitRefreshBeforeApplyRef = useRef(false);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
   const [showQuickIntake, setShowQuickIntake] = useState(false);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
@@ -73,14 +78,23 @@ export default function StaffProgramming() {
     setServerSyncMode("date");
     pendingDraftsRef.current = [];
     awaitingDateSyncRef.current = true;
+    awaitRefreshBeforeApplyRef.current = false;
     // Clear immediately so the previous day's segments never linger on an empty day.
     setWods([]);
   }, [dateKey]);
 
   useEffect(() => {
+    if (isRefreshing) {
+      // Refresh has started; next idle apply is safe to use fresh serverWods.
+      awaitRefreshBeforeApplyRef.current = false;
+    }
+  }, [isRefreshing]);
+
+  useEffect(() => {
     if (isLoading || isRefreshing) return;
 
     if (serverSyncMode === "save") {
+      if (awaitRefreshBeforeApplyRef.current) return;
       setWods([...serverWods, ...pendingDraftsRef.current]);
       pendingDraftsRef.current = [];
       setServerSyncMode(null);
@@ -90,11 +104,18 @@ export default function StaffProgramming() {
 
     // Apply server day once load finishes — even if sync mode was cleared by a race.
     if (serverSyncMode === "date" || awaitingDateSyncRef.current) {
+      if (serverSyncMode === "date" && awaitRefreshBeforeApplyRef.current) return;
       setWods(serverWods);
       setServerSyncMode(null);
       awaitingDateSyncRef.current = false;
     }
   }, [serverWods, isLoading, isRefreshing, serverSyncMode]);
+
+  function requestServerSync(mode: "save" | "date") {
+    awaitRefreshBeforeApplyRef.current = true;
+    setServerSyncMode(mode);
+    refetch();
+  }
 
   function selectDate(next: Date) {
     const nextKey = format(next, "yyyy-MM-dd");
@@ -137,8 +158,7 @@ export default function StaffProgramming() {
     setServerSyncMode(null);
     setWods((prev) => prev.filter((_, i) => i !== idx));
     if (wod.id) {
-      setServerSyncMode("date");
-      refetch();
+      requestServerSync("date");
     }
   }
 
@@ -146,22 +166,25 @@ export default function StaffProgramming() {
     setServerSyncMode(null);
     const setCount = Math.max(1, pick.sets || 1);
     const unit = pick.prescriptionUnit ?? "reps";
-    const genderRx = {
-      male: {
-        reps: pick.reps,
-        prescription_unit: unit,
-        weight_lb: null as number | null,
-        load_label: null as string | null,
-        height_label: null as string | null,
-      },
-      female: {
-        reps: pick.reps,
-        prescription_unit: unit,
-        weight_lb: null as number | null,
-        load_label: null as string | null,
-        height_label: null as string | null,
-      },
-    };
+    const segment = wods[wodIdx]?.programming_segment ?? "metcon";
+    const metconGenderRx = isMetconSegment(segment)
+      ? {
+          male: {
+            reps: pick.reps,
+            prescription_unit: unit,
+            weight_lb: null as number | null,
+            load_label: null as string | null,
+            height_label: null as string | null,
+          },
+          female: {
+            reps: pick.reps,
+            prescription_unit: unit,
+            weight_lb: null as number | null,
+            load_label: null as string | null,
+            height_label: null as string | null,
+          },
+        }
+      : undefined;
     setWods((prev) =>
       prev.map((w, i) => {
         if (i !== wodIdx) return w;
@@ -188,7 +211,7 @@ export default function StaffProgramming() {
           percent_rep_max: 1,
           line_item_kind: "strength_set",
           movement_components: [],
-          rx_variants: genderRx,
+          ...(metconGenderRx ? { rx_variants: metconGenderRx } : {}),
           ...baseFields,
         }));
         return { ...w, items: [...w.items, ...items] };
@@ -273,20 +296,6 @@ export default function StaffProgramming() {
     }
   }
 
-  function addBuyInMainCashOut() {
-    const libIds = defaultLibId ? [defaultLibId] : [];
-    if (!libIds.length) {
-      toast.error("Add a program track first, then create the buy-in structure.");
-      return;
-    }
-    const drafts = createBuyInMainCashOutDrafts(wods.length, libIds);
-    setServerSyncMode(null);
-    setWods((prev) => [...prev, ...drafts]);
-    toast.message("Buy-in · Main · Cash-out added", {
-      description: "Already linked as one score. Add movements to each part, then save all three.",
-    });
-  }
-
   function cloneItem(wodIdx: number, itemIdx: number) {
     setServerSyncMode(null);
     setWods((prev) =>
@@ -345,8 +354,7 @@ export default function StaffProgramming() {
 
     toast.success("Section saved");
     pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
-    setServerSyncMode("save");
-    refetch();
+    requestServerSync("save");
   }
 
   async function handlePublishDay() {
@@ -375,8 +383,7 @@ export default function StaffProgramming() {
           : "Nothing new to publish for this day",
     );
     pendingDraftsRef.current = [];
-    setServerSyncMode("date");
-    refetch();
+    requestServerSync("date");
   }
 
   async function handlePublishWeek() {
@@ -390,8 +397,7 @@ export default function StaffProgramming() {
         ? `Published ${count} segment${count === 1 ? "" : "s"} this week`
         : "Nothing new to publish this week",
     );
-    setServerSyncMode("date");
-    refetch();
+    requestServerSync("date");
   }
 
   const busy = saving || publishing || isRefreshing;
@@ -519,7 +525,6 @@ export default function StaffProgramming() {
         currentDateKey={dateKey}
         currentDayWods={wods}
         onAdd={addWod}
-        onAddBuyInMainCashOut={addBuyInMainCashOut}
       />
 
       {movementPicker && (
@@ -565,8 +570,7 @@ export default function StaffProgramming() {
             defaultLib={defaultLibId}
             displayOrder={wods.length}
             onCommitted={() => {
-              setServerSyncMode("date");
-              refetch();
+              requestServerSync("date");
             }}
           />
         )}

@@ -15,9 +15,7 @@ import {
   percentFractionFromWhole,
   percentWholeFromFraction,
 } from "@/lib/programming/percent-calculator";
-import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import { GenderRxFields } from "@/components/programmer/GenderRxFields";
-import { hasRxVariants, parseRxVariants } from "@/lib/programming/rx-variants-schema";
 
 function NumInput({
   label,
@@ -53,8 +51,6 @@ type Props = {
 };
 
 export function LineItemFields({ mode, item, onChange }: Props) {
-  const genderRx = hasRxVariants(parseRxVariants(item.rx_variants));
-
   if (mode === "tracking_only") {
     return (
       <div className="space-y-2 pl-8">
@@ -69,7 +65,7 @@ export function LineItemFields({ mode, item, onChange }: Props) {
 
   return (
     <div className="space-y-2 pl-8">
-      {!complexSet && !genderRx && (
+      {!complexSet && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <NumInput
             label="reps"
@@ -109,36 +105,6 @@ export function LineItemFields({ mode, item, onChange }: Props) {
           />
         </div>
       )}
-      {!complexSet && genderRx && (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-              % basis
-            </Label>
-            <Select
-              value={String(repMax)}
-              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PERCENT_REP_MAX_OPTIONS.map((o) => (
-                  <SelectItem key={o.repCount} value={String(o.repCount)}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <NumInput
-            label="percent"
-            value={pctDisplay}
-            inputMode="numeric"
-            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
-          />
-        </div>
-      )}
       {complexSet && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="space-y-1">
@@ -174,13 +140,10 @@ export function LineItemFields({ mode, item, onChange }: Props) {
           />
         </div>
       )}
-      {!complexSet && <GenderRxFields item={item} mode="strength" onChange={onChange} />}
       <p className="text-[10px] text-muted-foreground">
         {complexSet
           ? "One line item = one set. Reps per movement are in the complex title (e.g. 1 Snatch + 1 Hang Snatch)."
-          : genderRx
-            ? "Percent applies to both genders; set M/F fixed weights when not using percent."
-            : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
+          : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
       </p>
     </div>
   );

@@ -44,8 +44,6 @@ type Props = {
   currentDateKey?: string;
   currentDayWods?: EditorWod[];
   onAdd: (wod: EditorWod) => void;
-  /** Add linked buy-in / main / cash-out drafts (one athlete score). */
-  onAddBuyInMainCashOut?: () => void;
 };
 
 export function SegmentAddDialog({
@@ -58,7 +56,6 @@ export function SegmentAddDialog({
   currentDateKey,
   currentDayWods = [],
   onAdd,
-  onAddBuyInMainCashOut,
 }: Props) {
   const [mode, setMode] = useState<Mode>("choose");
   const [uiKey, setUiKey] = useState("metcon");
@@ -195,21 +192,6 @@ export function SegmentAddDialog({
                 </span>
               </Button>
             </div>
-            {onAddBuyInMainCashOut && (
-              <Button
-                variant="outline"
-                className="h-auto flex-col gap-1 py-3"
-                onClick={() => {
-                  onAddBuyInMainCashOut();
-                  onOpenChange(false);
-                }}
-              >
-                <span className="font-semibold">Buy-in · Main · Cash-out</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  Three linked parts, one total score (e.g. run + RFT + run)
-                </span>
-              </Button>
-            )}
           </div>
         )}
 
