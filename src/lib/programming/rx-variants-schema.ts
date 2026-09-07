@@ -50,6 +50,61 @@ export function rxVariantsEnabled(variants: RxVariants): boolean {
   return variantHasData(variants.male) && variantHasData(variants.female);
 }
 
+/**
+ * Editor-only: copy the filled gender into a blank one so both columns show a value.
+ * Must not be written back unless the athlete actually edits the blank gender.
+ */
+export function prefillEmptyRxGender(variants: RxVariants): RxVariants {
+  const male = variants.male ?? {};
+  const female = variants.female ?? {};
+  const maleHas = variantHasData(variants.male);
+  const femaleHas = variantHasData(variants.female);
+  if (maleHas && !femaleHas) return { male: variants.male, female: { ...male } };
+  if (femaleHas && !maleHas) return { male: { ...female }, female: variants.female };
+  return { male: variants.male, female: variants.female };
+}
+
+/**
+ * Apply a gender-specific Rx edit to persisted variants.
+ * Editing one gender does not materialize a display-prefilled copy of the other.
+ * The first real edit of an empty gender seeds from the other so remaining fields are kept.
+ */
+export function patchRxVariant(
+  persisted: RxVariants,
+  gender: "male" | "female",
+  patch: Partial<RxVariant>,
+): RxVariants {
+  const other: "male" | "female" = gender === "male" ? "female" : "male";
+  const current = persisted[gender];
+  const seed = variantHasData(current)
+    ? { ...current }
+    : variantHasData(persisted[other])
+      ? { ...persisted[other] }
+      : { ...(current ?? {}) };
+  const next: RxVariants = {
+    ...persisted,
+    [gender]: { ...seed, ...patch },
+  };
+  if (!variantHasData(next.male)) delete next.male;
+  if (!variantHasData(next.female)) delete next.female;
+  return next;
+}
+
+/** Shared unit control: update only genders that already have Rx data. */
+export function applySharedRxUnit(persisted: RxVariants, unit: PrescriptionUnit): RxVariants {
+  const next: RxVariants = {};
+  if (variantHasData(persisted.male)) {
+    next.male = { ...persisted.male, prescription_unit: unit };
+  }
+  if (variantHasData(persisted.female)) {
+    next.female = { ...persisted.female, prescription_unit: unit };
+  }
+  if (!next.male && !next.female) {
+    next.male = { ...(persisted.male ?? {}), prescription_unit: unit };
+  }
+  return next;
+}
+
 function unitSuffix(unit: PrescriptionUnit | string | null | undefined): string {
   switch (unit) {
     case "calories":

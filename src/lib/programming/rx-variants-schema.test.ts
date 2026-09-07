@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { formatPrescriptionTitle } from "./prescription-display";
 import {
+  applySharedRxUnit,
   formatDualAmountLabel,
   formatDualModifierLabel,
   formatRxVariantsCompact,
   formatResolvedRxParts,
+  patchRxVariant,
+  prefillEmptyRxGender,
   resolvePrescriptionForAthlete,
+  rxVariantsForSave,
   syncLegacyFieldsFromVariants,
 } from "./rx-variants-schema";
 
@@ -116,5 +120,59 @@ describe("rx-variants-schema", () => {
         female: { reps: 80, load_label: "14 lb" },
       }),
     ).toBe("80 Reps · 20/14 lb");
+  });
+
+  it("prefills empty female for display without implying it is persisted", () => {
+    const displayed = prefillEmptyRxGender({
+      male: { reps: 80, load_label: "20 lb" },
+    });
+    expect(displayed.female?.load_label).toBe("20 lb");
+    expect(displayed.female?.reps).toBe(80);
+  });
+
+  it("updating male-only Rx does not freeze a stale female copy", () => {
+    const persisted = { male: { reps: 80, prescription_unit: "reps" as const, load_label: "20 lb" } };
+    const displayed = prefillEmptyRxGender(persisted);
+    // Buggy path: commit the display copy, then edit male.
+    const staleIfCommittedFromDisplay = {
+      ...displayed,
+      male: { ...displayed.male, load_label: "30 lb" },
+    };
+    expect(staleIfCommittedFromDisplay.female?.load_label).toBe("20 lb");
+
+    const next = patchRxVariant(persisted, "male", { load_label: "30 lb" });
+    expect(next.female).toBeUndefined();
+    expect(next.male?.load_label).toBe("30 lb");
+
+    const saved = rxVariantsForSave(next);
+    const item = {
+      ...syncLegacyFieldsFromVariants({ rx_variants: saved }),
+      rx_variants: saved,
+    };
+    const female = resolvePrescriptionForAthlete(item, "female");
+    const shown = female.load_label ?? female.dual_modifier_label;
+    expect(shown).toContain("30");
+    expect(shown).not.toContain("20");
+  });
+
+  it("first female edit seeds from male then applies the patch", () => {
+    const next = patchRxVariant(
+      { male: { reps: 80, load_label: "20 lb", height_label: "10 ft" } },
+      "female",
+      { load_label: "14 lb" },
+    );
+    expect(next.male?.load_label).toBe("20 lb");
+    expect(next.female?.reps).toBe(80);
+    expect(next.female?.load_label).toBe("14 lb");
+    expect(next.female?.height_label).toBe("10 ft");
+  });
+
+  it("shared unit updates only genders that already have Rx data", () => {
+    const next = applySharedRxUnit(
+      { male: { reps: 400, prescription_unit: "reps" } },
+      "meters",
+    );
+    expect(next.male?.prescription_unit).toBe("meters");
+    expect(next.female).toBeUndefined();
   });
 });

@@ -3,9 +3,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { EditorLineItem } from "@/hooks/staff/types";
 import {
+  applySharedRxUnit,
   emptyRxVariants,
   hasRxVariants,
   parseRxVariants,
+  patchRxVariant,
+  prefillEmptyRxGender,
+  rxVariantsForSave,
   syncLegacyFieldsFromVariants,
   type RxVariant,
   type RxVariants,
@@ -57,41 +61,18 @@ function seedVariant(item: EditorLineItem): RxVariant {
   };
 }
 
-/** Editor display: persisted variants or legacy columns seeded into Male and Female. */
+/** Editor display: persisted variants or legacy columns. Empty gender is prefilled visually only. */
 function displayVariants(item: EditorLineItem): RxVariants {
   const parsed = parseRxVariants(item.rx_variants);
-  if (hasRxVariants(parsed)) {
-    const male = parsed.male ?? {};
-    const female = parsed.female ?? {};
-    const maleHas =
-      male.reps != null ||
-      male.weight_lb != null ||
-      (male.load_label?.trim().length ?? 0) > 0 ||
-      (male.height_label?.trim().length ?? 0) > 0;
-    const femaleHas =
-      female.reps != null ||
-      female.weight_lb != null ||
-      (female.load_label?.trim().length ?? 0) > 0 ||
-      (female.height_label?.trim().length ?? 0) > 0;
-    // Prefill empty gender from the other so amounts aren't blank on one side.
-    if (maleHas && !femaleHas) return { male, female: { ...male } };
-    if (femaleHas && !maleHas) return { male: { ...female }, female };
-    return { male, female };
-  }
+  if (hasRxVariants(parsed)) return prefillEmptyRxGender(parsed);
   const seed = seedVariant(item);
   return { male: { ...seed }, female: { ...seed } };
 }
 
-function updateVariant(
-  variants: RxVariants,
-  gender: "male" | "female",
-  patch: Partial<RxVariant>,
-): RxVariants {
-  const current = variants[gender] ?? {};
-  return {
-    ...variants,
-    [gender]: { ...current, ...patch },
-  };
+function persistedVariants(item: EditorLineItem): RxVariants {
+  const parsed = parseRxVariants(item.rx_variants);
+  if (hasRxVariants(parsed)) return parsed;
+  return { male: seedVariant(item) };
 }
 
 function commitVariants(
@@ -99,10 +80,11 @@ function commitVariants(
   variants: RxVariants,
   onChange: (patch: Partial<EditorLineItem>) => void,
 ) {
-  const merged = { ...item, rx_variants: variants };
+  const cleaned = rxVariantsForSave(variants);
+  const merged = { ...item, rx_variants: cleaned };
   const legacy = syncLegacyFieldsFromVariants(merged);
   onChange({
-    rx_variants: variants,
+    rx_variants: cleaned,
     reps_prescribed: legacy.reps_prescribed,
     prescription_unit: legacy.prescription_unit as PrescriptionUnit | null | undefined,
     prescribed_weight: legacy.prescribed_weight,
@@ -131,15 +113,11 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
   }
 
   function setUnit(next: PrescriptionUnit) {
-    const nextVariants: RxVariants = {
-      male: { ...variants.male, prescription_unit: next },
-      female: { ...variants.female, prescription_unit: next },
-    };
-    commitVariants(item, nextVariants, onChange);
+    commitVariants(item, applySharedRxUnit(persistedVariants(item), next), onChange);
   }
 
   function patchVariant(gender: "male" | "female", patch: Partial<RxVariant>) {
-    commitVariants(item, updateVariant(variants, gender, patch), onChange);
+    commitVariants(item, patchRxVariant(persistedVariants(item), gender, patch), onChange);
   }
 
   return (
