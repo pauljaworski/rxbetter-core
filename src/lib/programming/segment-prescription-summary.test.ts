@@ -118,6 +118,30 @@ describe("segment-prescription-summary", () => {
     expect(header).toMatch(/22 min cap/);
   });
 
+  it("summarizes metcon loads for selected gender", () => {
+    const item = {
+      id: "a",
+      sequence_number: 1,
+      reps_prescribed: 20,
+      prescription_unit: "reps" as const,
+      prescribed_percentage: null,
+      prescribed_weight: null,
+      prescribed_score: null,
+      status: null,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+      bench_name: "Dumbbell Box Step-Over",
+      rx_variants: {
+        male: { reps: 20, load_label: "50 lb" },
+        female: { reps: 20, load_label: "35 lb" },
+      },
+    };
+    expect(summarizeLineItemBrief(item, null)).toContain("50/35 lb");
+    expect(summarizeLineItemBrief(item, "female")).toContain("35 lb");
+    expect(summarizeLineItemBrief(item, "female")).not.toContain("50");
+    expect(summarizeLineItemBrief(item, "male")).toContain("50 lb");
+  });
+
   it("summarizes weightlifting with sets header", () => {
     const { header, lines } = summarizeSegmentPrescription(
       { programming_segment: "weightlifting" },

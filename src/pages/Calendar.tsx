@@ -118,7 +118,7 @@ function weekWodToDayProgramming(
 }
 
 export default function CalendarPage() {
-  const { contactId, activeGymId, mode } = useAuth();
+  const { contactId, activeGymId, mode, rxGender } = useAuth();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selected, setSelected] = useState<Date>(new Date());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -295,6 +295,7 @@ export default function CalendarPage() {
                       block={block}
                       wodDate={selectedKey}
                       contactId={contactId}
+                      rxGender={rxGender}
                       perfByItem={perfByItem}
                       perfBySegment={perfBySegment}
                       groupPerf={groupPerf}
@@ -306,7 +307,7 @@ export default function CalendarPage() {
 
                 const w = block.wod;
                 const items = w.items;
-                const summary = summarizeSegmentPrescription(w, items);
+                const summary = summarizeSegmentPrescription(w, items, rxGender);
                 const isOpen = expanded.has(w.id);
                 return (
                   <Card key={w.id} className="glass-card overflow-hidden p-0">
@@ -370,6 +371,7 @@ export default function CalendarPage() {
                           wod={w}
                           items={items}
                           contactId={contactId}
+                          rxGender={rxGender}
                           perfByItem={perfByItem}
                           segmentPerf={perfBySegment.get(w.id) ?? null}
                           onLogged={refetch}

@@ -88,6 +88,35 @@ describe("rx-variants-schema", () => {
     expect(resolved.reps_prescribed).toBeNull();
   });
 
+  it("shows only female load when Female Rx is selected", () => {
+    const resolved = resolvePrescriptionForAthlete(
+      {
+        reps_prescribed: 20,
+        prescription_unit: "reps",
+        rx_variants: {
+          male: { reps: 20, load_label: "50 lb" },
+          female: { reps: 20, load_label: "35 lb" },
+        },
+      },
+      "female",
+    );
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "35 lb"]);
+    expect(resolved.dual_modifier_label).toBeNull();
+  });
+
+  it("shows only male load when Male Rx is selected", () => {
+    const resolved = resolvePrescriptionForAthlete(
+      {
+        rx_variants: {
+          male: { reps: 20, load_label: "50 lb" },
+          female: { reps: 20, load_label: "35 lb" },
+        },
+      },
+      "male",
+    );
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "50 lb"]);
+  });
+
   it("syncs legacy columns without amount in prescribed_score", () => {
     const synced = syncLegacyFieldsFromVariants({
       rx_variants: {

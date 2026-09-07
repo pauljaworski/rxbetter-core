@@ -10,7 +10,10 @@ import {
 } from "@/lib/programming/percent-calculator";
 import { schemeSummaryLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { formatPrescriptionFromResolved } from "@/lib/programming/prescription-display";
-import { resolvePrescriptionForAthlete } from "@/lib/programming/rx-variants-schema";
+import {
+  resolvePrescriptionForAthlete,
+  type RxGender,
+} from "@/lib/programming/rx-variants-schema";
 
 export type SegmentSummaryInput = {
   programming_segment: string;
@@ -32,9 +35,12 @@ function percentSuffix(item: LogLineItem): string | null {
 }
 
 /** One-line summary for a prescription line item (strength / complex / accessory). */
-export function summarizeLineItemBrief(item: LogLineItem): string {
+export function summarizeLineItemBrief(
+  item: LogLineItem,
+  athleteGender: RxGender | null = null,
+): string {
   const name = loadLabel(item);
-  const resolved = resolvePrescriptionForAthlete(item, null);
+  const resolved = resolvePrescriptionForAthlete(item, athleteGender);
   const rxTitle = formatPrescriptionFromResolved(name, resolved, {
     prescribedPercentage: item.prescribed_percentage,
   });
@@ -55,11 +61,14 @@ export type SegmentPrescriptionSummary = {
 export function summarizeSegmentPrescription(
   wod: SegmentSummaryInput,
   items: LogLineItem[],
+  athleteGender: RxGender | null = null,
 ): SegmentPrescriptionSummary {
   if (isMetconSegment(wod.programming_segment)) {
     const scheme = parseWorkoutScheme(wod.workout_scheme);
     const schemeLabel = schemeSummaryLabel(scheme);
-    const lines = items.length ? items.map((it) => summarizeLineItemBrief(it)) : [];
+    const lines = items.length
+      ? items.map((it) => summarizeLineItemBrief(it, athleteGender))
+      : [];
     return {
       header: schemeLabel,
       lines,
@@ -72,6 +81,6 @@ export function summarizeSegmentPrescription(
 
   return {
     header: `${items.length} ${items.length === 1 ? "set" : "sets"}`,
-    lines: items.map((it) => summarizeLineItemBrief(it)),
+    lines: items.map((it) => summarizeLineItemBrief(it, athleteGender)),
   };
 }

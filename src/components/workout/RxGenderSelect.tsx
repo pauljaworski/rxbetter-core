@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
@@ -11,10 +11,31 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
+import { WORKOUT_SCALE_OPTIONS, type WorkoutScale } from "@/lib/format";
+import { resolveDayViewScale } from "@/lib/programming/day-view-scale";
 
-export function RxGenderSelect() {
-  const { contactId, rxGender, setRxGender } = useAuth();
+type Props = {
+  /** Scales programmed for metcons on the viewed day (Rx, Rx+, Fx, Scaled). */
+  availableScales?: WorkoutScale[];
+  viewScale?: WorkoutScale | null;
+  onViewScaleChange?: (scale: WorkoutScale) => void;
+};
+
+export function RxGenderSelect({
+  availableScales = [],
+  viewScale = null,
+  onViewScaleChange,
+}: Props) {
+  const { contactId, rxGender, setRxGender, defaultWorkoutScale } = useAuth();
   const [saving, setSaving] = useState(false);
+
+  const effectiveScale = useMemo(
+    () => resolveDayViewScale(viewScale, defaultWorkoutScale, availableScales),
+    [viewScale, defaultWorkoutScale, availableScales],
+  );
+
+  const showScaleSelect =
+    availableScales.length > 1 || availableScales.some((s) => s !== "rx");
 
   if (!contactId) return null;
 
@@ -41,7 +62,7 @@ export function RxGenderSelect() {
         disabled={saving}
         onValueChange={(v) => void update(v as RxGender | "unset")}
       >
-        <SelectTrigger className="h-8 w-36 text-xs">
+        <SelectTrigger className="h-8 w-40 text-xs">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
@@ -50,6 +71,29 @@ export function RxGenderSelect() {
           <SelectItem value="female">Female Rx</SelectItem>
         </SelectContent>
       </Select>
+      {showScaleSelect && effectiveScale && onViewScaleChange && (
+        <>
+          <Label className="text-xs text-muted-foreground">Level</Label>
+          <Select
+            value={effectiveScale}
+            onValueChange={(v) => onViewScaleChange(v as WorkoutScale)}
+          >
+            <SelectTrigger className="h-8 w-28 text-xs">
+              <SelectValue placeholder="Rx" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableScales.map((s) => {
+                const label = WORKOUT_SCALE_OPTIONS.find((o) => o.value === s)?.label ?? s;
+                return (
+                  <SelectItem key={s} value={s}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </>
+      )}
     </div>
   );
 }

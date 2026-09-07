@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronDown, Dumbbell, Flame, Timer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { segmentLabel } from "@/lib/format";
+import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
@@ -18,9 +18,9 @@ type Props = {
     description?: string | null;
     athlete_notes?: string | null;
     coaches_notes?: string | null;
-  metcon_format?: string | null;
-  source?: "gym" | "athlete_custom";
-};
+    metcon_format?: string | null;
+    source?: "gym" | "athlete_custom";
+  };
   items: LogLineItem[];
   contactId: string | null;
   rxGender?: RxGender | null;
@@ -54,6 +54,7 @@ export function CollapsibleWorkoutSegment({
       name: wod.name,
     },
     items,
+    rxGender ?? null,
   );
 
   const segIcon =
@@ -85,6 +86,11 @@ export function CollapsibleWorkoutSegment({
             <p className="eyebrow">
               {segmentLabel(wod.programming_segment, wod.programming_subtype)}
               {wod.metcon_format ? ` · ${wod.metcon_format.toUpperCase()}` : ""}
+              {wod.prescribed_scale &&
+              wod.prescribed_scale !== "na" &&
+              prescribedLevelLabel(wod.prescribed_scale)
+                ? ` · ${prescribedLevelLabel(wod.prescribed_scale)}`
+                : ""}
               {wod.source === "athlete_custom" && (
                 <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
                   Personal

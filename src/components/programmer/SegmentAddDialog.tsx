@@ -30,6 +30,7 @@ import {
 } from "@/lib/programming/manual-config";
 import { defaultSchemeForMetconFormat } from "@/lib/programming/workout-scheme-schema";
 import { cloneEditorWod } from "@/lib/programming/staff-programming-state";
+import { PRESCRIBED_LEVEL_OPTIONS, type PrescribedLevel } from "@/lib/format";
 
 type Mode = "choose" | "new" | "copy";
 
@@ -60,6 +61,7 @@ export function SegmentAddDialog({
   const [mode, setMode] = useState<Mode>("choose");
   const [uiKey, setUiKey] = useState("metcon");
   const [metconFormat, setMetconFormat] = useState<string>("for_time");
+  const [prescribedScale, setPrescribedScale] = useState<PrescribedLevel>("rx");
   const [name, setName] = useState("");
   const [libIds, setLibIds] = useState<string[]>([]);
   const [copyDate, setCopyDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -72,6 +74,7 @@ export function SegmentAddDialog({
       setMode("choose");
       setUiKey("metcon");
       setMetconFormat("for_time");
+      setPrescribedScale("rx");
       setName("");
       setLibIds(defaultLib ? [defaultLib] : []);
       setSelectedCopyIdx(null);
@@ -138,7 +141,7 @@ export function SegmentAddDialog({
       display_order: displayOrder,
       program_library_id: ids[0] ?? null,
       program_library_ids: ids,
-      prescribed_scale: "rx",
+      prescribed_scale: getTypeByUiKey(uiKey)?.requiresFormat ? prescribedScale : "rx",
       items: [],
     });
     onOpenChange(false);
@@ -216,21 +219,51 @@ export function SegmentAddDialog({
               </Select>
             </div>
             {getTypeByUiKey(uiKey)?.requiresFormat && (
-              <div className="space-y-2">
-                <Label>Format</Label>
-                <Select value={metconFormat} onValueChange={setMetconFormat}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {METCON_FORMAT_OPTIONS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>
-                        {f.label}
-                      </SelectItem>
+              <>
+                <div className="space-y-2">
+                  <Label>Format</Label>
+                  <Select value={metconFormat} onValueChange={setMetconFormat}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {METCON_FORMAT_OPTIONS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Prescribed level</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESCRIBED_LEVEL_OPTIONS.filter((o) => o.value !== "na").map((o) => (
+                      <label
+                        key={o.value}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs ${
+                          prescribedScale === o.value
+                            ? "border-primary bg-primary/10 font-semibold"
+                            : "border-border"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="prescribed-scale"
+                          className="sr-only"
+                          checked={prescribedScale === o.value}
+                          onChange={() => setPrescribedScale(o.value)}
+                        />
+                        {o.label}
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Default is Rx. Add Rx+, Fx, or Scaled as separate segments so athletes can pick
+                    their level on Today.
+                  </p>
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label>Segment name</Label>

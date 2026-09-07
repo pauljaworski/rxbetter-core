@@ -12,6 +12,7 @@ import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { rftUsesRoundSplits } from "@/lib/programming/rft-score";
 import { isIntervalSeriesScheme } from "@/lib/programming/interval-score";
+import { effectiveScoreMetric } from "@/lib/programming/metcon-score";
 import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
@@ -45,7 +46,13 @@ export function WorkoutSegmentItems({
   if (isMetconSegment(wod.programming_segment ?? "")) {
     const scheme = parseWorkoutScheme(wod.workout_scheme);
     const useRftRounds = rftUsesRoundSplits(scheme);
-    const useIntervalRounds = isIntervalSeriesScheme(scheme);
+    const useIntervalRounds =
+      isIntervalSeriesScheme(scheme) ||
+      (scheme != null &&
+        "rounds" in scheme &&
+        typeof scheme.rounds === "number" &&
+        scheme.rounds > 0 &&
+        effectiveScoreMetric(scheme.scoreMetric, scheme.kind) === "sum_interval_times");
     return (
       <>
         <MetconMovementList items={items} rxGender={rxGender} />
@@ -58,7 +65,7 @@ export function WorkoutSegmentItems({
               existing={segmentPerf ?? null}
               onLogged={onLogged}
             />
-          ) : useIntervalRounds ? (
+          ) : useIntervalRounds && isIntervalSeriesScheme(scheme) ? (
             <IntervalRoundScoreForm
               wod={wod}
               scheme={scheme}

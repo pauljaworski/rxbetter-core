@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Trophy } from "lucide-react";
@@ -11,12 +11,28 @@ import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RxGenderSelect } from "@/components/workout/RxGenderSelect";
+import type { WorkoutScale } from "@/lib/format";
+import {
+  collectProgrammedScales,
+  filterWodsByViewScale,
+  resolveDayViewScale,
+} from "@/lib/programming/day-view-scale";
 
 export default function Today() {
-  const { contactId, displayName, activeGymId, mode, rxGender } = useAuth();
+  const { contactId, displayName, activeGymId, mode, rxGender, defaultWorkoutScale } = useAuth();
   const { data, isLoading, error, isEmpty, refetch } = useWorkoutDay(activeGymId, contactId);
+  const [viewScale, setViewScale] = useState<WorkoutScale | null>(null);
 
   const dateLabel = useMemo(() => data.wodDate, [data.wodDate]);
+  const availableScales = useMemo(() => collectProgrammedScales(data.wods), [data.wods]);
+  const effectiveScale = useMemo(
+    () => resolveDayViewScale(viewScale, defaultWorkoutScale, availableScales),
+    [viewScale, defaultWorkoutScale, availableScales],
+  );
+  const visibleWods = useMemo(
+    () => filterWodsByViewScale(data.wods, effectiveScale),
+    [data.wods, effectiveScale],
+  );
 
   if (mode === "personal") {
     return (
@@ -36,7 +52,11 @@ export default function Today() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <RxGenderSelect />
+        <RxGenderSelect
+          availableScales={availableScales}
+          viewScale={viewScale}
+          onViewScaleChange={setViewScale}
+        />
         <Button asChild variant="secondary" size="sm" className="gap-1.5">
           <Link to={`/leaderboard?date=${todayKey}`}>
             <Trophy className="h-4 w-4 text-primary" />
@@ -60,7 +80,7 @@ export default function Today() {
       {!isLoading && !error && !isEmpty && (
         <WorkoutDayView
           wodDate={data.wodDate}
-          wods={data.wods}
+          wods={visibleWods}
           perfByItem={data.perfByItem}
           perfBySegment={data.perfBySegment}
           perfByGroup={data.perfByGroup}
