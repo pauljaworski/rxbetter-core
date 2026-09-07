@@ -132,6 +132,7 @@ function mapWodsFromRows(
               line_item_kind: kind,
               movement_components: components,
               rest_sec: i.rest_sec ?? null,
+              skip_pr_basis: kind === "complex_set" && !i.benchmark_type_id,
               bench_name: complexTitle
                 ? complexTitle
                 : kind === "rest"

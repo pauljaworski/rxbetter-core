@@ -51,13 +51,11 @@ async function linkCustomMovementsToGymCatalog(
         const created = await ensureGymBenchmarkType(gymId, c.label, programmingSegment);
         comps.push({ ...c, benchmark_type_id: created.id, label: created.name });
       }
+      // Do not invent a PR basis from components — skip_pr_basis / null is intentional.
       next = {
         ...next,
         movement_components: comps,
-        benchmark_type_id:
-          next.benchmark_type_id ??
-          comps.find((c) => c.benchmark_type_id)?.benchmark_type_id ??
-          null,
+        benchmark_type_id: next.skip_pr_basis ? null : (next.benchmark_type_id ?? null),
         movement_label: formatComplexMovementTitle(comps, {
           restBetweenSetsSec: next.rest_sec,
         }),
@@ -114,13 +112,28 @@ function resolveLineItemForSave(
     : defaultLineItemKindForSegment(programmingSegment);
   const components = movementComponentsForSave(kind, it.movement_components);
   const repMax = it.percent_rep_max ?? 1;
-  const prTypeId =
-    kind === "complex_set" && components.length
-      ? (components.find((c) => c.benchmark_type_id)?.benchmark_type_id ??
-        it.benchmark_type_id)
-      : it.benchmark_type_id;
+  const skipPr = it.skip_pr_basis === true;
+  // Complex: line-item type is PR basis only (null when skipped). Strength: type is the movement.
+  const movementTypeId =
+    kind === "rest"
+      ? null
+      : kind === "complex_set"
+        ? skipPr
+          ? null
+          : (it.benchmark_type_id ?? null)
+        : it.benchmark_type_id;
+  const usePercent =
+    !skipPr &&
+    it.prescribed_percentage != null &&
+    Number.isFinite(it.prescribed_percentage);
   const defId =
-    resolveDefinitionId(defMap, prTypeId, repMax) ?? it.benchmark_definition_id ?? null;
+    kind === "rest" || skipPr || !movementTypeId
+      ? null
+      : usePercent || kind === "strength_set"
+        ? (resolveDefinitionId(defMap, movementTypeId, repMax) ??
+          it.benchmark_definition_id ??
+          null)
+        : null;
   const complexLabel =
     kind === "complex_set" && components.length
       ? formatComplexMovementTitle(components, { restBetweenSetsSec: it.rest_sec })
@@ -138,10 +151,10 @@ function resolveLineItemForSave(
         ? null
         : (legacy.prescription_unit ?? it.prescription_unit ?? null),
     prescribed_weight: kind === "rest" ? null : legacy.prescribed_weight,
-    prescribed_percentage: kind === "rest" ? null : it.prescribed_percentage,
+    prescribed_percentage: kind === "rest" || skipPr || !usePercent ? null : it.prescribed_percentage,
     prescribed_score: kind === "rest" ? null : legacy.prescribed_score,
-    benchmark_type_id: kind === "rest" ? null : prTypeId,
-    benchmark_definition_id: kind === "rest" ? null : defId,
+    benchmark_type_id: movementTypeId,
+    benchmark_definition_id: defId,
     movement_label:
       kind === "rest"
         ? "Rest"

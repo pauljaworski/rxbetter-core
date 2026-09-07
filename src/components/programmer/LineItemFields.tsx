@@ -20,6 +20,7 @@ import {
   formatRestDuration,
   parseRestDuration,
 } from "@/lib/programming/gym-benchmark-type";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function NumInput({
   label,
@@ -91,9 +92,27 @@ export function LineItemFields({ mode, item, onChange }: Props) {
   const repMax = item.percent_rep_max ?? 1;
   const pctDisplay = percentWholeFromFraction(item.prescribed_percentage);
   const complexSet = isComplexSetLineItem(item);
+  const usePrPercent = !item.skip_pr_basis && pctDisplay != null;
 
   return (
     <div className="space-y-2 pl-8">
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Checkbox
+          checked={!item.skip_pr_basis}
+          onCheckedChange={(c) => {
+            const on = c === true;
+            onChange(
+              on
+                ? { skip_pr_basis: false }
+                : {
+                    skip_pr_basis: true,
+                    prescribed_percentage: null,
+                  },
+            );
+          }}
+        />
+        Use % of PR for prescribed load
+      </label>
       {!complexSet && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
           <NumInput
@@ -107,7 +126,8 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             </Label>
             <Select
               value={String(repMax)}
-              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
+              disabled={item.skip_pr_basis}
+              onValueChange={(v) => onChange({ percent_rep_max: Number(v), skip_pr_basis: false })}
             >
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -123,9 +143,14 @@ export function LineItemFields({ mode, item, onChange }: Props) {
           </div>
           <NumInput
             label="percent"
-            value={pctDisplay}
+            value={item.skip_pr_basis ? null : pctDisplay}
             inputMode="numeric"
-            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
+            onChange={(v) =>
+              onChange({
+                prescribed_percentage: percentFractionFromWhole(v),
+                skip_pr_basis: false,
+              })
+            }
           />
           <NumInput
             label="weight (lb)"
@@ -154,7 +179,8 @@ export function LineItemFields({ mode, item, onChange }: Props) {
             </Label>
             <Select
               value={String(repMax)}
-              onValueChange={(v) => onChange({ percent_rep_max: Number(v) })}
+              disabled={item.skip_pr_basis}
+              onValueChange={(v) => onChange({ percent_rep_max: Number(v), skip_pr_basis: false })}
             >
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -170,9 +196,14 @@ export function LineItemFields({ mode, item, onChange }: Props) {
           </div>
           <NumInput
             label="percent"
-            value={pctDisplay}
+            value={item.skip_pr_basis ? null : pctDisplay}
             inputMode="numeric"
-            onChange={(v) => onChange({ prescribed_percentage: percentFractionFromWhole(v) })}
+            onChange={(v) =>
+              onChange({
+                prescribed_percentage: percentFractionFromWhole(v),
+                skip_pr_basis: false,
+              })
+            }
           />
           <NumInput
             label="weight (lb)"
@@ -194,9 +225,13 @@ export function LineItemFields({ mode, item, onChange }: Props) {
         </div>
       )}
       <p className="text-[10px] text-muted-foreground">
-        {complexSet
-          ? "One line item = one set. Movement amounts are in the title (e.g. 8 BSS, 12 RDL, Rest 1:30)."
-          : `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`}
+        {item.skip_pr_basis
+          ? "No PR % — athletes won’t see a calculated load from their vault. Use fixed weight (lb) or coach cues."
+          : complexSet
+            ? "One line item = one set. Movement amounts are in the title (e.g. 8 BSS, 12 RDL, Rest 1:30)."
+            : usePrPercent
+              ? `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`
+              : `Leave percent empty for no PR-based load, or enter % of ${repMax}RM. Override weight (lb) for a fixed load.`}
       </p>
     </div>
   );

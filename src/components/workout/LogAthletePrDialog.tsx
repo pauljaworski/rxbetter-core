@@ -25,6 +25,8 @@ type Props = {
   repMaxCount: number;
   repsPrescribed?: number | null;
   defaultDate?: string;
+  /** Prefill when updating an existing PR. */
+  currentPrWeight?: number | null;
   onSaved?: () => void;
 };
 
@@ -38,6 +40,7 @@ export function LogAthletePrDialog({
   repMaxCount,
   repsPrescribed,
   defaultDate,
+  currentPrWeight,
   onSaved,
 }: Props) {
   const [weight, setWeight] = useState("");
@@ -46,10 +49,14 @@ export function LogAthletePrDialog({
 
   useEffect(() => {
     if (open) {
-      setWeight("");
+      setWeight(
+        currentPrWeight != null && Number.isFinite(currentPrWeight)
+          ? String(currentPrWeight)
+          : "",
+      );
       setPrDate(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
     }
-  }, [open, defaultDate]);
+  }, [open, defaultDate, currentPrWeight]);
 
   async function submit() {
     if (!contactId) {
@@ -99,11 +106,12 @@ export function LogAthletePrDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
             <Flame className="h-5 w-5 text-accent" />
-            Log {movementName} PR
+            {currentPrWeight != null ? "Update" : "Log"} {movementName} PR
           </DialogTitle>
           <DialogDescription>
-            Adds a historical attempt on the date you choose and recalculates your current{" "}
-            {percentRepMaxLabel(repMaxCount)} from all logged attempts.
+            {currentPrWeight != null
+              ? `Current vault PR is ${Math.round(currentPrWeight)} lb. Enter a new value to recalculate your ${percentRepMaxLabel(repMaxCount)} and refresh prescribed loads on Today.`
+              : `Adds a historical attempt on the date you choose and recalculates your current ${percentRepMaxLabel(repMaxCount)} from all logged attempts.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -134,7 +142,7 @@ export function LogAthletePrDialog({
             disabled={submitting}
             onClick={() => void submit()}
           >
-            {submitting ? "Saving…" : "Save PR"}
+            {submitting ? "Saving…" : currentPrWeight != null ? "Update PR" : "Save PR"}
           </Button>
         </div>
       </DialogContent>

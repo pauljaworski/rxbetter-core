@@ -98,7 +98,13 @@ export function StrengthLiftRow({
   }, [item.bench_name, item.movement_components]);
 
   const needsPr =
-    contactId != null && item.benchmark_definition_id != null && displayPrWeight == null;
+    contactId != null &&
+    item.benchmark_definition_id != null &&
+    item.prescribed_percentage != null &&
+    displayPrWeight == null;
+
+  const canEditPr =
+    contactId != null && item.benchmark_definition_id != null && item.prescribed_percentage != null;
 
   useEffect(() => {
     if (!contactId || !item.benchmark_definition_id) return;
@@ -282,7 +288,7 @@ export function StrengthLiftRow({
               <Flame className="h-3 w-3" /> PR
             </Badge>
           )}
-          {needsPr && (
+          {canEditPr && (
             <Button
               type="button"
               size="sm"
@@ -290,8 +296,17 @@ export function StrengthLiftRow({
               className="gap-1"
               onClick={() => setPrDialogOpen(true)}
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add PR
+              {needsPr ? (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  Add PR
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Update PR
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -331,9 +346,27 @@ export function StrengthLiftRow({
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Your PR (lb)
               </Label>
-              <p className="font-mono-num text-lg font-black">
-                {displayPrWeight != null ? displayPrWeight : "—"}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-mono-num text-lg font-black">
+                  {displayPrWeight != null ? displayPrWeight : "—"}
+                </p>
+                {canEditPr && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setPrDialogOpen(true)}
+                  >
+                    {needsPr ? "Add" : "Update"}
+                  </Button>
+                )}
+              </div>
+              {item.prescribed_percentage != null && needsPr && (
+                <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                  Add a PR to see your prescribed load.
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -408,6 +441,7 @@ export function StrengthLiftRow({
         repMaxCount={repCount}
         repsPrescribed={item.reps_prescribed}
         defaultDate={wod.wod_date}
+        currentPrWeight={displayPrWeight}
         onSaved={() => {
           void refreshPr();
           onLogged?.();

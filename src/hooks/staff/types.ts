@@ -116,6 +116,11 @@ export type EditorLineItem = {
   movement_components?: MovementComponent[];
   /** Rest after this set / between multi-move sets (seconds). */
   rest_sec?: number | null;
+  /**
+   * When true on complex_set (or strength with %), do not use a PR basis —
+   * no %×PR prescription even if component movements are catalog-linked.
+   */
+  skip_pr_basis?: boolean;
   /** Male / female Rx amounts and loads (both tiers are Rx). */
   rx_variants?: RxVariants;
 };

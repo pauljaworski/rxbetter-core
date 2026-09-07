@@ -73,7 +73,6 @@ export function ComplexSetEditor({
       benchmark_type_id: typeId,
       label: entry?.name ?? components[idx]?.label ?? "",
     });
-    if (!prTypeId) setPrTypeId(typeId);
   }
 
   async function handleSave() {
@@ -104,19 +103,21 @@ export function ComplexSetEditor({
       }
 
       const restSec = parseRestDuration(restBetweenSets);
-      const title = formatComplexMovementTitle(linked, { restBetweenSetsSec: restSec });
-      const prId =
-        prTypeId ?? linked.find((c) => c.benchmark_type_id)?.benchmark_type_id ?? null;
+      const skipPr = !prTypeId;
+      const title = formatComplexMovementTitle(linked, {
+        restBetweenSetsSec: skipPr ? restSec : restSec,
+      });
       const setCount = Math.max(1, sets);
+      const pctFraction = skipPr || pct == null ? null : pct / 100;
       const base: EditorLineItem = {
         _new: true,
         sequence_number: 0,
         reps_prescribed: null,
         prescription_unit: null,
         prescribed_weight: null,
-        prescribed_percentage: pct != null ? pct / 100 : null,
+        prescribed_percentage: pctFraction,
         prescribed_score: null,
-        benchmark_type_id: prId,
+        benchmark_type_id: prTypeId,
         benchmark_definition_id: initial?.benchmark_definition_id ?? null,
         percent_rep_max: initial?.percent_rep_max ?? 1,
         bench_name: title,
@@ -124,6 +125,7 @@ export function ComplexSetEditor({
         line_item_kind: "complex_set",
         movement_components: linked,
         rest_sec: restSec,
+        skip_pr_basis: skipPr,
       };
       onSave(Array.from({ length: setCount }, () => ({ ...base })));
       onOpenChange(false);
@@ -269,20 +271,35 @@ export function ComplexSetEditor({
               <Input
                 type="number"
                 className="h-8 font-mono-num"
+                disabled={!prTypeId}
                 value={pct ?? ""}
                 onChange={(e) =>
                   setPct(e.target.value === "" ? null : Number(e.target.value))
                 }
               />
+              {!prTypeId && (
+                <p className="text-[10px] text-muted-foreground">Select a PR basis to use %.</p>
+              )}
             </div>
           </div>
           <div className="space-y-1">
             <Label>PR basis movement</Label>
-            <Select value={prTypeId ?? ""} onValueChange={(v) => setPrTypeId(v || null)}>
+            <Select
+              value={prTypeId ?? "__none"}
+              onValueChange={(v) => {
+                if (v === "__none") {
+                  setPrTypeId(null);
+                  setPct(null);
+                } else {
+                  setPrTypeId(v);
+                }
+              }}
+            >
               <SelectTrigger className="h-8">
-                <SelectValue placeholder="First linked movement" />
+                <SelectValue placeholder="None — no % of PR" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none">None — no % of PR</SelectItem>
                 {components
                   .filter((c) => c.benchmark_type_id)
                   .map((c) => (
@@ -292,6 +309,10 @@ export function ComplexSetEditor({
                   ))}
               </SelectContent>
             </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Choose None when this block should not use an athlete&apos;s existing PRs (fixed
+              loads / RPE only).
+            </p>
           </div>
         </div>
         <DialogFooter>

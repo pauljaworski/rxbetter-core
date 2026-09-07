@@ -18,13 +18,15 @@ async function loadDefinitionMapCached(): Promise<Map<string, string>> {
   return definitionMapCache;
 }
 
-/** Ensure line items have benchmark_definition_id when type is known (defaults to 1RM). */
+/** Ensure line items have benchmark_definition_id when type is known (defaults to 1RM).
+ * Skip complex_set rows with no type (explicitly no PR basis). */
 export async function enrichLogLineItems(items: LogLineItem[]): Promise<LogLineItem[]> {
   const needsMap = items.some((i) => !i.benchmark_definition_id && i.benchmark_type_id);
   if (!needsMap) return items;
   const map = await loadDefinitionMapCached();
   return items.map((it) => {
     if (it.benchmark_definition_id || !it.benchmark_type_id) return it;
+    // Complex with % needs a definition; without type already skipped above.
     const defId = resolveDefinitionId(map, it.benchmark_type_id, 1);
     return defId ? { ...it, benchmark_definition_id: defId } : it;
   });
