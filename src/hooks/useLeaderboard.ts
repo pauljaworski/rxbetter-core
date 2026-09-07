@@ -5,7 +5,9 @@ import { useAsyncState } from "./useAsyncState";
 import { prescribedLevelLabel, type WorkoutScale } from "@/lib/format";
 import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { rankLeaderboardEntries } from "@/lib/leaderboard/rank-entries";
+import { aggregateWeightliftingBoardRows } from "@/lib/leaderboard/aggregate-weightlifting";
 import { segmentLabel } from "@/lib/format";
+import { isMetconSegment } from "@/lib/programming/manual-config";
 
 export type GenderFilter = "male" | "female" | "both";
 export type LevelFilter = "all" | WorkoutScale;
@@ -107,7 +109,7 @@ export function useLeaderboard(
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, prescribed_scale",
+        "id, name, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, prescribed_scale, programming_subtype",
       )
       .eq("gym_id", gymId)
       .eq("wod_date", dateKey)
@@ -150,7 +152,71 @@ export function useLeaderboard(
 
     const leaderboardPerfs = [...(segmentPerfs ?? []), ...(groupPerfs ?? [])].filter((p) =>
       Boolean(p.score?.trim()),
-    );
+    ) as Array<{
+      id: string;
+      contact_id: string;
+      programming_id: string | null;
+      segment_group_id: string | null;
+      score: string | null;
+      result_value: number | null;
+      workout_scale: string | null;
+      programming_line_item_id: string | null;
+    }>;
+
+    // Weightlifting boards: aggregate line-item lift logs (historical + current).
+    const wlProgs = progs.filter((p) => !isMetconSegment(p.programming_segment ?? ""));
+    const wlProgIds = wlProgs.map((p) => p.id);
+    let liftPerfs: Array<{
+      id: string;
+      contact_id: string;
+      programming_id: string | null;
+      programming_line_item_id: string | null;
+      weight_lifted: number | null;
+      status: string | null;
+      workout_scale: string | null;
+    }> = [];
+    const itemsByProg = new Map<string, string[]>();
+
+    if (wlProgIds.length) {
+      const [{ data: wlItems }, { data: lifts }] = await Promise.all([
+        supabase
+          .from("programming_line_item")
+          .select("id, programming_id")
+          .in("programming_id", wlProgIds)
+          .is("contact_id", null),
+        supabase
+          .from("athlete_performance")
+          .select(
+            "id, contact_id, programming_id, programming_line_item_id, weight_lifted, status, workout_scale",
+          )
+          .in("programming_id", wlProgIds)
+          .not("programming_line_item_id", "is", null),
+      ]);
+      for (const it of wlItems ?? []) {
+        const list = itemsByProg.get(it.programming_id) ?? [];
+        list.push(it.id);
+        itemsByProg.set(it.programming_id, list);
+      }
+      liftPerfs = lifts ?? [];
+
+      for (const prog of wlProgs) {
+        const aggregated = aggregateWeightliftingBoardRows(
+          prog.id,
+          itemsByProg.get(prog.id) ?? [],
+          liftPerfs,
+        );
+        for (const row of aggregated) {
+          // Prefer aggregated row when no segment score exists yet
+          if (
+            !leaderboardPerfs.some(
+              (p) => p.programming_id === row.programming_id && p.contact_id === row.contact_id,
+            )
+          ) {
+            leaderboardPerfs.push(row);
+          }
+        }
+      }
+    }
 
     const perfIds = leaderboardPerfs.map((p) => p.id);
     const contactIds = Array.from(new Set(leaderboardPerfs.map((p) => p.contact_id)));
@@ -213,7 +279,15 @@ export function useLeaderboard(
       if (!boardPerfs.length) continue;
 
       const scheme = parseWorkoutScheme(prog.workout_scheme);
-      const ranked = rankLeaderboardEntries(boardPerfs, scheme?.scoreMetric, scheme?.kind);
+      const isLiftBoard =
+        !isMetconSegment(prog.programming_segment ?? "") &&
+        (prog.programming_segment === "weightlifting" ||
+          prog.programming_segment === "strength" ||
+          prog.programming_subtype === "strength" ||
+          prog.programming_subtype === "weightlifting");
+      const ranked = isLiftBoard
+        ? [...boardPerfs].sort((a, b) => (b.result_value ?? 0) - (a.result_value ?? 0))
+        : rankLeaderboardEntries(boardPerfs, scheme?.scoreMetric, scheme?.kind);
 
       const buildEntries = (scaleFilter: LevelFilter): LeaderboardEntry[] => {
         const filtered = ranked.filter((p) => {

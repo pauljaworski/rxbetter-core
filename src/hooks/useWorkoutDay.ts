@@ -8,6 +8,7 @@ import {
   fetchAthleteTrackLibraryIds,
   isProgrammingVisibleForTracks,
   loadAssignmentMap,
+  libraryIdsForProgramming,
 } from "@/lib/programming/athlete-library-filter";
 import { enrichLogLineItems } from "@/lib/programming/enrich-line-items";
 import {
@@ -38,6 +39,8 @@ export type WorkoutDayProgramming = {
   display_order: number | null;
   wod_date: string;
   prescribed_scale: string | null;
+  program_library_id?: string | null;
+  program_library_ids?: string[];
   items: WorkoutLineItem[];
   source?: "gym" | "athlete_custom";
 };
@@ -164,6 +167,7 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
         ...p,
         group_score_anchor: p.group_score_anchor ?? false,
         source: gymIds.has(p.id) ? "gym" : "athlete_custom",
+        program_library_ids: libraryIdsForProgramming(p, assignmentMap),
         items: enriched,
       });
     }

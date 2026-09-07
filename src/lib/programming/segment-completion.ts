@@ -61,6 +61,14 @@ export async function tryMarkProgrammingSegmentComplete(
         .map((p) => p.programming_line_item_id as string),
     );
     if (!isPrescriptionSegmentComplete(programmingSegment, itemIds, logged, false)) return;
+
+    await upsertWeightliftingSegmentLeaderboardScore(
+      contactId,
+      programmingId,
+      wodDate,
+      itemIds,
+      perfs ?? [],
+    );
   }
 
   await upsertSegmentCompletion({
@@ -69,6 +77,67 @@ export async function tryMarkProgrammingSegmentComplete(
     segment_group_id: null,
     performance_date: wodDate,
   });
+}
+
+/** Segment-level row so weightlifting appears on the leaderboard (line items alone do not). */
+async function upsertWeightliftingSegmentLeaderboardScore(
+  contactId: string,
+  programmingId: string,
+  wodDate: string,
+  itemIds: string[],
+  perfs: Array<{
+    programming_line_item_id: string | null;
+    weight_lifted: number | null;
+    status: string | null;
+  }>,
+): Promise<void> {
+  const successful = perfs.filter(
+    (p) => p.status !== "failed" && p.weight_lifted != null,
+  );
+  const top =
+    successful.length > 0
+      ? Math.max(...successful.map((p) => p.weight_lifted as number))
+      : null;
+  const failedCount = perfs.filter((p) => p.status === "failed").length;
+  const score =
+    top != null
+      ? failedCount > 0
+        ? `${top} lb · ${successful.length}/${itemIds.length} success`
+        : `${top} lb · ${itemIds.length} sets`
+      : `${itemIds.length} sets logged`;
+
+  const { data: existing } = await supabase
+    .from("athlete_performance")
+    .select("id")
+    .eq("contact_id", contactId)
+    .eq("programming_id", programmingId)
+    .is("programming_line_item_id", null)
+    .is("segment_group_id", null)
+    .maybeSingle();
+
+  const payload = {
+    score,
+    result_value: top,
+    performance_date: wodDate,
+    workout_scale: "rx" as const,
+    status: "completed" as const,
+    is_pr: false,
+    weight_lifted: top,
+    programming_line_item_id: null,
+    segment_group_id: null,
+  };
+
+  if (existing?.id) {
+    await supabase.from("athlete_performance").update(payload).eq("id", existing.id);
+  } else {
+    await supabase.from("athlete_performance").insert({
+      ...payload,
+      contact_id: contactId,
+      programming_id: programmingId,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+    });
+  }
 }
 
 /** Mark multi-part block complete when group score exists. */

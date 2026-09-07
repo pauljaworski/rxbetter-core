@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Flame, Plus, XCircle } from "lucide-react";
+import { CheckCircle2, Flame, Pencil, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -54,12 +54,21 @@ export function StrengthLiftRow({
   const [repCount, setRepCount] = useState(1);
   const [weight, setWeight] = useState("");
   const [rpe, setRpe] = useState("");
-  const [liftStatus, setLiftStatus] = useState<"completed" | "failed">("completed");
   const [localPerf, setLocalPerf] = useState<ExistingPerformance | null>(existing);
+  const [editing, setEditing] = useState(false);
   const [prDialogOpen, setPrDialogOpen] = useState(false);
   const { save, submitting } = useSavePerformance();
 
   const displayPerf = localPerf ?? existing;
+  const isLogged = displayPerf?.weight_lifted != null || !!displayPerf?.status;
+  const readOnly = isLogged && !editing;
+  const loggedStatus =
+    displayPerf?.status === "failed"
+      ? "failed"
+      : displayPerf?.status === "completed" || displayPerf?.weight_lifted != null
+        ? "completed"
+        : null;
+
   const resolvedRx = useMemo(
     () => resolvePrescriptionForAthlete(item, rxGender ?? null),
     [item, rxGender],
@@ -121,7 +130,7 @@ export function StrengthLiftRow({
 
   useEffect(() => {
     setLocalPerf(existing);
-    setLiftStatus(existing?.status === "failed" ? "failed" : "completed");
+    setEditing(false);
   }, [item.id, existing?.id]);
 
   useEffect(() => {
@@ -214,11 +223,11 @@ export function StrengthLiftRow({
       workout_scale: (wod.prescribed_scale as WorkoutScale | null) ?? "rx",
       status,
     });
-    setLiftStatus(status);
+    setEditing(false);
 
     if (isPr && !displayPerf?.is_pr) toast.success("New PR!");
-    else if (status === "failed") toast.message("Marked failed");
-    else toast.success(displayPerf ? "Lift updated" : "Lift logged");
+    else if (status === "failed") toast.message("Lift saved as failed");
+    else toast.success(displayPerf ? "Lift updated" : "Lift saved");
 
     await tryMarkProgrammingSegmentComplete(
       contactId,
@@ -230,14 +239,18 @@ export function StrengthLiftRow({
     onLogged?.();
   }
 
-  async function applyStatus(status: "completed" | "failed") {
-    await submitLift(status);
-  }
-
-  const isLogged = displayPerf?.weight_lifted != null;
-
   return (
-    <div className={cn("space-y-4 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
+    <div
+      className={cn(
+        "space-y-4 border-b border-border/40 p-4 md:p-5 last:border-b-0",
+        isLogged &&
+          loggedStatus === "completed" &&
+          "bg-emerald-500/[0.07] ring-1 ring-inset ring-emerald-500/20",
+        isLogged &&
+          loggedStatus === "failed" &&
+          "bg-destructive/[0.06] ring-1 ring-inset ring-destructive/20",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <AthletePrescriptionHeader
           movementName={movementName}
@@ -254,6 +267,16 @@ export function StrengthLiftRow({
           sequenceNumber={item.sequence_number}
         />
         <div className="flex flex-wrap items-center gap-2">
+          {isLogged && loggedStatus === "completed" && (
+            <Badge className="gap-1 bg-emerald-600/15 text-emerald-700 hover:bg-emerald-600/15 dark:text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" /> Saved
+            </Badge>
+          )}
+          {isLogged && loggedStatus === "failed" && (
+            <Badge variant="destructive" className="gap-1">
+              <XCircle className="h-3 w-3" /> Failed
+            </Badge>
+          )}
           {displayPerf?.is_pr && (
             <Badge className="gap-1 bg-accent text-accent-foreground">
               <Flame className="h-3 w-3" /> PR
@@ -274,75 +297,106 @@ export function StrengthLiftRow({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Your PR (lb)
-          </Label>
-          <p className="font-mono-num text-lg font-black">
-            {displayPrWeight != null ? displayPrWeight : "—"}
-          </p>
+      {readOnly ? (
+        <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-border/60 bg-card/80 px-3 py-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Weight</p>
+              <p className="font-mono-num text-xl font-black">
+                {displayPerf?.weight_lifted != null ? `${displayPerf.weight_lifted} lb` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">RPE</p>
+              <p className="font-mono-num text-xl font-black">
+                {displayPerf?.rpe != null ? displayPerf.rpe : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Result</p>
+              <p className="text-sm font-semibold">
+                {loggedStatus === "failed" ? "Failed" : "Success"}
+              </p>
+            </div>
+          </div>
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="mr-1 h-3.5 w-3.5" />
+            Edit
+          </Button>
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Prescribed (lb)
-          </Label>
-          <p className="font-mono-num text-lg font-black text-primary">
-            {prescribedWeight != null ? prescribedWeight : "—"}
-          </p>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Actual weight (lb)
-          </Label>
-          <Input
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className="font-mono-num h-9"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            RPE (optional)
-          </Label>
-          <Input
-            inputMode="decimal"
-            value={rpe}
-            onChange={(e) => setRpe(e.target.value)}
-            placeholder="8"
-            className="font-mono-num h-9"
-          />
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Your PR (lb)
+              </Label>
+              <p className="font-mono-num text-lg font-black">
+                {displayPrWeight != null ? displayPrWeight : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Prescribed (lb)
+              </Label>
+              <p className="font-mono-num text-lg font-black text-primary">
+                {prescribedWeight != null ? prescribedWeight : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Actual weight (lb)
+              </Label>
+              <Input
+                inputMode="decimal"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                className="font-mono-num h-9"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                RPE (optional)
+              </Label>
+              <Input
+                inputMode="decimal"
+                value={rpe}
+                onChange={(e) => setRpe(e.target.value)}
+                placeholder="8"
+                className="font-mono-num h-9"
+              />
+            </div>
+          </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          disabled={submitting}
-          variant={liftStatus === "completed" ? "default" : "outline"}
-          className={
-            liftStatus === "completed"
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : undefined
-          }
-          onClick={() => void applyStatus("completed")}
-        >
-          <CheckCircle2 className="mr-1 h-4 w-4" />
-          Success
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={submitting}
-          variant={liftStatus === "failed" ? "destructive" : "outline"}
-          onClick={() => void applyStatus("failed")}
-        >
-          <XCircle className="mr-1 h-4 w-4" />
-          Failed
-        </Button>
-      </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={submitting}
+              variant="outline"
+              onClick={() => void submitLift("completed")}
+            >
+              <CheckCircle2 className="mr-1 h-4 w-4" />
+              Success
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={submitting}
+              variant="outline"
+              onClick={() => void submitLift("failed")}
+            >
+              <XCircle className="mr-1 h-4 w-4" />
+              Failed
+            </Button>
+            {editing && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </>
+      )}
 
       <LogAthletePrDialog
         open={prDialogOpen}
