@@ -10,6 +10,11 @@ import {
 } from "@/lib/programming/athlete-library-filter";
 import { enrichLogLineItems } from "@/lib/programming/enrich-line-items";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
+import {
+  formatComplexMovementTitle,
+  parseMovementComponents,
+} from "@/lib/programming/movement-components-schema";
+import { complexCircuitTitle } from "@/lib/programming/complex-set-display";
 
 export type WeekWod = {
   id: string;
@@ -18,6 +23,7 @@ export type WeekWod = {
   athlete_notes: string | null;
   coaches_notes: string | null;
   programming_segment: string | null;
+  programming_subtype?: string | null;
   metcon_format: string | null;
   workout_scheme?: unknown;
   segment_group_id?: string | null;
@@ -71,7 +77,7 @@ export function useProgrammingWeek(
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+        "id, name, description, athlete_notes, coaches_notes, programming_segment, programming_subtype, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
       )
       .eq("gym_id", activeGymId)
       .eq("source", "gym")
@@ -95,7 +101,7 @@ export function useProgrammingWeek(
       const { data: custom, error: customErr } = await supabase
         .from("programming")
         .select(
-          "id, name, description, athlete_notes, coaches_notes, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
+          "id, name, description, athlete_notes, coaches_notes, programming_segment, programming_subtype, metcon_format, workout_scheme, segment_group_id, group_score_anchor, display_order, wod_date, prescribed_scale, program_library_id, published_at",
         )
         .eq("source", "athlete_custom")
         .eq("created_by_contact_id", contactId)
@@ -126,7 +132,7 @@ export function useProgrammingWeek(
       const { data: items, error: itemErr } = await supabase
         .from("programming_line_item")
         .select(
-          "id, programming_id, sequence_number, reps_prescribed, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label",
+          "id, programming_id, sequence_number, reps_prescribed, prescription_unit, prescribed_percentage, prescribed_weight, prescribed_score, status, benchmark_definition_id, benchmark_type_id, contact_id, movement_label, line_item_kind, movement_components, rx_variants, rest_sec",
         )
         .in("programming_id", progIds)
         .is("contact_id", null)
@@ -145,18 +151,37 @@ export function useProgrammingWeek(
       const rawByWod = new Map<string, LogLineItem[]>();
       for (const it of items ?? []) {
         const t = it.benchmark_type_id ? typeMap.get(it.benchmark_type_id) : undefined;
+        const components = parseMovementComponents(it.movement_components);
+        const complexTitle =
+          components.length > 0
+            ? formatComplexMovementTitle(components, { restBetweenSetsSec: it.rest_sec })
+            : null;
+        const circuit =
+          complexTitle ??
+          complexCircuitTitle({
+            line_item_kind: it.line_item_kind,
+            movement_components: it.movement_components,
+            rest_sec: it.rest_sec,
+            movement_label: it.movement_label,
+          });
         const row: LogLineItem = {
           id: it.id,
           sequence_number: it.sequence_number,
           reps_prescribed: it.reps_prescribed,
+          prescription_unit: it.prescription_unit,
           prescribed_percentage: it.prescribed_percentage,
           prescribed_weight: it.prescribed_weight,
           prescribed_score: it.prescribed_score,
           status: it.status,
           benchmark_definition_id: it.benchmark_definition_id,
           benchmark_type_id: it.benchmark_type_id,
-          bench_name: t?.name ?? it.movement_label ?? undefined,
+          // Prefer full circuit / movement_label over PR-basis type name.
+          bench_name: circuit ?? it.movement_label ?? t?.name ?? undefined,
           stimulus: t?.stimulus ?? undefined,
+          line_item_kind: it.line_item_kind,
+          movement_components: it.movement_components,
+          rx_variants: it.rx_variants,
+          rest_sec: it.rest_sec,
         };
         const arr = rawByWod.get(it.programming_id) ?? [];
         arr.push(row);

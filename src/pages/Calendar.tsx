@@ -108,7 +108,7 @@ function weekWodToDayProgramming(
     workout_scheme: w.workout_scheme,
     segment_group_id: w.segment_group_id ?? null,
     group_score_anchor: w.group_score_anchor ?? false,
-    programming_subtype: null,
+    programming_subtype: w.programming_subtype ?? null,
     display_order: w.display_order,
     wod_date: w.wod_date,
     prescribed_scale: w.prescribed_scale ?? null,
@@ -319,7 +319,7 @@ export default function CalendarPage() {
                     >
                       <div>
                         <p className="eyebrow">
-                          {segmentLabel(w.programming_segment)}
+                          {segmentLabel(w.programming_segment, w.programming_subtype)}
                           {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
                           {w.source === "athlete_custom" && (
                             <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
@@ -340,6 +340,11 @@ export default function CalendarPage() {
                                 {line}
                               </p>
                             ))}
+                            {(w.athlete_notes || w.coaches_notes) && (
+                              <p className="line-clamp-2 text-xs text-muted-foreground/90">
+                                {w.coaches_notes || w.athlete_notes}
+                              </p>
+                            )}
                             {w.description && (
                               <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                                 {w.description}
@@ -366,6 +371,20 @@ export default function CalendarPage() {
                           <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
                             {w.description}
                           </p>
+                        )}
+                        {(w.athlete_notes || w.coaches_notes) && (
+                          <div className="space-y-2 border-b border-border/60 bg-secondary/20 px-4 py-3 text-xs">
+                            {w.coaches_notes && (
+                              <p className="whitespace-pre-line text-foreground/90">
+                                {w.coaches_notes}
+                              </p>
+                            )}
+                            {w.athlete_notes && (
+                              <p className="whitespace-pre-line text-muted-foreground">
+                                {w.athlete_notes}
+                              </p>
+                            )}
+                          </div>
                         )}
                         <WorkoutSegmentItems
                           wod={w}

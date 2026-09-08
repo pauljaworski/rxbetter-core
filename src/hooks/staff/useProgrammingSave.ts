@@ -160,7 +160,7 @@ function resolveLineItemForSave(
         ? "Rest"
         : kind === "complex_set"
           ? complexLabel
-          : prTypeId
+          : movementTypeId
             ? null
             : (it.movement_label ?? it.bench_name ?? null),
     line_item_kind: kind,

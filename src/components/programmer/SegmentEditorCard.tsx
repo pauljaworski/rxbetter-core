@@ -50,6 +50,8 @@ import { applyWorkoutFormatKind, MetconSchemeFields } from "./MetconSchemeFields
 import { LineItemFields } from "./LineItemFields";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { editorComplexSetRowLabel } from "@/lib/programming/complex-set-display";
+import { isComplexSetLineItem } from "@/lib/programming/complex-set-prescription";
 
 type Props = {
   wod: EditorWod;
@@ -550,18 +552,31 @@ export function SegmentEditorCard({
                 add movements above.
               </p>
             )}
-            {wod.items.map((it, j) => (
+            {wod.items.map((it, j) => {
+              const complexLabel = isComplexSetLineItem(it)
+                ? editorComplexSetRowLabel(wod.items, j)
+                : null;
+              return (
               <div key={it.id ?? `i-${j}`} className="space-y-2 p-3">
                 <div className="flex items-center gap-2">
                   <span className="font-mono-num inline-grid h-6 w-6 place-items-center rounded-md bg-secondary text-[11px] font-bold text-muted-foreground">
                     {j + 1}
                   </span>
-                  <p className="flex-1 text-sm font-bold">{movementDisplayName(it)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">
+                      {complexLabel?.title ?? movementDisplayName(it)}
+                    </p>
+                    {complexLabel?.subtitle && (
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        {complexLabel.subtitle}
+                      </p>
+                    )}
+                  </div>
                   {it.line_item_kind === "rest" ? (
                     <Badge variant="outline" className="text-[10px]">
                       Rest
                     </Badge>
-                  ) : !it.benchmark_type_id ? (
+                  ) : !it.benchmark_type_id && it.line_item_kind !== "complex_set" ? (
                     <Badge variant="secondary" className="text-[10px]">
                       Custom
                     </Badge>
@@ -591,7 +606,8 @@ export function SegmentEditorCard({
                   onChange={(patch) => onUpdateItem(j, patch)}
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Description and notes */}

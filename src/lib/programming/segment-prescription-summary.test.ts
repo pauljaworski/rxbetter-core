@@ -175,4 +175,35 @@ describe("segment-prescription-summary", () => {
     expect(header).toBe("2 sets");
     expect(lines).toHaveLength(2);
   });
+
+  it("collapses identical multi-move sets into one prescription line", () => {
+    const components = [
+      { reps: 16, label: "Dumbbell Bulgarian Split Squat", benchmark_type_id: null, unit: "reps" as const },
+      { reps: 12, label: "Dumbbell Romanian Deadlifts", benchmark_type_id: null, unit: "reps" as const },
+      { reps: 60, label: "DB Farmers Carry", benchmark_type_id: null, unit: "feet" as const },
+      { reps: 20, label: "Reverse Crunches", benchmark_type_id: null, unit: "reps" as const },
+    ];
+    const row = (id: string, seq: number) => ({
+      id,
+      sequence_number: seq,
+      reps_prescribed: null,
+      prescribed_percentage: null,
+      prescribed_weight: null,
+      prescribed_score: null,
+      status: null,
+      benchmark_definition_id: null,
+      benchmark_type_id: null,
+      line_item_kind: "complex_set" as const,
+      movement_components: components,
+      rest_sec: 90,
+    });
+    const { header, lines } = summarizeSegmentPrescription(
+      { programming_segment: "weightlifting" },
+      [row("a", 1), row("b", 2), row("c", 3), row("d", 4)],
+    );
+    expect(header).toBe("4 sets");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("Dumbbell Bulgarian Split Squat");
+    expect(lines[0]).toContain("Rest 1:30");
+  });
 });

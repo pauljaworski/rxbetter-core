@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   movementName: string;
+  /** Optional second line (e.g. full multi-move circuit under "Set 2 of 4"). */
+  subtitle?: string | null;
   repsPrescribed?: number | null;
   prescriptionUnit?: string | null;
   prescribedPercentage?: number | null;
@@ -20,6 +22,7 @@ type Props = {
 
 export function AthletePrescriptionHeader({
   movementName,
+  subtitle,
   repsPrescribed,
   prescriptionUnit,
   prescribedPercentage,
@@ -60,14 +63,19 @@ export function AthletePrescriptionHeader({
           {sequenceNumber}
         </span>
       )}
-      <h4
-        className={cn(
-          "min-w-0 font-black leading-tight tracking-tight text-foreground",
-          compact ? "text-base md:text-lg" : "text-xl md:text-2xl",
+      <div className="min-w-0">
+        <h4
+          className={cn(
+            "min-w-0 font-black leading-tight tracking-tight text-foreground",
+            compact ? "text-base md:text-lg" : "text-xl md:text-2xl",
+          )}
+        >
+          {title}
+        </h4>
+        {subtitle && (
+          <p className="mt-1 text-xs leading-snug text-muted-foreground md:text-sm">{subtitle}</p>
         )}
-      >
-        {title}
-      </h4>
+      </div>
     </div>
   );
 }

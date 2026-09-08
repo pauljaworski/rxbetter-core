@@ -118,11 +118,13 @@ export function WorkoutSegmentItems({
           </p>
         </div>
       )}
-      {items.map((it) =>
+      {items.map((it, idx) =>
         isWeightlifting ? (
           <StrengthLiftRow
             key={it.id}
             item={it}
+            items={items}
+            itemIndex={idx}
             wod={wod}
             contactId={contactId}
             rxGender={rxGender}

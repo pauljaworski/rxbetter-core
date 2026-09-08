@@ -14,6 +14,11 @@ import {
   resolvePrescriptionForAthlete,
   type RxGender,
 } from "@/lib/programming/rx-variants-schema";
+import {
+  complexCircuitTitle,
+  isSameComplexPrescription,
+} from "@/lib/programming/complex-set-display";
+import { isComplexSetLineItem } from "@/lib/programming/complex-set-prescription";
 
 export type SegmentSummaryInput = {
   programming_segment: string;
@@ -23,12 +28,8 @@ export type SegmentSummaryInput = {
 };
 
 function loadLabel(item: LogLineItem): string {
-  const components = parseMovementComponents(item.movement_components);
-  if (components.length) {
-    return formatComplexMovementTitle(components, {
-      restBetweenSetsSec: item.rest_sec,
-    });
-  }
+  const circuit = complexCircuitTitle(item);
+  if (circuit) return circuit;
   if (item.line_item_kind === "rest") {
     const sec = item.rest_sec ?? item.reps_prescribed;
     if (sec != null && sec > 0) {
@@ -71,6 +72,33 @@ export type SegmentPrescriptionSummary = {
   lines: string[];
 };
 
+/**
+ * Collapse consecutive identical complex_set rows into one prescription line
+ * so athletes/staff see the circuit once under an "N sets" header.
+ */
+export function collapseStrengthPrescriptionLines(
+  items: LogLineItem[],
+  athleteGender: RxGender | null = null,
+): string[] {
+  const lines: string[] = [];
+  let i = 0;
+  while (i < items.length) {
+    const it = items[i];
+    if (isComplexSetLineItem(it)) {
+      let run = 1;
+      while (i + run < items.length && isSameComplexPrescription(it, items[i + run])) {
+        run++;
+      }
+      lines.push(summarizeLineItemBrief(it, athleteGender));
+      i += run;
+      continue;
+    }
+    lines.push(summarizeLineItemBrief(it, athleteGender));
+    i++;
+  }
+  return lines;
+}
+
 export function summarizeSegmentPrescription(
   wod: SegmentSummaryInput,
   items: LogLineItem[],
@@ -92,8 +120,11 @@ export function summarizeSegmentPrescription(
     return { header: "No prescribed sets", lines: [] };
   }
 
+  const setCount = items.filter((it) => it.line_item_kind !== "rest" && it.line_item_kind !== "note")
+    .length;
+
   return {
-    header: `${items.length} ${items.length === 1 ? "set" : "sets"}`,
-    lines: items.map((it) => summarizeLineItemBrief(it, athleteGender)),
+    header: `${setCount} ${setCount === 1 ? "set" : "sets"}`,
+    lines: collapseStrengthPrescriptionLines(items, athleteGender),
   };
 }

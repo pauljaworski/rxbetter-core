@@ -29,6 +29,8 @@ import {
   type RxGender,
 } from "@/lib/programming/rx-variants-schema";
 import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
+import { logComplexSetRowLabel } from "@/lib/programming/complex-set-display";
+import { isComplexSetLineItem } from "@/lib/programming/complex-set-prescription";
 
 function weightToInputValue(lb: number): string {
   if (Number.isInteger(lb)) return String(lb);
@@ -37,6 +39,8 @@ function weightToInputValue(lb: number): string {
 
 export function StrengthLiftRow({
   item,
+  items,
+  itemIndex,
   wod,
   contactId,
   rxGender,
@@ -44,6 +48,9 @@ export function StrengthLiftRow({
   onLogged,
 }: {
   item: LogLineItem;
+  /** Sibling line items in the segment (for multi-set complex labeling). */
+  items?: LogLineItem[];
+  itemIndex?: number;
   wod: LogWodContext;
   contactId: string | null;
   rxGender?: RxGender | null;
@@ -91,11 +98,27 @@ export function StrengthLiftRow({
 
   const displayPrWeight = roundWeightLb(prWeight);
 
-  const movementName = useMemo(() => {
+  const { movementName, movementSubtitle } = useMemo(() => {
+    const siblings = items ?? [item];
+    const idx = itemIndex ?? 0;
+    if (isComplexSetLineItem(item)) {
+      const labeled = logComplexSetRowLabel(siblings, idx);
+      return { movementName: labeled.title, movementSubtitle: labeled.subtitle };
+    }
     const components = parseMovementComponents(item.movement_components);
-    if (components.length) return formatComplexMovementTitle(components);
-    return item.bench_name ?? "Lift";
-  }, [item.bench_name, item.movement_components]);
+    if (components.length) {
+      return {
+        movementName: formatComplexMovementTitle(components, {
+          restBetweenSetsSec: item.rest_sec,
+        }),
+        movementSubtitle: null as string | null,
+      };
+    }
+    return {
+      movementName: item.bench_name ?? "Lift",
+      movementSubtitle: null as string | null,
+    };
+  }, [item, items, itemIndex]);
 
   const needsPr =
     contactId != null &&
@@ -260,6 +283,7 @@ export function StrengthLiftRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <AthletePrescriptionHeader
           movementName={movementName}
+          subtitle={movementSubtitle}
           repsPrescribed={resolvedRx.reps_prescribed ?? item.reps_prescribed}
           prescriptionUnit={resolvedRx.prescription_unit ?? prescriptionUnitForLineItem(item)}
           dualAmountLabel={resolvedRx.dual_amount_label}
@@ -437,7 +461,7 @@ export function StrengthLiftRow({
         contactId={contactId}
         benchmarkDefinitionId={item.benchmark_definition_id}
         benchmarkTypeId={item.benchmark_type_id}
-        movementName={item.bench_name ?? "Lift"}
+        movementName={item.bench_name ?? movementName}
         repMaxCount={repCount}
         repsPrescribed={item.reps_prescribed}
         defaultDate={wod.wod_date}
