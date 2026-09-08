@@ -24,9 +24,14 @@ import {
 } from "@/components/ui/select";
 import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
 import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
-import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import {
+  PRESCRIPTION_UNITS,
+  PRESCRIPTION_UNIT_LABELS,
+  type PrescriptionUnit,
+} from "@/lib/programming/prescription-unit";
 import { ensureGymBenchmarkType } from "@/lib/programming/gym-benchmark-type";
 import { toast } from "sonner";
+import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
 
 export type MovementPrescription = {
   sets: number;
@@ -176,7 +181,9 @@ export function MovementPickerDialog({
         ? "Calories"
         : unit === "feet"
           ? "Feet"
-          : "Reps";
+          : unit === "seconds"
+            ? "Time"
+            : "Reps";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -184,7 +191,8 @@ export function MovementPickerDialog({
         <DialogHeader>
           <DialogTitle>Add movement</DialogTitle>
           <DialogDescription>
-            Pick a movement, then set sets, amount, unit, and optional % before adding.
+            Pick a movement, then set sets, amount (or time), unit, and optional % before adding.
+          Use time (m:ss) for pieces like Ski / Row / Bike for 0:60.
           </DialogDescription>
         </DialogHeader>
 
@@ -283,16 +291,28 @@ export function MovementPickerDialog({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{amountLabel}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-8 font-mono-num"
-                  value={reps ?? ""}
-                  onChange={(e) =>
-                    setReps(e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1))
-                  }
-                  placeholder="—"
-                />
+                {unit === "seconds" ? (
+                  <DurationSecondsInput
+                    value={reps}
+                    onChange={setReps}
+                    className="h-8 font-mono-num"
+                    placeholder="0:60"
+                    inputKey={`pick-sec-${reps ?? "x"}`}
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 font-mono-num"
+                    value={reps ?? ""}
+                    onChange={(e) =>
+                      setReps(
+                        e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1),
+                      )
+                    }
+                    placeholder="—"
+                  />
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Unit</Label>
@@ -303,7 +323,7 @@ export function MovementPickerDialog({
                   <SelectContent>
                     {PRESCRIPTION_UNITS.map((u) => (
                       <SelectItem key={u} value={u}>
-                        {u}
+                        {PRESCRIPTION_UNIT_LABELS[u]}
                       </SelectItem>
                     ))}
                   </SelectContent>

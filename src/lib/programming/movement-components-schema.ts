@@ -4,7 +4,7 @@ import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/pre
 
 export const movementComponentSchema = z.object({
   benchmark_type_id: z.string().uuid().nullable(),
-  /** Amount (reps, meters, calories, or feet depending on unit). */
+  /** Amount (reps, meters, calories, feet, or seconds depending on unit). */
   reps: z.number().int().min(1).max(99999),
   unit: z.enum(PRESCRIPTION_UNITS).default("reps"),
   label: z.string().min(1).max(120),
@@ -70,6 +70,10 @@ function formatComponentAmount(c: MovementComponent): string {
       return `${c.reps}m ${c.label}`;
     case "calories":
       return `${c.reps} cal ${c.label}`;
+    case "seconds": {
+      const t = formatRestDuration(c.reps) ?? `${c.reps}s`;
+      return `${t} ${c.label}`;
+    }
     default:
       return `${c.reps} ${c.label}`;
   }
@@ -89,7 +93,8 @@ export function formatComplexMovementTitle(
 ): string {
   if (!components.length) return "Complex";
   const useList = components.some(
-    (c) => (c.unit ?? "reps") !== "reps" || (c.rest_after_sec != null && c.rest_after_sec > 0),
+    (c) =>
+      (c.unit ?? "reps") !== "reps" || (c.rest_after_sec != null && c.rest_after_sec > 0),
   );
   const parts: string[] = [];
   for (const c of components) {

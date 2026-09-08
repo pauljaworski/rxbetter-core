@@ -5,7 +5,12 @@ import type { MovementComponent } from "@/lib/programming/movement-components-sc
 import { formatComplexMovementTitle } from "@/lib/programming/movement-components-schema";
 import type { CatalogEntry } from "@/lib/programming/manual-config";
 import { ensureGymBenchmarkType, formatRestDuration, parseRestDuration } from "@/lib/programming/gym-benchmark-type";
-import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import {
+  PRESCRIPTION_UNITS,
+  PRESCRIPTION_UNIT_LABELS,
+  type PrescriptionUnit,
+} from "@/lib/programming/prescription-unit";
+import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -151,16 +156,27 @@ export function ComplexSetEditor({
           {components.map((c, idx) => (
             <div key={idx} className="flex flex-wrap items-end gap-2 rounded-md border p-2">
               <div className="space-y-1">
-                <Label className="text-[9px] uppercase">Amount</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-8 w-16 font-mono-num"
-                  value={c.reps}
-                  onChange={(e) =>
-                    updateComponent(idx, { reps: Number(e.target.value) || 1 })
-                  }
-                />
+                <Label className="text-[9px] uppercase">
+                  {(c.unit ?? "reps") === "seconds" ? "Time" : "Amount"}
+                </Label>
+                {(c.unit ?? "reps") === "seconds" ? (
+                  <DurationSecondsInput
+                    value={c.reps}
+                    onChange={(sec) => updateComponent(idx, { reps: Math.max(1, sec ?? 1) })}
+                    className="h-8 w-20 font-mono-num"
+                    inputKey={`comp-sec-${idx}-${c.reps}`}
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 w-16 font-mono-num"
+                    value={c.reps}
+                    onChange={(e) =>
+                      updateComponent(idx, { reps: Number(e.target.value) || 1 })
+                    }
+                  />
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-[9px] uppercase">Unit</Label>
@@ -168,13 +184,13 @@ export function ComplexSetEditor({
                   value={c.unit ?? "reps"}
                   onValueChange={(v) => updateComponent(idx, { unit: v as PrescriptionUnit })}
                 >
-                  <SelectTrigger className="h-8 w-[5.5rem] text-xs">
+                  <SelectTrigger className="h-8 w-[7.5rem] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {PRESCRIPTION_UNITS.map((u) => (
                       <SelectItem key={u} value={u}>
-                        {u}
+                        {PRESCRIPTION_UNIT_LABELS[u]}
                       </SelectItem>
                     ))}
                   </SelectContent>

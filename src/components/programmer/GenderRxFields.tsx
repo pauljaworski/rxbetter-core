@@ -10,7 +10,8 @@ import {
   type RxVariant,
   type RxVariants,
 } from "@/lib/programming/rx-variants-schema";
-import { PRESCRIPTION_UNITS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import { PRESCRIPTION_UNITS, PRESCRIPTION_UNIT_LABELS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
 
 function NumInput({
   label,
@@ -171,7 +172,7 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
               >
                 {PRESCRIPTION_UNITS.map((u) => (
                   <option key={u} value={u}>
-                    {u}
+                    {PRESCRIPTION_UNIT_LABELS[u]}
                   </option>
                 ))}
               </select>
@@ -186,11 +187,20 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     {label}
                   </p>
-                  <NumInput
-                    label={mode === "tracking_only" ? "Amount" : "Reps"}
-                    value={v.reps ?? null}
-                    onChange={(reps) => patchVariant(gender, { reps })}
-                  />
+                  {unit === "seconds" ? (
+                    <DurationSecondsInput
+                      label="Time"
+                      value={v.reps ?? null}
+                      onChange={(reps) => patchVariant(gender, { reps })}
+                      inputKey={`${gender}-sec-${v.reps ?? "x"}`}
+                    />
+                  ) : (
+                    <NumInput
+                      label={mode === "tracking_only" ? "Amount" : "Reps"}
+                      value={v.reps ?? null}
+                      onChange={(reps) => patchVariant(gender, { reps })}
+                    />
+                  )}
                   {mode === "strength" ? (
                     <NumInput
                       label="Weight (lb)"
