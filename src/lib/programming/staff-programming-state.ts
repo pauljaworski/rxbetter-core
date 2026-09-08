@@ -234,3 +234,28 @@ export function moveSegmentInDay(
   }
   return withRenumberedOrder(flattened);
 }
+
+/** Swap a line item with its neighbor and renumber sequence_number. */
+export function reorderLineItems<T extends { sequence_number: number }>(
+  items: T[],
+  itemIdx: number,
+  direction: "up" | "down",
+): T[] {
+  const target = direction === "up" ? itemIdx - 1 : itemIdx + 1;
+  if (itemIdx < 0 || itemIdx >= items.length) return items;
+  if (target < 0 || target >= items.length) return items;
+  const next = [...items];
+  const tmp = next[itemIdx];
+  next[itemIdx] = next[target];
+  next[target] = tmp;
+  return next.map((it, i) => ({ ...it, sequence_number: i + 1 }));
+}
+
+export function canReorderLineItem(
+  itemCount: number,
+  itemIdx: number,
+  direction: "up" | "down",
+): boolean {
+  if (itemIdx < 0 || itemIdx >= itemCount) return false;
+  return direction === "up" ? itemIdx > 0 : itemIdx < itemCount - 1;
+}

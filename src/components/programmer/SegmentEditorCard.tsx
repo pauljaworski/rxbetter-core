@@ -65,6 +65,7 @@ type Props = {
   onUpdateItem: (itemIdx: number, patch: Partial<EditorLineItem>) => void;
   onRemoveItem: (itemIdx: number) => void;
   onCloneItem: (itemIdx: number) => void;
+  onMoveItem?: (itemIdx: number, direction: "up" | "down") => void;
   onDuplicate: () => void;
   onAddMovement: () => void;
   onOpenComplexEditor: () => void;
@@ -87,6 +88,7 @@ export function SegmentEditorCard({
   onUpdateItem,
   onRemoveItem,
   onCloneItem,
+  onMoveItem,
   onDuplicate,
   onAddMovement,
   wodIndex,
@@ -581,6 +583,30 @@ export function SegmentEditorCard({
                       Custom
                     </Badge>
                   ) : null}
+                  {onMoveItem && (
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        disabled={j === 0}
+                        onClick={() => onMoveItem(j, "up")}
+                        aria-label="Move movement up"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        disabled={j >= wod.items.length - 1}
+                        onClick={() => onMoveItem(j, "down")}
+                        aria-label="Move movement down"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     size="icon"
                     variant="ghost"

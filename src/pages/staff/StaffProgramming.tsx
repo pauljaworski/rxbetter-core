@@ -27,6 +27,7 @@ import {
   isSegmentUnsaved,
   linkSegmentWithPrevious,
   moveSegmentInDay,
+  reorderLineItems,
   suggestDuplicateScale,
 } from "@/lib/programming/staff-programming-state";
 import {
@@ -339,6 +340,15 @@ export default function StaffProgramming() {
     );
   }
 
+  function moveItem(wodIdx: number, itemIdx: number, direction: "up" | "down") {
+    setServerSyncMode(null);
+    setWods((prev) =>
+      prev.map((w, i) =>
+        i === wodIdx ? { ...w, items: reorderLineItems(w.items, itemIdx, direction) } : w,
+      ),
+    );
+  }
+
   async function saveAllUnsavedSections(): Promise<{ error: string | null; saved: number }> {
     let saved = 0;
     for (let i = 0; i < wods.length; i++) {
@@ -527,6 +537,7 @@ export default function StaffProgramming() {
               onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
               onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}
+              onMoveItem={(itemIdx, direction) => moveItem(idx, itemIdx, direction)}
               onDuplicate={() => duplicateWod(idx)}
               onAddMovement={() => setMovementPicker({ wodIdx: idx })}
               onOpenComplexEditor={() => setComplexEditor({ wodIdx: idx })}
