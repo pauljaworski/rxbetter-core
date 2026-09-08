@@ -18,6 +18,8 @@ import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
+import { isLoggableLineItem } from "@/lib/programming/line-item-kind";
+import { formatRestDuration } from "@/lib/programming/gym-benchmark-type";
 
 type Props = {
   wod: LogWodContext & { workout_scheme?: unknown };
@@ -92,10 +94,11 @@ export function WorkoutSegmentItems({
   }
 
   const isWeightlifting = wod.programming_segment === "weightlifting";
+  const loggableItems = items.filter((it) => isLoggableLineItem(it.line_item_kind));
   const allLiftsLogged =
     isWeightlifting &&
-    items.length > 0 &&
-    items.every((it) => {
+    loggableItems.length > 0 &&
+    loggableItems.every((it) => {
       const p = perfByItem.get(it.id);
       return p && (p.weight_lifted != null || !!p.status);
     });
@@ -119,7 +122,9 @@ export function WorkoutSegmentItems({
         </div>
       )}
       {items.map((it, idx) =>
-        isWeightlifting ? (
+        it.line_item_kind === "rest" ? (
+          <RestIntervalRow key={it.id} item={it} />
+        ) : isWeightlifting ? (
           <StrengthLiftRow
             key={it.id}
             item={it}
@@ -142,6 +147,17 @@ export function WorkoutSegmentItems({
           />
         ),
       )}
+    </div>
+  );
+}
+
+function RestIntervalRow({ item }: { item: LogLineItem }) {
+  const label = formatRestDuration(item.rest_sec ?? item.reps_prescribed);
+  return (
+    <div className="border-b border-border/40 px-4 py-3 last:border-b-0 md:px-5">
+      <p className="text-sm font-medium text-muted-foreground">
+        {label ? `Rest ${label}` : "Rest"}
+      </p>
     </div>
   );
 }

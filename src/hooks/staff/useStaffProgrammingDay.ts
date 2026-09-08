@@ -15,6 +15,7 @@ import {
 } from "@/lib/programming/line-item-kind";
 import { expandComplexSetLineItems } from "@/lib/programming/complex-set-prescription";
 import { parseRxVariants } from "@/lib/programming/rx-variants-schema";
+import { skipPrBasisFromPersisted } from "@/lib/programming/skip-pr-basis";
 
 async function loadLibraryAssignments(
   programmingIds: string[],
@@ -132,7 +133,12 @@ function mapWodsFromRows(
               line_item_kind: kind,
               movement_components: components,
               rest_sec: i.rest_sec ?? null,
-              skip_pr_basis: kind === "complex_set" && !i.benchmark_type_id,
+              skip_pr_basis: skipPrBasisFromPersisted({
+                line_item_kind: kind,
+                benchmark_type_id: i.benchmark_type_id,
+                benchmark_definition_id: i.benchmark_definition_id,
+                prescribed_percentage: i.prescribed_percentage,
+              }),
               bench_name: complexTitle
                 ? complexTitle
                 : kind === "rest"

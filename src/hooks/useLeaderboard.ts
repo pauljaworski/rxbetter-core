@@ -8,6 +8,7 @@ import { rankLeaderboardEntries } from "@/lib/leaderboard/rank-entries";
 import { aggregateWeightliftingBoardRows } from "@/lib/leaderboard/aggregate-weightlifting";
 import { segmentLabel } from "@/lib/format";
 import { isMetconSegment } from "@/lib/programming/manual-config";
+import { isLoggableLineItem } from "@/lib/programming/line-item-kind";
 
 export type GenderFilter = "male" | "female" | "both";
 export type LevelFilter = "all" | WorkoutScale;
@@ -181,7 +182,7 @@ export function useLeaderboard(
       const [{ data: wlItems }, { data: lifts }] = await Promise.all([
         supabase
           .from("programming_line_item")
-          .select("id, programming_id")
+          .select("id, programming_id, line_item_kind")
           .in("programming_id", wlProgIds)
           .is("contact_id", null),
         supabase
@@ -193,6 +194,7 @@ export function useLeaderboard(
           .not("programming_line_item_id", "is", null),
       ]);
       for (const it of wlItems ?? []) {
+        if (!isLoggableLineItem(it.line_item_kind)) continue;
         const list = itemsByProg.get(it.programming_id) ?? [];
         list.push(it.id);
         itemsByProg.set(it.programming_id, list);
