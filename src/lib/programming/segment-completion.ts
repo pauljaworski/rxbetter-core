@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { isMetconSegment } from "@/lib/programming/manual-config";
+import { isLoggableLineItem } from "@/lib/programming/line-item-kind";
 
 export type CompletionMaps = {
   completedProgramIds: Set<string>;
@@ -43,10 +44,12 @@ export async function tryMarkProgrammingSegmentComplete(
   } else {
     const { data: items } = await supabase
       .from("programming_line_item")
-      .select("id")
+      .select("id, line_item_kind")
       .eq("programming_id", programmingId)
       .is("contact_id", null);
-    const itemIds = (items ?? []).map((i) => i.id);
+    const itemIds = (items ?? [])
+      .filter((i) => isLoggableLineItem(i.line_item_kind))
+      .map((i) => i.id);
     if (!itemIds.length) return;
 
     const { data: perfs } = await supabase

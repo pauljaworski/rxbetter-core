@@ -24,6 +24,12 @@ describe("segment-completion", () => {
     ).toBe(false);
   });
 
+  it("callers should omit rest ids so rest does not block completion", () => {
+    expect(
+      isPrescriptionSegmentComplete("weightlifting", ["squat"], new Set(["squat"]), false),
+    ).toBe(true);
+  });
+
   it("group block complete with group score", () => {
     expect(isGroupBlockComplete(true)).toBe(true);
     expect(isGroupBlockComplete(false)).toBe(false);

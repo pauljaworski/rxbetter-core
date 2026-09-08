@@ -12,6 +12,7 @@ import {
   isPrescriptionSegmentComplete,
   type CompletionMaps,
 } from "@/lib/programming/segment-completion";
+import { isLoggableLineItem } from "@/lib/programming/line-item-kind";
 import type {
   SegmentPerformance,
   WorkoutDayProgramming,
@@ -107,8 +108,9 @@ function isSegmentCompleteLive(
   perfByItem: Map<string, WorkoutPerformance>,
   perfBySegment: Map<string, SegmentPerformance>,
 ): boolean {
+  const loggable = wod.items.filter((it) => isLoggableLineItem(it.line_item_kind));
   const loggedItems = new Set(
-    wod.items
+    loggable
       .filter((it) => {
         const p = perfByItem.get(it.id);
         return p && (p.weight_lifted != null || p.status);
@@ -118,7 +120,7 @@ function isSegmentCompleteLive(
   const segPerf = perfBySegment.get(wod.id);
   return isPrescriptionSegmentComplete(
     wod.programming_segment,
-    wod.items.map((i) => i.id),
+    loggable.map((i) => i.id),
     loggedItems,
     !!segPerf?.score,
   );
