@@ -1,5 +1,59 @@
 import { supabase } from "@/lib/supabase";
 import { isMetconSegment } from "@/lib/programming/manual-config";
+import type { WorkoutScale } from "@/lib/format";
+
+type LiftPerfForCompletion = {
+  programming_line_item_id: string | null;
+  weight_lifted: number | null;
+  status: string | null;
+  workout_scale?: string | null;
+};
+
+const WORKOUT_SCALES: ReadonlySet<string> = new Set(["rx_plus", "rx", "fx", "scaled"]);
+
+/** Prefer the scale athletes actually logged; never default a completed session to Rx. */
+export function resolveWeightliftingSegmentScale(
+  perfs: Array<{ workout_scale?: string | null }>,
+): WorkoutScale {
+  for (const p of perfs) {
+    const scale = p.workout_scale;
+    if (scale && WORKOUT_SCALES.has(scale)) return scale as WorkoutScale;
+  }
+  return "rx";
+}
+
+export function buildWeightliftingSegmentLeaderboardPayload(
+  wodDate: string,
+  itemIds: string[],
+  perfs: LiftPerfForCompletion[],
+) {
+  const successful = perfs.filter(
+    (p) => p.status !== "failed" && p.weight_lifted != null,
+  );
+  const top =
+    successful.length > 0
+      ? Math.max(...successful.map((p) => p.weight_lifted as number))
+      : null;
+  const failedCount = perfs.filter((p) => p.status === "failed").length;
+  const score =
+    top != null
+      ? failedCount > 0
+        ? `${top} lb · ${successful.length}/${itemIds.length} success`
+        : `${top} lb · ${itemIds.length} sets`
+      : `${itemIds.length} sets logged`;
+
+  return {
+    score,
+    result_value: top,
+    performance_date: wodDate,
+    workout_scale: resolveWeightliftingSegmentScale(perfs),
+    status: "completed" as const,
+    is_pr: false,
+    weight_lifted: top,
+    programming_line_item_id: null,
+    segment_group_id: null,
+  };
+}
 
 export type CompletionMaps = {
   completedProgramIds: Set<string>;
@@ -51,7 +105,7 @@ export async function tryMarkProgrammingSegmentComplete(
 
     const { data: perfs } = await supabase
       .from("athlete_performance")
-      .select("programming_line_item_id, weight_lifted, status")
+      .select("programming_line_item_id, weight_lifted, status, workout_scale")
       .eq("contact_id", contactId)
       .in("programming_line_item_id", itemIds);
 
@@ -85,27 +139,8 @@ async function upsertWeightliftingSegmentLeaderboardScore(
   programmingId: string,
   wodDate: string,
   itemIds: string[],
-  perfs: Array<{
-    programming_line_item_id: string | null;
-    weight_lifted: number | null;
-    status: string | null;
-  }>,
+  perfs: LiftPerfForCompletion[],
 ): Promise<void> {
-  const successful = perfs.filter(
-    (p) => p.status !== "failed" && p.weight_lifted != null,
-  );
-  const top =
-    successful.length > 0
-      ? Math.max(...successful.map((p) => p.weight_lifted as number))
-      : null;
-  const failedCount = perfs.filter((p) => p.status === "failed").length;
-  const score =
-    top != null
-      ? failedCount > 0
-        ? `${top} lb · ${successful.length}/${itemIds.length} success`
-        : `${top} lb · ${itemIds.length} sets`
-      : `${itemIds.length} sets logged`;
-
   const { data: existing } = await supabase
     .from("athlete_performance")
     .select("id")
@@ -115,17 +150,7 @@ async function upsertWeightliftingSegmentLeaderboardScore(
     .is("segment_group_id", null)
     .maybeSingle();
 
-  const payload = {
-    score,
-    result_value: top,
-    performance_date: wodDate,
-    workout_scale: "rx" as const,
-    status: "completed" as const,
-    is_pr: false,
-    weight_lifted: top,
-    programming_line_item_id: null,
-    segment_group_id: null,
-  };
+  const payload = buildWeightliftingSegmentLeaderboardPayload(wodDate, itemIds, perfs);
 
   if (existing?.id) {
     await supabase.from("athlete_performance").update(payload).eq("id", existing.id);
