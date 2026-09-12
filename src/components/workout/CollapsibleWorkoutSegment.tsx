@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ChevronDown, Dumbbell, Flame, Timer } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { CheckCircle2, ChevronDown, Dumbbell, Flame, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
 import { summarizeSegmentPrescription, condensePrescriptionPreview } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
+import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
+import { isMetconSegment } from "@/lib/programming/manual-config";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
@@ -46,6 +48,12 @@ export function CollapsibleWorkoutSegment({
   compact,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [scoreOnly, setScoreOnly] = useState(false);
+  const canQuickLog =
+    !hideSegmentScore &&
+    !compact &&
+    isMetconSegment(wod.programming_segment ?? "") &&
+    !!contactId;
   const summary = summarizeSegmentPrescription(
     {
       programming_segment: wod.programming_segment ?? "metcon",
@@ -147,6 +155,32 @@ export function CollapsibleWorkoutSegment({
           />
         </div>
       </button>
+
+      {!expanded && canQuickLog && (
+        <div className="border-t border-border/40 px-4 py-3 md:px-5">
+          <Button
+            type="button"
+            size="sm"
+            variant={scoreOnly ? "secondary" : "default"}
+            className={cn(
+              !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
+            )}
+            onClick={() => setScoreOnly((v) => !v)}
+          >
+            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log your score"}
+          </Button>
+        </div>
+      )}
+
+      {scoreOnly && !expanded && canQuickLog && (
+        <MetconScoreRow
+          wod={wod}
+          contactId={contactId}
+          existing={segmentPerf ?? null}
+          onLogged={onLogged}
+        />
+      )}
 
       {expanded && (
         <div className="border-t border-border/60 bg-card/50">

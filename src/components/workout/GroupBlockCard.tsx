@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CheckCircle2, ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { GroupScoreRow } from "@/components/workout/GroupScoreRow";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
@@ -85,6 +86,7 @@ export function GroupBlockCard({
   onLogged,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [scoreOnly, setScoreOnly] = useState(false);
   const scheme = parseWorkoutScheme(block.anchor.workout_scheme);
   const schemeLabel = schemeSummaryLabel(scheme);
   const title = block.anchor.name?.trim() || "Workout";
@@ -142,9 +144,7 @@ export function GroupBlockCard({
                   </div>
                 );
               })}
-              <p className="pt-2 text-[11px] text-muted-foreground/80">
-                Tap for full details{contactId ? " and score" : ""}
-              </p>
+              <p className="pt-2 text-[11px] text-muted-foreground/80">Tap for full details</p>
             </div>
           )}
           {expanded && (
@@ -166,6 +166,23 @@ export function GroupBlockCard({
           />
         </div>
       </button>
+
+      {!expanded && contactId && (
+        <div className="border-t border-border/40 px-4 py-3 md:px-5">
+          <Button
+            type="button"
+            size="sm"
+            variant={scoreOnly ? "secondary" : "default"}
+            className={cn(
+              !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
+            )}
+            onClick={() => setScoreOnly((v) => !v)}
+          >
+            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log your score"}
+          </Button>
+        </div>
+      )}
 
       {expanded && (
         <>
@@ -246,19 +263,21 @@ export function GroupBlockCard({
               );
             })}
           </div>
-
-          <GroupScoreRow
-            groupId={block.groupId}
-            wodDate={wodDate}
-            partCount={block.parts.length}
-            contactId={contactId}
-            existing={groupPerf}
-            prescribedScale={block.anchor.prescribed_scale}
-            workoutScheme={block.anchor.workout_scheme}
-            hideSchemeHeadline
-            onLogged={onLogged}
-          />
         </>
+      )}
+
+      {(expanded || scoreOnly) && (
+        <GroupScoreRow
+          groupId={block.groupId}
+          wodDate={wodDate}
+          partCount={block.parts.length}
+          contactId={contactId}
+          existing={groupPerf}
+          prescribedScale={block.anchor.prescribed_scale}
+          workoutScheme={block.anchor.workout_scheme}
+          hideSchemeHeadline
+          onLogged={onLogged}
+        />
       )}
     </Card>
   );

@@ -8,6 +8,10 @@ import {
   formatResolvedRxParts,
   resolvePrescriptionForAthlete,
   syncLegacyFieldsFromVariants,
+  ensureLoadUnit,
+  ensureHeightUnit,
+  displayLoadAmount,
+  displayHeightAmount,
 } from "./rx-variants-schema";
 
 describe("rx-variants-schema", () => {
@@ -168,5 +172,14 @@ describe("rx-variants-schema", () => {
         female: { reps: 80, load_label: "14 lb" },
       }),
     ).toBe("80 Reps · 20/14 lb");
+  });
+
+  it("defaults load to lb and height to ft when programmer enters numbers only", () => {
+    expect(ensureLoadUnit("115")).toBe("115 lb");
+    expect(ensureLoadUnit("75 kg")).toBe("75 kg");
+    expect(ensureHeightUnit("10")).toBe("10 ft");
+    expect(ensureHeightUnit("10'")).toBe("10'");
+    expect(displayLoadAmount("20 lb")).toBe("20");
+    expect(displayHeightAmount("10 ft")).toBe("10");
   });
 });

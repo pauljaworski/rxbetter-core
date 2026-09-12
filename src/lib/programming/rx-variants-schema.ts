@@ -79,9 +79,42 @@ function variantAmountLabel(
 }
 
 function variantLoadLabel(v: RxVariant): string | null {
-  if (v.load_label?.trim()) return v.load_label.trim();
+  if (v.load_label?.trim()) return ensureLoadUnit(v.load_label);
   if (v.weight_lb != null) return `${v.weight_lb} lb`;
   return null;
+}
+
+/** Strip default unit for editor display (programmer types "20", UI shows lbs). */
+export function displayLoadAmount(label: string | null | undefined): string {
+  if (!label?.trim()) return "";
+  return label.trim().replace(/\s*lbs?\s*$/i, "").trim();
+}
+
+export function displayHeightAmount(label: string | null | undefined): string {
+  if (!label?.trim()) return "";
+  const t = label.trim();
+  if (/^\d+(?:\.\d+)?'$/.test(t)) return t.slice(0, -1);
+  return t.replace(/\s*(ft|feet)\s*$/i, "").trim();
+}
+
+/** Persist load with default lb unless another unit is already specified. */
+export function ensureLoadUnit(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (/\b(lb|lbs|kg|#)\b/i.test(t)) {
+    return t.replace(/\blbs\b/i, "lb");
+  }
+  if (/^\d+(?:\.\d+)?$/.test(t)) return `${t} lb`;
+  return t;
+}
+
+/** Persist height with default ft unless ' or another unit is specified. */
+export function ensureHeightUnit(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (/[''′]|(\bft\b|\bfeet\b)/i.test(t)) return t;
+  if (/^\d+(?:\.\d+)?$/.test(t)) return `${t} ft`;
+  return t;
 }
 
 /** CrossFit-style dual numbers: "115/75" from "115 lb" + "75 lb" (unit stripped for display). */
@@ -185,8 +218,8 @@ export function formatDualModifierParens(variants: RxVariants): string[] {
     f ? variantLoadLabel(f) : null,
   );
   const height = dualHeightParen(
-    m?.height_label?.trim() || null,
-    f?.height_label?.trim() || null,
+    m?.height_label?.trim() ? ensureHeightUnit(m.height_label) : null,
+    f?.height_label?.trim() ? ensureHeightUnit(f.height_label) : null,
   );
   if (load) out.push(load);
   if (height) out.push(height);

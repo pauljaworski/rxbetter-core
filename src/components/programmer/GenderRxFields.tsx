@@ -7,6 +7,10 @@ import {
   hasRxVariants,
   parseRxVariants,
   syncLegacyFieldsFromVariants,
+  displayLoadAmount,
+  displayHeightAmount,
+  ensureLoadUnit,
+  ensureHeightUnit,
   type RxVariant,
   type RxVariants,
 } from "@/lib/programming/rx-variants-schema";
@@ -34,6 +38,37 @@ function NumInput({
         }}
         className="h-8 font-mono-num text-xs"
       />
+    </div>
+  );
+}
+
+function UnitSuffixInput({
+  label,
+  value,
+  suffix,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  suffix: string;
+  placeholder?: string;
+  onChange: (raw: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-8 border-0 text-xs shadow-none focus-visible:ring-0"
+        />
+        <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {suffix}
+        </span>
+      </div>
     </div>
   );
 }
@@ -209,32 +244,24 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
                     />
                   ) : (
                     <>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                          Load
-                        </Label>
-                        <Input
-                          value={v.load_label ?? ""}
-                          onChange={(e) =>
-                            patchVariant(gender, { load_label: e.target.value || null })
-                          }
-                          placeholder="e.g. 20 lb"
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                          Height
-                        </Label>
-                        <Input
-                          value={v.height_label ?? ""}
-                          onChange={(e) =>
-                            patchVariant(gender, { height_label: e.target.value || null })
-                          }
-                          placeholder="e.g. 10 ft"
-                          className="h-8 text-xs"
-                        />
-                      </div>
+                      <UnitSuffixInput
+                        label="Load"
+                        value={displayLoadAmount(v.load_label)}
+                        suffix="lbs"
+                        placeholder="e.g. 20"
+                        onChange={(raw) =>
+                          patchVariant(gender, { load_label: ensureLoadUnit(raw) })
+                        }
+                      />
+                      <UnitSuffixInput
+                        label="Height"
+                        value={displayHeightAmount(v.height_label)}
+                        suffix="ft"
+                        placeholder="e.g. 10"
+                        onChange={(raw) =>
+                          patchVariant(gender, { height_label: ensureHeightUnit(raw) })
+                        }
+                      />
                     </>
                   )}
                 </div>
@@ -243,7 +270,7 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
           </div>
           <p className="text-[10px] text-muted-foreground">
             {alwaysSplit
-              ? "Amount, load, and height per gender (e.g. 80 reps, 20/14 lb, 10/9 ft). Leave Female blank if same as Male."
+              ? "Enter load and height as numbers — lbs and ft are applied by default. Athletes see 20/14 and 10'/9'."
               : "Both tiers are Rx. Athletes see their profile gender; otherwise 15/12-style notation."}
           </p>
         </div>
