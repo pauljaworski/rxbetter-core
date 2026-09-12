@@ -42,10 +42,55 @@ export function filterWodsByViewScale<
   T extends { programming_segment?: string | null; prescribed_scale?: string | null },
 >(wods: T[], viewScale: WorkoutScale | null): T[] {
   if (!viewScale) return wods;
-  return wods.filter((w) => {
-    if (!isMetconSegment(w.programming_segment ?? "")) return true;
-    const s = w.prescribed_scale ?? "rx";
-    if (s === "na") return true;
-    return s === viewScale;
-  });
+  return wods.filter((w) => wodMatchesViewScale(w, viewScale));
+}
+
+function wodMatchesViewScale(
+  w: { programming_segment?: string | null; prescribed_scale?: string | null },
+  viewScale: WorkoutScale,
+): boolean {
+  if (!isMetconSegment(w.programming_segment ?? "")) return true;
+  const s = w.prescribed_scale ?? "rx";
+  if (s === "na") return true;
+  return s === viewScale;
+}
+
+/**
+ * Same scale rules as filterWodsByViewScale, but keep every part of a linked
+ * multi-part group when the group should appear (avoids orphan Part 1 / Part 2).
+ */
+export function filterWodsByViewScalePreservingGroups<
+  T extends {
+    id: string;
+    programming_segment?: string | null;
+    prescribed_scale?: string | null;
+    segment_group_id?: string | null;
+    group_score_anchor?: boolean | null;
+    display_order?: number | null;
+  },
+>(wods: T[], viewScale: WorkoutScale | null): T[] {
+  if (!viewScale) return wods;
+
+  const sorted = [...wods].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const keep = new Set<string>();
+  const seenGroups = new Set<string>();
+
+  for (const wod of sorted) {
+    const gid = wod.segment_group_id;
+    if (!gid) {
+      if (wodMatchesViewScale(wod, viewScale)) keep.add(wod.id);
+      continue;
+    }
+    if (seenGroups.has(gid)) continue;
+    seenGroups.add(gid);
+    const parts = sorted.filter((w) => w.segment_group_id === gid);
+    const anchor = parts.find((p) => p.group_score_anchor) ?? parts[0];
+    const groupVisible =
+      wodMatchesViewScale(anchor, viewScale) || parts.some((p) => wodMatchesViewScale(p, viewScale));
+    if (groupVisible) {
+      for (const p of parts) keep.add(p.id);
+    }
+  }
+
+  return wods.filter((w) => keep.has(w.id));
 }

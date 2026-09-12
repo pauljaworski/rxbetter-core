@@ -115,7 +115,7 @@ export function CollapsibleWorkoutSegment({
                     {line}
                   </p>
                 ))}
-                {wod.description && (
+                {!items.length && wod.description && (
                   <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                     {wod.description}
                   </p>
@@ -146,7 +146,7 @@ export function CollapsibleWorkoutSegment({
               {summary.header}
             </p>
           )}
-          {wod.description && (
+          {!items.length && wod.description && (
             <p className="whitespace-pre-line border-b border-border/60 px-5 py-3 text-sm leading-relaxed text-muted-foreground">
               {wod.description}
             </p>

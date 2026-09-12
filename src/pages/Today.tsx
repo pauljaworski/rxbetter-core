@@ -23,7 +23,7 @@ import { RxGenderSelect } from "@/components/workout/RxGenderSelect";
 import type { WorkoutScale } from "@/lib/format";
 import {
   collectProgrammedScales,
-  filterWodsByViewScale,
+  filterWodsByViewScalePreservingGroups,
   resolveDayViewScale,
 } from "@/lib/programming/day-view-scale";
 import { collectDayTracks, filterWodsByTrack } from "@/lib/programming/day-track-filter";
@@ -47,7 +47,7 @@ export default function Today() {
   );
   const visibleWods = useMemo(() => {
     const byTrack = filterWodsByTrack(data.wods, trackFilter === "all" ? "all" : trackFilter);
-    return filterWodsByViewScale(byTrack, effectiveScale);
+    return filterWodsByViewScalePreservingGroups(byTrack, effectiveScale);
   }, [data.wods, trackFilter, effectiveScale]);
 
   if (mode === "personal") {

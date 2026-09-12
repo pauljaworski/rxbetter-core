@@ -100,12 +100,12 @@ export function GroupScoreRow({
   const isLogged =
     scoreMetric === "completion" ? completed || !!existing?.score : !!existing?.score;
 
-  const headline = schemeLabel ?? `Block · ${partCount} parts`;
+  const headline = schemeLabel ?? (partCount > 1 ? `${partCount}-part workout` : "Workout");
 
   return (
     <div className={cn("space-y-4 border-t border-border/60 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
-        <p className="eyebrow">Workout block result</p>
+        <p className="eyebrow">Score</p>
         <p className="mt-1 text-lg font-black tracking-tight text-primary">{headline}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -148,7 +148,7 @@ export function GroupScoreRow({
         onClick={() => void submit()}
       >
         <CheckCircle2 className="mr-1 h-4 w-4" />
-        {isLogged ? "Update total" : "Log total"}
+        {isLogged ? "Update score" : "Log score"}
       </Button>
     </div>
   );

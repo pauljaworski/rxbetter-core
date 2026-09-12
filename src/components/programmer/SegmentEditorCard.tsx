@@ -168,6 +168,10 @@ export function SegmentEditorCard({
       return;
     }
     const patch: Partial<EditorWod> = { items };
+    // Avoid athletes seeing the same movements in description and structured list.
+    if (!bulkPaste.trim() && (wod.description ?? "").trim()) {
+      patch.description = null;
+    }
     if (parsed.metconFormat) {
       patch.metcon_format = parsed.metconFormat;
       patch.workout_scheme =

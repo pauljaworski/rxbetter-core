@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
+import { filterBenchmarkCatalog, isMetconSegment } from "@/lib/programming/manual-config";
 import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
 import {
   PRESCRIPTION_UNITS,
@@ -125,9 +125,12 @@ export function MovementPickerDialog({
     return results.filter((r) => r.name.toLowerCase().includes(lower));
   }, [results, q]);
 
+  const metcon = isMetconSegment(programmingSegment);
+
   function prescription(): MovementPrescription {
     return {
-      sets: Math.max(1, sets || 1),
+      // Metcon movements are listed once in the workout; Sets only applies to strength.
+      sets: metcon ? 1 : Math.max(1, sets || 1),
       reps,
       prescriptionUnit: unit,
       prescribedPercentage: percentFractionFromWhole(pctWhole),
@@ -277,18 +280,20 @@ export function MovementPickerDialog({
                 Change
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="space-y-1">
-                <Label className="text-xs">Sets</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-8 font-mono-num"
-                  value={sets}
-                  onChange={(e) => setSets(Math.max(1, Number(e.target.value) || 1))}
-                />
-                <p className="text-[10px] text-muted-foreground">One row per set</p>
-              </div>
+            <div className={metcon ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "grid grid-cols-2 gap-3 sm:grid-cols-4"}>
+              {!metcon && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Sets</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 font-mono-num"
+                    value={sets}
+                    onChange={(e) => setSets(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                  <p className="text-[10px] text-muted-foreground">One row per set</p>
+                </div>
+              )}
               <div className="space-y-1">
                 <Label className="text-xs">{amountLabel}</Label>
                 {unit === "seconds" ? (
@@ -355,7 +360,9 @@ export function MovementPickerDialog({
               <Button onClick={confirmPending} disabled={committing}>
                 {committing
                   ? "Saving…"
-                  : `Add ${sets > 1 ? `${sets} sets` : "movement"}`}
+                  : metcon
+                    ? "Add movement"
+                    : `Add ${sets > 1 ? `${sets} sets` : "movement"}`}
               </Button>
             </DialogFooter>
           </div>

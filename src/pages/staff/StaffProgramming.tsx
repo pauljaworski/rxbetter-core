@@ -19,7 +19,8 @@ import { SegmentAddDialog } from "@/components/programmer/SegmentAddDialog";
 import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
 import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
-import { filterBenchmarkCatalog } from "@/lib/programming/manual-config";
+import { filterBenchmarkCatalog, isMetconSegment } from "@/lib/programming/manual-config";
+import { defaultLineItemKindForSegment } from "@/lib/programming/line-item-kind";
 import { deleteProgrammingSegment, persistProgrammingDisplayOrders } from "@/lib/programming/programming-delete";
 import {
   canMoveSegment,
@@ -34,7 +35,6 @@ import {
   MovementPickerDialog,
   type MovementPick,
 } from "@/components/programmer/MovementPickerDialog";
-import { isMetconSegment } from "@/lib/programming/manual-config";
 
 type ServerSyncMode = "date" | "save" | null;
 
@@ -165,10 +165,13 @@ export default function StaffProgramming() {
 
   function addLineItem(wodIdx: number, pick: MovementPick) {
     setServerSyncMode(null);
-    const setCount = Math.max(1, pick.sets || 1);
     const unit = pick.prescriptionUnit ?? "reps";
     const segment = wods[wodIdx]?.programming_segment ?? "metcon";
-    const metconGenderRx = isMetconSegment(segment)
+    const metcon = isMetconSegment(segment);
+    // Metcon: one movement row per add. Strength/WL: Sets creates one row per set.
+    const setCount = metcon ? 1 : Math.max(1, pick.sets || 1);
+    const lineKind = defaultLineItemKindForSegment(segment);
+    const metconGenderRx = metcon
       ? {
           male: {
             reps: pick.reps,
@@ -210,7 +213,7 @@ export default function StaffProgramming() {
           prescribed_percentage: pick.prescribedPercentage,
           prescribed_score: null,
           percent_rep_max: 1,
-          line_item_kind: "strength_set",
+          line_item_kind: lineKind,
           movement_components: [],
           ...(metconGenderRx ? { rx_variants: metconGenderRx } : {}),
           ...baseFields,
