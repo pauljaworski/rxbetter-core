@@ -28,12 +28,12 @@ type Props = {
   onLogged: () => void;
 };
 
-function partPreviewLine(
+function partPreviewMeta(
   part: GroupBlock["parts"][number],
   idx: number,
   blockTitle: string,
   rxGender?: RxGender | null,
-): string {
+): { heading: string; movements: string[] } {
   const partName = part.name?.trim();
   const showName = !!partName && partName.toLowerCase() !== blockTitle.toLowerCase();
   const schemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
@@ -47,14 +47,15 @@ function partPreviewLine(
     part.items,
     rxGender ?? null,
   );
-  const movCount = part.items.length;
   const bits = [
     `Part ${idx + 1}`,
     showName ? partName : null,
     schemeLabel ?? summary.header,
-    movCount > 0 ? `${movCount} mov${movCount === 1 ? "" : "s"}` : null,
   ].filter(Boolean);
-  return bits.join(" · ");
+  return {
+    heading: bits.join(" · "),
+    movements: summary.lines,
+  };
 }
 
 export function GroupBlockCard({
@@ -89,13 +90,26 @@ export function GroupBlockCard({
           </p>
           <h3 className="text-lg font-bold tracking-tight md:text-xl">{title}</h3>
           {!expanded && (
-            <div className="mt-2 space-y-0.5">
-              {block.parts.map((part, idx) => (
-                <p key={part.id} className="text-xs text-muted-foreground">
-                  {partPreviewLine(part, idx, title, rxGender)}
-                </p>
-              ))}
-              <p className="pt-1 text-[11px] text-muted-foreground/80">
+            <div className="mt-2 space-y-2">
+              {block.parts.map((part, idx) => {
+                const preview = partPreviewMeta(part, idx, title, rxGender);
+                return (
+                  <div key={part.id} className="space-y-0.5">
+                    <p className="text-xs font-medium text-foreground/80">{preview.heading}</p>
+                    {preview.movements.map((line, i) => (
+                      <p key={i} className="text-xs text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
+                    {!preview.movements.length && part.description && (
+                      <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
+                        {part.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              <p className="pt-0.5 text-[11px] text-muted-foreground/80">
                 Tap for full details{contactId ? " and score" : ""}
               </p>
             </div>
