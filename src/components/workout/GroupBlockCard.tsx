@@ -38,11 +38,13 @@ function partPreviewMeta(
   part: GroupBlock["parts"][number],
   idx: number,
   blockTitle: string,
+  anchorId: string,
   showPartLabels: boolean,
+  singleScore: boolean,
   rxGender?: RxGender | null,
 ): { heading: string | null; movements: string[] } {
   const partName = part.name?.trim();
-  const showName = !!partName && partName.toLowerCase() !== blockTitle.toLowerCase();
+  const isScoreAnchor = part.id === anchorId;
   const schemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
   const summary = summarizeSegmentPrescription(
     {
@@ -54,15 +56,23 @@ function partPreviewMeta(
     part.items,
     rxGender ?? null,
   );
-  const bits = [
-    showPartLabels ? `Part ${idx + 1}` : null,
-    showName ? partName : null,
-    schemeLabel ?? summary.header,
-  ].filter(Boolean);
-  return {
-    heading: bits.length ? bits.join(" · ") : null,
-    movements: summary.lines,
-  };
+  const distinctName =
+    !!partName && partName.toLowerCase() !== blockTitle.toLowerCase() ? partName : null;
+
+  let heading: string | null = null;
+  if (showPartLabels) {
+    heading = [`Part ${idx + 1}`, distinctName, schemeLabel ?? summary.header]
+      .filter(Boolean)
+      .join(" · ");
+  } else if (singleScore) {
+    // Card title is the scored segment; non-scored blocks only show scheme (e.g. 5 RFT).
+    const showAnchorName = isScoreAnchor ? distinctName : null;
+    heading = [showAnchorName, schemeLabel ?? summary.header].filter(Boolean).join(" · ") || null;
+  } else {
+    heading = [distinctName, schemeLabel ?? summary.header].filter(Boolean).join(" · ") || null;
+  }
+
+  return { heading, movements: summary.lines };
 }
 
 export function GroupBlockCard({
@@ -81,6 +91,7 @@ export function GroupBlockCard({
   const schemeLabel = schemeSummaryLabel(scheme);
   const title = block.anchor.name?.trim() || "Workout";
   const showPartLabels = groupHasMultipleScores(block);
+  const singleScore = !showPartLabels;
 
   return (
     <Card className="glass-card overflow-hidden p-0">
@@ -99,7 +110,15 @@ export function GroupBlockCard({
           {!expanded && (
             <div className="mt-2 space-y-0">
               {block.parts.map((part, idx) => {
-                const preview = partPreviewMeta(part, idx, title, showPartLabels, rxGender);
+                const preview = partPreviewMeta(
+                  part,
+                  idx,
+                  title,
+                  block.anchor.id,
+                  showPartLabels,
+                  singleScore,
+                  rxGender,
+                );
                 return (
                   <div key={part.id}>
                     {idx > 0 && (
@@ -155,13 +174,20 @@ export function GroupBlockCard({
           <div className="border-t border-border/60 px-4 py-2 md:px-5">
             {block.parts.map((part, idx) => {
               const partName = part.name?.trim();
-              const showPartName =
-                !!partName && partName.toLowerCase() !== title.toLowerCase();
+              const isScoreAnchor = part.id === block.anchor.id;
+              const distinctName =
+                !!partName && partName.toLowerCase() !== title.toLowerCase() ? partName : null;
+              // Single-score: only scored segment may show a title; others scheme-only.
+              const showPartName = showPartLabels
+                ? !!distinctName
+                : singleScore
+                  ? isScoreAnchor && !!distinctName
+                  : !!distinctName;
               const showDescription = !part.items.length && !!part.description;
               const partSchemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
               const headingBits = [
                 showPartLabels ? `Part ${idx + 1}` : null,
-                showPartName ? partName : null,
+                showPartName ? distinctName : null,
               ].filter(Boolean);
 
               return (

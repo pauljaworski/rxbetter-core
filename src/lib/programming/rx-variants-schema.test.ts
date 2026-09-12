@@ -3,6 +3,7 @@ import { formatPrescriptionTitle } from "./prescription-display";
 import {
   formatDualAmountLabel,
   formatDualModifierLabel,
+  formatDualModifierParens,
   formatRxVariantsCompact,
   formatResolvedRxParts,
   resolvePrescriptionForAthlete,
@@ -22,13 +23,28 @@ describe("rx-variants-schema", () => {
     ).toBe("15/12 cal");
   });
 
-  it("formats dual load and height modifiers", () => {
+  it("formats dual load and height modifiers for legacy storage", () => {
     expect(
       formatDualModifierLabel({
         male: { load_label: "20 lb", height_label: "10 ft" },
         female: { load_label: "14 lb", height_label: "9 ft" },
       }),
     ).toBe("20/14 lb · 10/9 ft");
+  });
+
+  it("formats athlete dual modifiers as (115/75) and (10'/9')", () => {
+    expect(
+      formatDualModifierParens({
+        male: { load_label: "20 lb", height_label: "10 ft" },
+        female: { load_label: "14 lb", height_label: "9 ft" },
+      }),
+    ).toEqual(["(20/14)", "(10'/9')"]);
+    expect(
+      formatDualModifierParens({
+        male: { load_label: "115 lb" },
+        female: { load_label: "75 lb" },
+      }),
+    ).toEqual(["(115/75)"]);
   });
 
   it("does not duplicate meters in athlete display", () => {
@@ -58,7 +74,7 @@ describe("rx-variants-schema", () => {
     expect(title).not.toContain("400m - 400m");
   });
 
-  it("resolves athlete-specific prescription with load and height", () => {
+  it("always shows dual load and height including wall-ball target", () => {
     const resolved = resolvePrescriptionForAthlete(
       {
         rx_variants: {
@@ -69,9 +85,16 @@ describe("rx-variants-schema", () => {
       "female",
     );
     expect(resolved.reps_prescribed).toBe(80);
-    expect(resolved.load_label).toBe("14 lb");
-    expect(resolved.height_label).toBe("9 ft");
-    expect(formatResolvedRxParts(resolved)).toEqual(["80 Reps", "(14 lbs)", "(9')"]);
+    expect(resolved.dual_modifier_label).toBe("(20/14) · (10'/9')");
+    expect(formatResolvedRxParts(resolved)).toEqual(["80 Reps", "(20/14)", "(10'/9')"]);
+    expect(
+      formatPrescriptionTitle({
+        movementName: "Wall Balls",
+        repsPrescribed: resolved.reps_prescribed,
+        prescriptionUnit: resolved.prescription_unit,
+        dualModifierLabel: resolved.dual_modifier_label,
+      }),
+    ).toBe("Wall Balls - 80 Reps (20/14) (10'/9')");
   });
 
   it("shows dual notation when gender unknown", () => {
@@ -88,7 +111,7 @@ describe("rx-variants-schema", () => {
     expect(resolved.reps_prescribed).toBeNull();
   });
 
-  it("shows only female load when Female Rx is selected", () => {
+  it("shows dual load even when Female Rx is selected", () => {
     const resolved = resolvePrescriptionForAthlete(
       {
         reps_prescribed: 20,
@@ -100,11 +123,11 @@ describe("rx-variants-schema", () => {
       },
       "female",
     );
-    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(35 lbs)"]);
-    expect(resolved.dual_modifier_label).toBeNull();
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(50/35)"]);
+    expect(resolved.dual_modifier_label).toBe("(50/35)");
   });
 
-  it("shows only male load when Male Rx is selected", () => {
+  it("shows dual load even when Male Rx is selected", () => {
     const resolved = resolvePrescriptionForAthlete(
       {
         rx_variants: {
@@ -114,7 +137,7 @@ describe("rx-variants-schema", () => {
       },
       "male",
     );
-    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(50 lbs)"]);
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(50/35)"]);
   });
 
   it("syncs legacy columns without amount in prescribed_score", () => {

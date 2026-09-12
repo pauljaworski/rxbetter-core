@@ -84,7 +84,18 @@ function variantLoadLabel(v: RxVariant): string | null {
   return null;
 }
 
-/** CrossFit-style dual: "20/14 lb" from "20 lb" + "14 lb". */
+/** CrossFit-style dual numbers: "115/75" from "115 lb" + "75 lb" (unit stripped for display). */
+function tryCompactDualNumbers(a: string, b: string): string | null {
+  const ma = a.match(/^(\d+(?:\.\d+)?)/);
+  const mb = b.match(/^(\d+(?:\.\d+)?)/);
+  if (ma && mb) {
+    if (ma[1] === mb[1]) return ma[1];
+    return `${ma[1]}/${mb[1]}`;
+  }
+  return null;
+}
+
+/** CrossFit-style dual: "20/14 lb" from "20 lb" + "14 lb" (kept for legacy prescribed_score). */
 function tryCompactDual(a: string, b: string): string | null {
   const ma = a.match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
   const mb = b.match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
@@ -100,6 +111,30 @@ function dualPairLabel(male: string | null, female: string | null): string | nul
     return tryCompactDual(male, female) ?? `${male}/${female}`;
   }
   return male ?? female ?? null;
+}
+
+function dualLoadParen(male: string | null, female: string | null): string | null {
+  if (!male && !female) return null;
+  if (male && female) {
+    const compact = tryCompactDualNumbers(male, female);
+    if (compact) return `(${compact})`;
+  }
+  const one = (male ?? female)!.match(/^(\d+(?:\.\d+)?)/);
+  return one ? `(${one[1]})` : wrapParens((male ?? female)!);
+}
+
+function dualHeightParen(male: string | null, female: string | null): string | null {
+  const toFeet = (h: string): string => {
+    const n = h.trim().match(/^(\d+(?:\.\d+)?)/);
+    return n ? `${n[1]}'` : normalizeHeightDisplay(h);
+  };
+  if (!male && !female) return null;
+  if (male && female) {
+    const m = toFeet(male);
+    const f = toFeet(female);
+    return m === f ? `(${m})` : `(${m}/${f})`;
+  }
+  return `(${toFeet((male ?? female)!)})`;
 }
 
 /** Amount only: 15/12 cal, 400m — excludes load and height. */
@@ -125,7 +160,7 @@ export function formatDualAmountLabel(
   return null;
 }
 
-/** Load and height modifiers: 20/14 lb · 10/9 ft */
+/** Load and height modifiers for legacy storage: 20/14 lb · 10/9 ft */
 export function formatDualModifierLabel(variants: RxVariants): string | null {
   const m = variants.male;
   const f = variants.female;
@@ -138,6 +173,24 @@ export function formatDualModifierLabel(variants: RxVariants): string | null {
     f?.height_label?.trim() || null,
   );
   return [load, height].filter(Boolean).join(" · ") || null;
+}
+
+/** Athlete-facing dual modifiers: (115/75) · (10'/9') */
+export function formatDualModifierParens(variants: RxVariants): string[] {
+  const m = variants.male;
+  const f = variants.female;
+  const out: string[] = [];
+  const load = dualLoadParen(
+    m ? variantLoadLabel(m) : null,
+    f ? variantLoadLabel(f) : null,
+  );
+  const height = dualHeightParen(
+    m?.height_label?.trim() || null,
+    f?.height_label?.trim() || null,
+  );
+  if (load) out.push(load);
+  if (height) out.push(height);
+  return out;
 }
 
 /** @deprecated Use formatDualAmountLabel + formatDualModifierLabel */
@@ -192,7 +245,9 @@ export function resolvePrescriptionForAthlete(
   if (!hasRxVariants(variants)) return base;
 
   const dualAmount = formatDualAmountLabel(variants, item.prescription_unit);
-  const dualModifier = formatDualModifierLabel(variants);
+  // Always show M/F load & height (e.g. (115/75) (10'/9')), even when gender filter is set.
+  const dualModifierParens = formatDualModifierParens(variants);
+  const dualModifierJoined = dualModifierParens.join(" · ") || null;
 
   if (!athleteGender) {
     const repsDiffer =
@@ -211,7 +266,7 @@ export function resolvePrescriptionForAthlete(
       prescribed_weight: null,
       prescribed_score: null,
       dual_amount_label: repsDiffer ? dualAmount : null,
-      dual_modifier_label: dualModifier,
+      dual_modifier_label: dualModifierJoined,
       load_label: null,
       height_label: null,
     };
@@ -222,7 +277,7 @@ export function resolvePrescriptionForAthlete(
     return {
       ...base,
       dual_amount_label: dualAmount,
-      dual_modifier_label: dualModifier,
+      dual_modifier_label: dualModifierJoined,
       prescribed_score: null,
     };
   }
@@ -233,9 +288,9 @@ export function resolvePrescriptionForAthlete(
     prescribed_weight: v.weight_lb ?? base.prescribed_weight,
     prescribed_score: null,
     dual_amount_label: null,
-    dual_modifier_label: null,
-    load_label: variantLoadLabel(v),
-    height_label: v.height_label?.trim() ? v.height_label.trim() : null,
+    dual_modifier_label: dualModifierJoined,
+    load_label: null,
+    height_label: null,
   };
 }
 
@@ -285,18 +340,25 @@ export function formatResolvedRxParts(resolved: ResolvedPrescription): string[] 
   return [...(amount ? [amount] : []), ...modifiers];
 }
 
-/** Prefer "lbs" and feet as 10' for athlete-facing load/height text. */
-export function normalizeLoadDisplay(label: string): string {
-  return label.trim().replace(/\blbs?\b/gi, "lbs");
-}
-
+/** Prefer feet as 10' for athlete-facing height text. */
 export function normalizeHeightDisplay(label: string): string {
   const t = label.trim();
-  const compact = t.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*(ft|feet|')$/i);
+  const compact = t.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*(ft|feet|')?$/i);
   if (compact) return `${compact[1]}'/${compact[2]}'`;
-  const single = t.match(/^(\d+(?:\.\d+)?)\s*(ft|feet|')$/i);
+  const single = t.match(/^(\d+(?:\.\d+)?)\s*(ft|feet|')?$/i);
   if (single) return `${single[1]}'`;
   return t;
+}
+
+/** Athlete-facing load: (115/75) or (115) — numbers only, no unit. */
+export function normalizeLoadDisplay(label: string): string {
+  const t = label.trim();
+  if (t.startsWith("(") && t.endsWith(")")) return t.slice(1, -1);
+  const dual = t.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)/);
+  if (dual) return `${dual[1]}/${dual[2]}`;
+  const single = t.match(/^(\d+(?:\.\d+)?)/);
+  if (single) return single[1];
+  return t.replace(/\blbs?\b/gi, "").trim();
 }
 
 function wrapParens(label: string): string {
@@ -326,7 +388,12 @@ export function formatResolvedRxAmountAndModifiers(resolved: ResolvedPrescriptio
     for (const raw of resolved.dual_modifier_label.split(" · ")) {
       const piece = raw.trim();
       if (!piece) continue;
-      // Heuristic: height uses ft/feet/' ; everything else treated as load.
+      // Already parenthesized from formatDualModifierParens
+      if (piece.startsWith("(") && piece.endsWith(")")) {
+        modifiers.push(piece);
+        continue;
+      }
+      // Legacy "20/14 lb · 10/9 ft"
       if (/\bft\b|feet|'/i.test(piece)) {
         modifiers.push(wrapParens(normalizeHeightDisplay(piece)));
       } else {

@@ -29,19 +29,30 @@ describe("formatPrescriptionTitle", () => {
         movementName: "Wall Balls",
         repsPrescribed: 40,
         prescriptionUnit: "reps",
-        dualModifierLabel: "20/14 lb · 10/9 ft",
+        dualModifierLabel: "(20/14) · (10'/9')",
       }),
-    ).toBe("Wall Balls - 40 Reps (20/14 lbs) (10'/9')");
+    ).toBe("Wall Balls - 40 Reps (20/14) (10'/9')");
   });
 
-  it("formats single load in parentheses", () => {
+  it("formats legacy dual modifiers into paren slash form", () => {
+    expect(
+      formatPrescriptionTitle({
+        movementName: "Wall Balls",
+        repsPrescribed: 40,
+        prescriptionUnit: "reps",
+        dualModifierLabel: "20/14 lb · 10/9 ft",
+      }),
+    ).toBe("Wall Balls - 40 Reps (20/14) (10'/9')");
+  });
+
+  it("formats single load pair in parentheses", () => {
     expect(
       formatPrescriptionTitle({
         movementName: "Hang Power Clean",
         repsPrescribed: 10,
         prescriptionUnit: "reps",
-        dualModifierLabel: "115/75 lb",
+        dualModifierLabel: "(115/75)",
       }),
-    ).toBe("Hang Power Clean - 10 Reps (115/75 lbs)");
+    ).toBe("Hang Power Clean - 10 Reps (115/75)");
   });
 });
