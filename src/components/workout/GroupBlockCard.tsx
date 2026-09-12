@@ -66,6 +66,7 @@ export function GroupBlockCard({
           const showPartName =
             !!partName && partName.toLowerCase() !== title.toLowerCase();
           const showDescription = !part.items.length && !!part.description;
+          const partSchemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
 
           return (
             <div key={part.id} className="px-4 py-4 md:px-5">
@@ -73,6 +74,9 @@ export function GroupBlockCard({
                 Part {idx + 1}
                 {showPartName ? ` · ${partName}` : ""}
               </p>
+              {partSchemeLabel && (
+                <p className="mt-2 text-sm font-semibold text-primary">{partSchemeLabel}</p>
+              )}
               {showDescription && (
                 <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                   {part.description}
