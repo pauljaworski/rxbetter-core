@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { GroupScoreRow } from "@/components/workout/GroupScoreRow";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
-import { schemeSummaryLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
+import { schemeSummaryLabel, schemePartLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,8 @@ function partPreviewMeta(
 ): { heading: string | null; movements: string[] } {
   const partName = part.name?.trim();
   const isScoreAnchor = part.id === anchorId;
-  const schemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
+  const scheme = parseWorkoutScheme(part.workout_scheme);
+  const formatLabel = schemePartLabel(scheme, { isScorePart: isScoreAnchor || showPartLabels });
   const summary = summarizeSegmentPrescription(
     {
       programming_segment: part.programming_segment ?? "metcon",
@@ -61,15 +62,12 @@ function partPreviewMeta(
 
   let heading: string | null = null;
   if (showPartLabels) {
-    heading = [`Part ${idx + 1}`, distinctName, schemeLabel ?? summary.header]
-      .filter(Boolean)
-      .join(" · ");
+    heading = [`Part ${idx + 1}`, distinctName, formatLabel].filter(Boolean).join(" · ");
   } else if (singleScore) {
-    // Card title is the scored segment; non-scored blocks only show scheme (e.g. 5 RFT).
     const showAnchorName = isScoreAnchor ? distinctName : null;
-    heading = [showAnchorName, schemeLabel ?? summary.header].filter(Boolean).join(" · ") || null;
+    heading = [showAnchorName, formatLabel].filter(Boolean).join(" · ") || null;
   } else {
-    heading = [distinctName, schemeLabel ?? summary.header].filter(Boolean).join(" · ") || null;
+    heading = [distinctName, formatLabel].filter(Boolean).join(" · ") || null;
   }
 
   return { heading, movements: summary.lines };
@@ -184,7 +182,9 @@ export function GroupBlockCard({
                   ? isScoreAnchor && !!distinctName
                   : !!distinctName;
               const showDescription = !part.items.length && !!part.description;
-              const partSchemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
+              const partSchemeLabel = schemePartLabel(parseWorkoutScheme(part.workout_scheme), {
+                isScorePart: isScoreAnchor || showPartLabels,
+              });
               const headingBits = [
                 showPartLabels ? `Part ${idx + 1}` : null,
                 showPartName ? distinctName : null,

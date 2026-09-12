@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseWorkoutScheme,
   resolveEditorWorkoutScheme,
+  schemePartLabel,
   schemeSummaryLabel,
 } from "./workout-scheme-schema";
 
@@ -90,5 +91,31 @@ describe("parseWorkoutScheme scoreMetric", () => {
       scoreMetric: "time",
     });
     expect(schemeSummaryLabel(chipper)).toMatch(/15 min cap/);
+  });
+
+  it("shows score formats only on score parts; non-score gets rounds structure", () => {
+    const forTime = parseWorkoutScheme({
+      kind: "for_time",
+      timeCapMin: 40,
+      scoreMetric: "time",
+    });
+    expect(schemePartLabel(forTime, { isScorePart: true })).toBe("For time · 40 min cap");
+    expect(schemePartLabel(forTime, { isScorePart: false })).toBeNull();
+
+    const rft = parseWorkoutScheme({
+      kind: "rft",
+      rounds: 5,
+      scoreMetric: "time",
+    });
+    expect(schemePartLabel(rft, { isScorePart: true })).toBe("5 RFT");
+    expect(schemePartLabel(rft, { isScorePart: false })).toBe("5 rounds");
+
+    const amrap = parseWorkoutScheme({
+      kind: "amrap",
+      timeCapMin: 12,
+      scoreMetric: "rounds_reps",
+    });
+    expect(schemePartLabel(amrap, { isScorePart: true })).toBe("AMRAP 12");
+    expect(schemePartLabel(amrap, { isScorePart: false })).toBeNull();
   });
 });

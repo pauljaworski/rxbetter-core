@@ -289,6 +289,46 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
   }
 }
 
+/**
+ * Label for a part inside a multi-part block.
+ * Score parts get the full format (For time, 5 RFT, AMRAP…).
+ * Non-score parts omit score formats; they only show structural cues like "5 rounds".
+ */
+export function schemePartLabel(
+  scheme: WorkoutScheme | null,
+  opts: { isScorePart: boolean },
+): string | null {
+  if (!scheme) return null;
+  if (opts.isScorePart) return schemeSummaryLabel(scheme);
+
+  switch (scheme.kind) {
+    case "rft": {
+      if (!(scheme.rounds > 0)) return null;
+      const restSec = scheme.restBetweenRoundsSec ?? 0;
+      let restLabel = "";
+      if (restSec > 0) {
+        const m = Math.floor(restSec / 60);
+        const s = restSec % 60;
+        const formatted = s > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${m}:00`;
+        restLabel = ` · ${formatted} rest between rounds`;
+      }
+      return `${scheme.rounds} round${scheme.rounds === 1 ? "" : "s"}${restLabel}`;
+    }
+    case "amrap_repeat":
+      return scheme.rounds > 0
+        ? `${scheme.rounds} round${scheme.rounds === 1 ? "" : "s"}`
+        : null;
+    case "interval_series":
+    case "tabata":
+    case "rep_ladder":
+      // How to perform the block (not a score format name).
+      return schemeSummaryLabel(scheme);
+    default:
+      // for_time, amrap, emom, chipper → score formats; hide on non-score parts
+      return null;
+  }
+}
+
 /** Formats that support an optional overall time cap (for-time style metcons). */
 export function supportsOptionalTimeCap(kind: WorkoutScheme["kind"]): boolean {
   return kind === "for_time" || kind === "rft" || kind === "chipper" || kind === "rep_ladder";
