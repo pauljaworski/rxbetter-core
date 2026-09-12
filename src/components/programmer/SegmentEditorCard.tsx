@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2, Plus, Copy, Save, Sparkles, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import type { EditorLineItem, EditorWod } from "@/hooks/staff/types";
 import type { ProgramLibrary } from "@/hooks/staff/types";
@@ -61,7 +61,9 @@ type Props = {
   saving?: boolean;
   onUpdate: (patch: Partial<EditorWod>) => void;
   onRemove: () => void;
-  onSaveSection: () => void;
+  onSaveSection: () => boolean | void | Promise<boolean | void>;
+  /** Bump to collapse this card (e.g. after Save all). */
+  collapseSignal?: number;
   onUpdateItem: (itemIdx: number, patch: Partial<EditorLineItem>) => void;
   onRemoveItem: (itemIdx: number) => void;
   onCloneItem: (itemIdx: number) => void;
@@ -85,6 +87,7 @@ export function SegmentEditorCard({
   onUpdate,
   onRemove,
   onSaveSection,
+  collapseSignal = 0,
   onUpdateItem,
   onRemoveItem,
   onCloneItem,
@@ -103,8 +106,12 @@ export function SegmentEditorCard({
 }: Props) {
   const { data: catalog } = useBenchmarkCatalog();
   const [bulkPaste, setBulkPaste] = useState("");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => !isSegmentUnsaved(wod));
   const [showBulkPaste, setShowBulkPaste] = useState(false);
+
+  useEffect(() => {
+    if (collapseSignal > 0) setCollapsed(true);
+  }, [collapseSignal]);
   const uiKey = resolveProgrammingUiKey(wod);
   const lineMode = getLineItemMode(wod.programming_segment);
   const addEnabled = canAddMovement(wod);
@@ -394,7 +401,12 @@ export function SegmentEditorCard({
           </Button>
           <Button
             size="sm"
-            onClick={onSaveSection}
+            onClick={() => {
+              void (async () => {
+                const result = await onSaveSection();
+                if (result !== false) setCollapsed(true);
+              })();
+            }}
             disabled={saving}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >

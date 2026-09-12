@@ -19,7 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
+import { summarizeSegmentPrescription, condensePrescriptionPreview } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { GroupBlockCard } from "@/components/workout/GroupBlockCard";
 import {
@@ -308,6 +308,7 @@ export default function CalendarPage() {
                 const w = block.wod;
                 const items = w.items;
                 const summary = summarizeSegmentPrescription(w, items, rxGender);
+                const preview = condensePrescriptionPreview(summary, 3);
                 const isOpen = expanded.has(w.id);
                 return (
                   <Card key={w.id} className="glass-card overflow-hidden p-0">
@@ -332,22 +333,32 @@ export default function CalendarPage() {
                         </h3>
                         {!isOpen && (
                           <div className="mt-2 space-y-0.5">
-                            {summary.header && (
-                              <p className="text-xs font-medium text-primary/80">{summary.header}</p>
+                            {preview.header && (
+                              <p className="text-xs font-medium text-primary/80">{preview.header}</p>
                             )}
-                            {summary.lines.map((line, i) => (
+                            {preview.lines.map((line, i) => (
                               <p key={i} className="text-xs text-muted-foreground">
                                 {line}
                               </p>
                             ))}
-                            {(w.athlete_notes || w.coaches_notes) && (
+                            {preview.moreCount > 0 && (
+                              <p className="text-[11px] text-muted-foreground/80">
+                                +{preview.moreCount} more · tap for details
+                              </p>
+                            )}
+                            {!items.length && (w.athlete_notes || w.coaches_notes) && (
                               <p className="line-clamp-2 text-xs text-muted-foreground/90">
                                 {w.coaches_notes || w.athlete_notes}
                               </p>
                             )}
-                            {w.description && (
+                            {!items.length && w.description && (
                               <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                                 {w.description}
+                              </p>
+                            )}
+                            {preview.moreCount === 0 && items.length > 0 && (
+                              <p className="pt-0.5 text-[11px] text-muted-foreground/80">
+                                Tap for details
                               </p>
                             )}
                           </div>
@@ -367,7 +378,7 @@ export default function CalendarPage() {
                             {summary.header}
                           </p>
                         )}
-                        {w.description && (
+                        {!items.length && w.description && (
                           <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
                             {w.description}
                           </p>

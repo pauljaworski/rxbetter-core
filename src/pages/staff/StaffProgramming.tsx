@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WodIntakePanel } from "@/components/programmer/WodIntakePanel";
@@ -59,6 +59,8 @@ export default function StaffProgramming() {
   const { data: benchmarkCatalog } = useBenchmarkCatalog();
   const strengthCatalog = filterBenchmarkCatalog(benchmarkCatalog, "weightlifting");
   const [savingSectionIdx, setSavingSectionIdx] = useState<number | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
+  const [collapseSignal, setCollapseSignal] = useState(0);
 
   const dateKey = format(date, "yyyy-MM-dd");
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -373,12 +375,12 @@ export default function StaffProgramming() {
     return { error: null, saved };
   }
 
-  async function handleSaveSection(idx: number) {
+  async function handleSaveSection(idx: number): Promise<boolean> {
     const wod = wods[idx];
     const lib = wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
     if (!lib) {
       toast.error("Select at least one track for this section.");
-      return;
+      return false;
     }
 
     setSavingSectionIdx(idx);
@@ -387,11 +389,39 @@ export default function StaffProgramming() {
 
     if (saveError) {
       toast.error("Couldn't save section", { description: saveError });
-      return;
+      return false;
     }
 
     toast.success("Section saved");
     pendingDraftsRef.current = wods.filter((w, i) => i !== idx && isSegmentUnsaved(w));
+    requestServerSync("save");
+    return true;
+  }
+
+  async function handleSaveAllSections() {
+    if (!wods.length) return;
+    setSavingAll(true);
+    let saved = 0;
+    for (let i = 0; i < wods.length; i++) {
+      const wod = wods[i];
+      const lib = wod.program_library_ids[0] ?? wod.program_library_id ?? defaultLibId;
+      if (!lib) {
+        setSavingAll(false);
+        toast.error(`"${wod.name ?? "Segment"}" needs at least one track before it can be saved.`);
+        return;
+      }
+      const { error: saveError } = await saveWod(wod, i);
+      if (saveError) {
+        setSavingAll(false);
+        toast.error("Couldn't save all sections", { description: saveError });
+        return;
+      }
+      saved++;
+    }
+    setSavingAll(false);
+    toast.success(`Saved ${saved} section${saved === 1 ? "" : "s"}`);
+    pendingDraftsRef.current = [];
+    setCollapseSignal((n) => n + 1);
     requestServerSync("save");
   }
 
@@ -438,7 +468,7 @@ export default function StaffProgramming() {
     requestServerSync("date");
   }
 
-  const busy = saving || publishing || isRefreshing;
+  const busy = saving || publishing || isRefreshing || savingAll;
   const unsavedCount = wods.filter(isSegmentUnsaved).length;
 
   return (
@@ -447,8 +477,8 @@ export default function StaffProgramming() {
         <p className="eyebrow">Programmer</p>
         <h1 className="text-3xl font-black tracking-tight md:text-4xl">Programming</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick a day, add multiple segments, save each section (or publish day to save and publish
-          together).
+          Pick a day, add multiple segments, then Save all sections (or save one at a time). Publish
+          day saves unsaved work and publishes together.
         </p>
         {unsavedCount > 0 && (
           <p className="mt-2 text-xs font-medium text-amber-600">
@@ -505,6 +535,15 @@ export default function StaffProgramming() {
           <Plus className="mr-1 h-3.5 w-3.5" /> Segment
         </Button>
         <Button
+          onClick={() => void handleSaveAllSections()}
+          disabled={busy || wods.length === 0 || savingSectionIdx != null}
+          size="sm"
+          variant="secondary"
+        >
+          <Save className="mr-1 h-3.5 w-3.5" />
+          {savingAll ? "Saving…" : "Save all sections"}
+        </Button>
+        <Button
           onClick={() => void handlePublishDay()}
           disabled={busy}
           size="sm"
@@ -533,10 +572,11 @@ export default function StaffProgramming() {
               wodIndex={idx}
               allWods={wods}
               libraries={libraries}
-              saving={savingSectionIdx === idx}
+              saving={savingSectionIdx === idx || savingAll}
+              collapseSignal={collapseSignal}
               onUpdate={(patch) => updateWod(idx, patch)}
               onRemove={() => void handleRemoveWod(idx)}
-              onSaveSection={() => void handleSaveSection(idx)}
+              onSaveSection={() => handleSaveSection(idx)}
               onUpdateItem={(itemIdx, patch) => updateItem(idx, itemIdx, patch)}
               onRemoveItem={(itemIdx) => removeItem(idx, itemIdx)}
               onCloneItem={(itemIdx) => cloneItem(idx, itemIdx)}

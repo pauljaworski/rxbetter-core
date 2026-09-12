@@ -3,7 +3,7 @@ import { ChevronDown, Dumbbell, Flame, Timer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
-import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
+import { summarizeSegmentPrescription, condensePrescriptionPreview } from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
@@ -56,6 +56,7 @@ export function CollapsibleWorkoutSegment({
     items,
     rxGender ?? null,
   );
+  const preview = condensePrescriptionPreview(summary, 3);
 
   const segIcon =
     wod.programming_segment === "metcon"
@@ -107,18 +108,26 @@ export function CollapsibleWorkoutSegment({
             </h3>
             {!expanded && (
               <div className="mt-2 space-y-0.5">
-                {summary.header && (
-                  <p className="text-xs font-medium text-primary/80">{summary.header}</p>
+                {preview.header && (
+                  <p className="text-xs font-medium text-primary/80">{preview.header}</p>
                 )}
-                {summary.lines.map((line, i) => (
+                {preview.lines.map((line, i) => (
                   <p key={i} className="text-xs text-muted-foreground">
                     {line}
                   </p>
                 ))}
+                {preview.moreCount > 0 && (
+                  <p className="text-[11px] text-muted-foreground/80">
+                    +{preview.moreCount} more · tap for details
+                  </p>
+                )}
                 {!items.length && wod.description && (
                   <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
                     {wod.description}
                   </p>
+                )}
+                {preview.moreCount === 0 && items.length > 0 && (
+                  <p className="pt-0.5 text-[11px] text-muted-foreground/80">Tap for details</p>
                 )}
               </div>
             )}

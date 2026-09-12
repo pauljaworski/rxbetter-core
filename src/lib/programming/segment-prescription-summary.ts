@@ -72,6 +72,19 @@ export type SegmentPrescriptionSummary = {
   lines: string[];
 };
 
+/** Short preview for collapsed athlete cards (Today / Calendar). */
+export function condensePrescriptionPreview(
+  summary: SegmentPrescriptionSummary,
+  maxLines = 3,
+): { header: string | null; lines: string[]; moreCount: number } {
+  const lines = summary.lines.slice(0, Math.max(0, maxLines));
+  return {
+    header: summary.header,
+    lines,
+    moreCount: Math.max(0, summary.lines.length - lines.length),
+  };
+}
+
 /**
  * Collapse consecutive identical complex_set rows into one prescription line
  * so athletes/staff see the circuit once under an "N sets" header.

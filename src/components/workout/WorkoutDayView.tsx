@@ -59,7 +59,7 @@ export function WorkoutDayView({
         </h1>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           {displayName ? `Welcome back, ${displayName.split(" ")[0]}.` : "Welcome back."} Tap a
-          segment to expand movements and log your work.
+          workout for full details and to log your work.
         </p>
       </header>
 
