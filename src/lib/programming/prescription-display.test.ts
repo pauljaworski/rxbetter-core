@@ -22,4 +22,26 @@ describe("formatPrescriptionTitle", () => {
       }),
     ).toBe("2 Snatch Pull + 1 Power Snatch - 5 sets");
   });
+
+  it("formats dual load and height in parentheses", () => {
+    expect(
+      formatPrescriptionTitle({
+        movementName: "Wall Balls",
+        repsPrescribed: 40,
+        prescriptionUnit: "reps",
+        dualModifierLabel: "20/14 lb · 10/9 ft",
+      }),
+    ).toBe("Wall Balls - 40 Reps (20/14 lbs) (10'/9')");
+  });
+
+  it("formats single load in parentheses", () => {
+    expect(
+      formatPrescriptionTitle({
+        movementName: "Hang Power Clean",
+        repsPrescribed: 10,
+        prescriptionUnit: "reps",
+        dualModifierLabel: "115/75 lb",
+      }),
+    ).toBe("Hang Power Clean - 10 Reps (115/75 lbs)");
+  });
 });

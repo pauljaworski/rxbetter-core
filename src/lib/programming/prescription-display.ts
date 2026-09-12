@@ -4,7 +4,7 @@ import {
   type PrescriptionUnit,
 } from "@/lib/programming/prescription-unit";
 import type { ResolvedPrescription } from "@/lib/programming/rx-variants-schema";
-import { formatResolvedRxParts } from "@/lib/programming/rx-variants-schema";
+import { formatResolvedRxAmountAndModifiers } from "@/lib/programming/rx-variants-schema";
 
 export type PrescriptionDisplayInput = {
   movementName: string;
@@ -38,11 +38,10 @@ function legacyScoreIsRedundant(input: PrescriptionDisplayInput): boolean {
   return false;
 }
 
-/** e.g. "Wall Ball - 80 Reps - 20/14 lb - 10/9 ft" or "Run - 400m" */
+/** e.g. "Wall Balls - 40 Reps (20/14 lbs) (10'/9')" or "Run - 400m" */
 export function formatPrescriptionTitle(input: PrescriptionDisplayInput): string {
-  const parts: string[] = [input.movementName.trim() || "Movement"];
-
-  const rxParts = formatResolvedRxParts({
+  const movement = input.movementName.trim() || "Movement";
+  const { amount, modifiers } = formatResolvedRxAmountAndModifiers({
     reps_prescribed: input.repsPrescribed ?? null,
     prescription_unit: input.prescriptionUnit ?? "reps",
     prescribed_weight: input.prescribedWeight ?? null,
@@ -52,19 +51,23 @@ export function formatPrescriptionTitle(input: PrescriptionDisplayInput): string
     load_label: input.loadLabel ?? null,
     height_label: input.heightLabel ?? null,
   });
-  parts.push(...rxParts);
 
+  const extras: string[] = [];
   const pct = percentWholeFromFraction(input.prescribedPercentage ?? null);
   if (pct != null) {
     const basis = percentRepMaxLabel(input.repMaxCount ?? 1).replace("% ", "");
-    parts.push(`${pct}% ${basis}`);
-  } else if (input.prescribedWeight != null && !rxParts.length) {
-    parts.push(`${input.prescribedWeight} lb`);
+    extras.push(`${pct}% ${basis}`);
+  } else if (input.prescribedWeight != null && !amount && !modifiers.length) {
+    extras.push(`${input.prescribedWeight} lb`);
   } else if (!legacyScoreIsRedundant(input) && input.prescribedScore?.trim()) {
-    parts.push(input.prescribedScore.trim());
+    extras.push(input.prescribedScore.trim());
   }
 
-  return parts.join(" - ");
+  let title = movement;
+  if (amount) title += ` - ${amount}`;
+  if (modifiers.length) title += ` ${modifiers.join(" ")}`;
+  if (extras.length) title += ` - ${extras.join(" - ")}`;
+  return title;
 }
 
 export function formatPrescriptionFromResolved(

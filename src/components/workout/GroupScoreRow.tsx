@@ -33,6 +33,8 @@ type Props = {
   existing: SegmentPerformance | null;
   prescribedScale?: string | null;
   workoutScheme?: unknown;
+  /** When scheme is already shown above (multi-part card), skip repeating it. */
+  hideSchemeHeadline?: boolean;
   onLogged?: () => void;
 };
 
@@ -44,6 +46,7 @@ export function GroupScoreRow({
   existing,
   prescribedScale,
   workoutScheme,
+  hideSchemeHeadline,
   onLogged,
 }: Props) {
   const { defaultWorkoutScale } = useAuth();
@@ -100,13 +103,17 @@ export function GroupScoreRow({
   const isLogged =
     scoreMetric === "completion" ? completed || !!existing?.score : !!existing?.score;
 
-  const headline = schemeLabel ?? (partCount > 1 ? `${partCount}-part workout` : "Workout");
+  const headline = hideSchemeHeadline
+    ? null
+    : (schemeLabel ?? (partCount > 1 ? `${partCount}-part workout` : "Workout"));
 
   return (
     <div className={cn("space-y-4 border-t border-border/60 p-4 md:p-5", isLogged && "bg-primary/[0.04]")}>
       <div>
         <p className="eyebrow">Score</p>
-        <p className="mt-1 text-lg font-black tracking-tight text-primary">{headline}</p>
+        {headline && (
+          <p className="mt-1 text-lg font-black tracking-tight text-primary">{headline}</p>
+        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">

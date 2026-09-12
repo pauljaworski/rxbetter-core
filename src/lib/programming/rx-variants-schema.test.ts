@@ -71,7 +71,7 @@ describe("rx-variants-schema", () => {
     expect(resolved.reps_prescribed).toBe(80);
     expect(resolved.load_label).toBe("14 lb");
     expect(resolved.height_label).toBe("9 ft");
-    expect(formatResolvedRxParts(resolved)).toEqual(["80 Reps", "14 lb", "9 ft"]);
+    expect(formatResolvedRxParts(resolved)).toEqual(["80 Reps", "(14 lbs)", "(9')"]);
   });
 
   it("shows dual notation when gender unknown", () => {
@@ -100,7 +100,7 @@ describe("rx-variants-schema", () => {
       },
       "female",
     );
-    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "35 lb"]);
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(35 lbs)"]);
     expect(resolved.dual_modifier_label).toBeNull();
   });
 
@@ -114,7 +114,7 @@ describe("rx-variants-schema", () => {
       },
       "male",
     );
-    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "50 lb"]);
+    expect(formatResolvedRxParts(resolved)).toEqual(["20 Reps", "(50 lbs)"]);
   });
 
   it("syncs legacy columns without amount in prescribed_score", () => {

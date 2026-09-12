@@ -281,24 +281,66 @@ export function rxVariantsForSave(
 
 /** Rx suffix parts for display (amount + load + height, no duplicates). */
 export function formatResolvedRxParts(resolved: ResolvedPrescription): string[] {
-  const parts: string[] = [];
+  const { amount, modifiers } = formatResolvedRxAmountAndModifiers(resolved);
+  return [...(amount ? [amount] : []), ...modifiers];
+}
 
+/** Prefer "lbs" and feet as 10' for athlete-facing load/height text. */
+export function normalizeLoadDisplay(label: string): string {
+  return label.trim().replace(/\blbs?\b/gi, "lbs");
+}
+
+export function normalizeHeightDisplay(label: string): string {
+  const t = label.trim();
+  const compact = t.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*(ft|feet|')$/i);
+  if (compact) return `${compact[1]}'/${compact[2]}'`;
+  const single = t.match(/^(\d+(?:\.\d+)?)\s*(ft|feet|')$/i);
+  if (single) return `${single[1]}'`;
+  return t;
+}
+
+function wrapParens(label: string): string {
+  const t = label.trim();
+  if (!t) return t;
+  if (t.startsWith("(") && t.endsWith(")")) return t;
+  return `(${t})`;
+}
+
+/** Amount plus parenthesized load/height modifiers for titles. */
+export function formatResolvedRxAmountAndModifiers(resolved: ResolvedPrescription): {
+  amount: string | null;
+  modifiers: string[];
+} {
+  let amount: string | null = null;
   if (resolved.dual_amount_label?.trim()) {
-    parts.push(resolved.dual_amount_label.trim());
+    amount = resolved.dual_amount_label.trim();
   } else if (resolved.reps_prescribed != null) {
-    const amount = formatPrescriptionAmount(
+    amount = formatPrescriptionAmount(
       resolved.reps_prescribed,
       resolved.prescription_unit ?? "reps",
     );
-    if (amount) parts.push(amount);
   }
 
+  const modifiers: string[] = [];
   if (resolved.dual_modifier_label?.trim()) {
-    parts.push(resolved.dual_modifier_label.trim());
+    for (const raw of resolved.dual_modifier_label.split(" · ")) {
+      const piece = raw.trim();
+      if (!piece) continue;
+      // Heuristic: height uses ft/feet/' ; everything else treated as load.
+      if (/\bft\b|feet|'/i.test(piece)) {
+        modifiers.push(wrapParens(normalizeHeightDisplay(piece)));
+      } else {
+        modifiers.push(wrapParens(normalizeLoadDisplay(piece)));
+      }
+    }
   } else {
-    if (resolved.load_label?.trim()) parts.push(resolved.load_label.trim());
-    if (resolved.height_label?.trim()) parts.push(resolved.height_label.trim());
+    if (resolved.load_label?.trim()) {
+      modifiers.push(wrapParens(normalizeLoadDisplay(resolved.load_label)));
+    }
+    if (resolved.height_label?.trim()) {
+      modifiers.push(wrapParens(normalizeHeightDisplay(resolved.height_label)));
+    }
   }
 
-  return parts;
+  return { amount, modifiers };
 }

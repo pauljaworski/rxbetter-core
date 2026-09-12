@@ -28,12 +28,19 @@ type Props = {
   onLogged: () => void;
 };
 
+/** Linked groups score once; Part labels only when more than one score anchor exists. */
+function groupHasMultipleScores(block: GroupBlock): boolean {
+  const anchors = block.parts.filter((p) => p.group_score_anchor);
+  return anchors.length > 1;
+}
+
 function partPreviewMeta(
   part: GroupBlock["parts"][number],
   idx: number,
   blockTitle: string,
+  showPartLabels: boolean,
   rxGender?: RxGender | null,
-): { heading: string; movements: string[] } {
+): { heading: string | null; movements: string[] } {
   const partName = part.name?.trim();
   const showName = !!partName && partName.toLowerCase() !== blockTitle.toLowerCase();
   const schemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
@@ -48,12 +55,12 @@ function partPreviewMeta(
     rxGender ?? null,
   );
   const bits = [
-    `Part ${idx + 1}`,
+    showPartLabels ? `Part ${idx + 1}` : null,
     showName ? partName : null,
     schemeLabel ?? summary.header,
   ].filter(Boolean);
   return {
-    heading: bits.join(" · "),
+    heading: bits.length ? bits.join(" · ") : null,
     movements: summary.lines,
   };
 }
@@ -73,6 +80,7 @@ export function GroupBlockCard({
   const scheme = parseWorkoutScheme(block.anchor.workout_scheme);
   const schemeLabel = schemeSummaryLabel(scheme);
   const title = block.anchor.name?.trim() || "Workout";
+  const showPartLabels = groupHasMultipleScores(block);
 
   return (
     <Card className="glass-card overflow-hidden p-0">
@@ -86,30 +94,38 @@ export function GroupBlockCard({
           <p className="eyebrow">
             Workout
             {schemeLabel ? ` · ${schemeLabel}` : ""}
-            {block.parts.length > 1 ? ` · ${block.parts.length} parts` : ""}
           </p>
           <h3 className="text-lg font-bold tracking-tight md:text-xl">{title}</h3>
           {!expanded && (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-0">
               {block.parts.map((part, idx) => {
-                const preview = partPreviewMeta(part, idx, title, rxGender);
+                const preview = partPreviewMeta(part, idx, title, showPartLabels, rxGender);
                 return (
-                  <div key={part.id} className="space-y-0.5">
-                    <p className="text-xs font-medium text-foreground/80">{preview.heading}</p>
-                    {preview.movements.map((line, i) => (
-                      <p key={i} className="text-xs text-muted-foreground">
-                        {line}
-                      </p>
-                    ))}
-                    {!preview.movements.length && part.description && (
-                      <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
-                        {part.description}
+                  <div key={part.id}>
+                    {idx > 0 && (
+                      <p className="py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                        Then
                       </p>
                     )}
+                    <div className="space-y-0.5">
+                      {preview.heading && (
+                        <p className="text-xs font-medium text-foreground/80">{preview.heading}</p>
+                      )}
+                      {preview.movements.map((line, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          {line}
+                        </p>
+                      ))}
+                      {!preview.movements.length && part.description && (
+                        <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
+                          {part.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 );
               })}
-              <p className="pt-0.5 text-[11px] text-muted-foreground/80">
+              <p className="pt-2 text-[11px] text-muted-foreground/80">
                 Tap for full details{contactId ? " and score" : ""}
               </p>
             </div>
@@ -136,41 +152,55 @@ export function GroupBlockCard({
 
       {expanded && (
         <>
-          <div className="divide-y divide-border/60 border-t border-border/60">
+          <div className="border-t border-border/60 px-4 py-2 md:px-5">
             {block.parts.map((part, idx) => {
               const partName = part.name?.trim();
               const showPartName =
                 !!partName && partName.toLowerCase() !== title.toLowerCase();
               const showDescription = !part.items.length && !!part.description;
               const partSchemeLabel = schemeSummaryLabel(parseWorkoutScheme(part.workout_scheme));
+              const headingBits = [
+                showPartLabels ? `Part ${idx + 1}` : null,
+                showPartName ? partName : null,
+              ].filter(Boolean);
 
               return (
-                <div key={part.id} className="px-4 py-4 md:px-5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Part {idx + 1}
-                    {showPartName ? ` · ${partName}` : ""}
-                  </p>
-                  {partSchemeLabel && (
-                    <p className="mt-2 text-sm font-semibold text-primary">{partSchemeLabel}</p>
-                  )}
-                  {showDescription && (
-                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                      {part.description}
+                <div key={part.id}>
+                  {idx > 0 && (
+                    <p className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                      Then
                     </p>
                   )}
-                  {(part.athlete_notes || part.coaches_notes) && (
-                    <div className="mt-2 space-y-1 text-sm">
-                      {part.coaches_notes && (
-                        <p className="whitespace-pre-line text-foreground/90">{part.coaches_notes}</p>
-                      )}
-                      {part.athlete_notes && (
-                        <p className="whitespace-pre-line text-muted-foreground">
-                          {part.athlete_notes}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="mt-2">
+                  <div className="py-3">
+                    {(headingBits.length > 0 || partSchemeLabel) && (
+                      <div className="mb-2 space-y-1">
+                        {headingBits.length > 0 && (
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {headingBits.join(" · ")}
+                          </p>
+                        )}
+                        {partSchemeLabel && (
+                          <p className="text-sm font-semibold text-primary">{partSchemeLabel}</p>
+                        )}
+                      </div>
+                    )}
+                    {showDescription && (
+                      <p className="mb-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                        {part.description}
+                      </p>
+                    )}
+                    {(part.athlete_notes || part.coaches_notes) && (
+                      <div className="mb-2 space-y-1 text-sm">
+                        {part.coaches_notes && (
+                          <p className="whitespace-pre-line text-foreground/90">{part.coaches_notes}</p>
+                        )}
+                        {part.athlete_notes && (
+                          <p className="whitespace-pre-line text-muted-foreground">
+                            {part.athlete_notes}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {isMetconSegment(part.programming_segment ?? "") ? (
                       <MetconMovementList items={part.items} rxGender={rxGender} />
                     ) : (
@@ -199,6 +229,7 @@ export function GroupBlockCard({
             existing={groupPerf}
             prescribedScale={block.anchor.prescribed_scale}
             workoutScheme={block.anchor.workout_scheme}
+            hideSchemeHeadline
             onLogged={onLogged}
           />
         </>
