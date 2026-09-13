@@ -12,7 +12,7 @@ import {
   formatLoggedScorePreview,
 } from "@/lib/programming/athlete-logged-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
-import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
+import { SegmentScoreFields } from "@/components/workout/SegmentScoreFields";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
@@ -224,7 +224,7 @@ export function CollapsibleWorkoutSegment({
       )}
 
       {scoreOnly && !expanded && canQuickLog && metcon && (
-        <MetconScoreRow
+        <SegmentScoreFields
           wod={wod}
           contactId={contactId}
           existing={segmentPerf ?? null}

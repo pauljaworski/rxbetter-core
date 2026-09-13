@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
 import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
+import { buildSegmentPerformanceWritePayload } from "@/lib/performance/segment-performance-payload";
 import type { Json } from "@/types/database";
 
 export type SaveSegmentPerformanceInput = {
@@ -24,17 +25,16 @@ export function useSaveSegmentPerformance() {
     input: SaveSegmentPerformanceInput,
   ): Promise<{ error: string | null; id?: string }> {
     setSubmitting(true);
-    const payload = {
-      score: input.score,
-      result_value: input.resultValue,
-      score_meta: input.scoreMeta ?? {},
-      performance_date: input.wodDate,
-      workout_scale: input.workoutScale,
-      status: "completed" as const,
-      is_pr: false,
-      programming_line_item_id: null,
-      weight_lifted: null,
-    };
+    const payload = buildSegmentPerformanceWritePayload(
+      {
+        score: input.score,
+        resultValue: input.resultValue,
+        scoreMeta: input.scoreMeta,
+        wodDate: input.wodDate,
+        workoutScale: input.workoutScale,
+      },
+      input.existingId ? "update" : "insert",
+    );
 
     let id = input.existingId;
     let error: { message: string } | null = null;
