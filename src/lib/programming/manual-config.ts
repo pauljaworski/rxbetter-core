@@ -64,6 +64,22 @@ export type CatalogEntry = {
 
 const STRENGTH_SUB_STIMULI = new Set(["clean", "jerk", "press", "pull", "snatch", "squat"]);
 
+/** True when DB/KB single-vs-double implement makes sense for this movement. */
+export function supportsDbKbLoadModality(input: {
+  stimulus?: string | null;
+  purpose_variation?: string | null;
+  programmingSegment?: string | null;
+}): boolean {
+  if (input.programmingSegment) {
+    const seg = normalizeProgrammingSegment(input.programmingSegment);
+    if (seg === "weightlifting") return true;
+  }
+  if (input.stimulus === "strength") return true;
+  const pv = (input.purpose_variation ?? "").toLowerCase();
+  if (/\b(dumbbell|kettlebell|db|kb)\b/.test(pv)) return true;
+  return false;
+}
+
 /** Named benchmark WODs (full workouts), not individual movements. */
 const BENCHMARK_WOD_NAMES = new Set(
   [

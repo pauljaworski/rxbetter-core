@@ -110,6 +110,9 @@ export type EditorLineItem = {
   /** Rep-max basis for % prescription (1, 2, 3, 5, 10). */
   percent_rep_max?: number | null;
   bench_name?: string;
+  /** Catalog stimulus (e.g. strength / skill) for editor UX gating. */
+  stimulus?: string | null;
+  purpose_variation?: string | null;
   /** Custom movement name when benchmark_type_id is null. */
   movement_label?: string | null;
   line_item_kind?: LineItemKind;

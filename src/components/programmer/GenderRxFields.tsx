@@ -16,6 +16,7 @@ import {
   type RxVariants,
 } from "@/lib/programming/rx-variants-schema";
 import { PRESCRIPTION_UNITS, PRESCRIPTION_UNIT_LABELS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
+import { supportsDbKbLoadModality } from "@/lib/programming/manual-config";
 import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
 import {
   Select,
@@ -210,7 +211,14 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
     commitVariants(item, updateVariant(variants, gender, patch), onChange);
   }
 
-  const modalitySelect = (
+  const showDbKb =
+    mode === "strength" ||
+    supportsDbKbLoadModality({
+      stimulus: item.stimulus,
+      purpose_variation: item.purpose_variation,
+    });
+
+  const modalitySelect = showDbKb ? (
     <div className="space-y-1">
       <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
         DB / KB implement
@@ -232,7 +240,7 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
         Double shows athletes 50s/35s — enter the weight of one DB or KB, not the total.
       </p>
     </div>
-  );
+  ) : null;
 
   return (
     <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-2">

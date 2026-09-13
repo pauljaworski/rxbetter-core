@@ -69,7 +69,7 @@ function mapWodsFromRows(
     rx_variants: unknown;
     rest_sec?: number | null;
   }>,
-  typeMap: Map<string, string>,
+  typeMap: Map<string, { name: string; stimulus: string | null; purpose_variation: string | null }>,
   assignmentMap: Map<string, string[]>,
   defRepById: Map<string, number>,
   markNew?: boolean,
@@ -138,8 +138,14 @@ function mapWodsFromRows(
                 : kind === "rest"
                   ? "Rest"
                   : i.benchmark_type_id
-                  ? typeMap.get(i.benchmark_type_id)
+                  ? typeMap.get(i.benchmark_type_id)?.name
                   : (i.movement_label ?? undefined),
+              stimulus: i.benchmark_type_id
+                ? (typeMap.get(i.benchmark_type_id)?.stimulus ?? null)
+                : null,
+              purpose_variation: i.benchmark_type_id
+                ? (typeMap.get(i.benchmark_type_id)?.purpose_variation ?? null)
+                : null,
               rx_variants: parseRxVariants(i.rx_variants),
             };
           }),
@@ -199,9 +205,17 @@ export function useStaffProgrammingDay(activeGymId: string | null, date: Date) {
       new Set((items ?? []).map((i) => i.benchmark_definition_id).filter(Boolean) as string[]),
     );
     const { data: types } = typeIds.length
-      ? await supabase.from("benchmark_type").select("id, name").in("id", typeIds)
-      : { data: [] as { id: string; name: string }[] };
-    const typeMap = new Map((types ?? []).map((t) => [t.id, t.name]));
+      ? await supabase
+          .from("benchmark_type")
+          .select("id, name, stimulus, purpose_variation")
+          .in("id", typeIds)
+      : { data: [] as { id: string; name: string; stimulus: string | null; purpose_variation: string | null }[] };
+    const typeMap = new Map(
+      (types ?? []).map((t) => [
+        t.id,
+        { name: t.name, stimulus: t.stimulus, purpose_variation: t.purpose_variation },
+      ]),
+    );
     const defRepById = await loadDefinitionRepCounts(defIds);
 
     return mapWodsFromRows(progs ?? [], items ?? [], typeMap, assignmentMap, defRepById);
@@ -244,9 +258,17 @@ export async function fetchProgrammingDayForCopy(
     new Set((items ?? []).map((i) => i.benchmark_type_id).filter(Boolean) as string[]),
   );
   const { data: types } = typeIds.length
-    ? await supabase.from("benchmark_type").select("id, name").in("id", typeIds)
-    : { data: [] as { id: string; name: string }[] };
-  const typeMap = new Map((types ?? []).map((t) => [t.id, t.name]));
+    ? await supabase
+        .from("benchmark_type")
+        .select("id, name, stimulus, purpose_variation")
+        .in("id", typeIds)
+    : { data: [] as { id: string; name: string; stimulus: string | null; purpose_variation: string | null }[] };
+  const typeMap = new Map(
+    (types ?? []).map((t) => [
+      t.id,
+      { name: t.name, stimulus: t.stimulus, purpose_variation: t.purpose_variation },
+    ]),
+  );
   const defIds = Array.from(
     new Set((items ?? []).map((i) => i.benchmark_definition_id).filter(Boolean) as string[]),
   );

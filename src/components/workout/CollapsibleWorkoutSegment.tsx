@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
 import {
   summarizeSegmentPrescription,
-  condensePrescriptionPreview,
 } from "@/lib/programming/segment-prescription-summary";
 import {
   formatLoggedLiftPreviews,
@@ -69,7 +68,12 @@ export function CollapsibleWorkoutSegment({
     items,
     rxGender ?? null,
   );
-  const preview = condensePrescriptionPreview(summary, 3);
+  /** Full movement list on collapsed cards (same text size; no cutoff). */
+  const preview = {
+    header: summary.header,
+    lines: summary.lines,
+    moreCount: 0,
+  };
   const loggedScore = metcon ? formatLoggedScorePreview(segmentPerf) : null;
   const loggedLifts = !metcon ? formatLoggedLiftPreviews(items, perfByItem) : [];
   const hasLoggedResult = !!loggedScore || loggedLifts.length > 0;

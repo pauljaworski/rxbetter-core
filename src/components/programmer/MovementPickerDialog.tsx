@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { filterBenchmarkCatalog, isMetconSegment } from "@/lib/programming/manual-config";
+import { filterBenchmarkCatalog, isMetconSegment, supportsDbKbLoadModality } from "@/lib/programming/manual-config";
 import { percentFractionFromWhole } from "@/lib/programming/percent-calculator";
 import {
   PRESCRIPTION_UNITS,
@@ -138,6 +138,17 @@ export function MovementPickerDialog({
   }, [results, q]);
 
   const metcon = isMetconSegment(programmingSegment);
+  const pendingStimulus =
+    pending?.kind === "catalog" ? pending.bench.stimulus : null;
+  const pendingPurpose =
+    pending?.kind === "catalog" ? pending.bench.purpose_variation : null;
+  const showDbKb =
+    !metcon ||
+    supportsDbKbLoadModality({
+      stimulus: pendingStimulus,
+      purpose_variation: pendingPurpose,
+      programmingSegment,
+    });
 
   function prescription(): MovementPrescription {
     const male = metcon ? ensureLoadUnit(maleLoad) : null;
@@ -150,7 +161,7 @@ export function MovementPickerDialog({
       prescribedPercentage: metcon ? null : percentFractionFromWhole(pctWhole),
       maleLoadLabel: male ?? female,
       femaleLoadLabel: female ?? male,
-      loadModality: metcon ? loadModality : null,
+      loadModality: showDbKb ? loadModality : null,
     };
   }
 
@@ -372,37 +383,41 @@ export function MovementPickerDialog({
             </div>
             {metcon && (
               <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">DB / KB implement</Label>
-                  <Select
-                    value={loadModality ?? "unset"}
-                    onValueChange={(v) =>
-                      setLoadModality(v === "unset" ? null : (v as LoadModality))
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unset">Not set (barbell / other)</SelectItem>
-                      <SelectItem value="single">Single dumbbell / kettlebell</SelectItem>
-                      <SelectItem value="double">Double dumbbells / kettlebells</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {showDbKb && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">DB / KB implement</Label>
+                    <Select
+                      value={loadModality ?? "unset"}
+                      onValueChange={(v) =>
+                        setLoadModality(v === "unset" ? null : (v as LoadModality))
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unset">Not set (barbell / other)</SelectItem>
+                        <SelectItem value="single">Single dumbbell / kettlebell</SelectItem>
+                        <SelectItem value="double">Double dumbbells / kettlebells</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Load (optional)
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">
-                      {loadModality === "double" ? "Male each" : "Male load"}
+                      {showDbKb && loadModality === "double" ? "Male each" : "Male load"}
                     </Label>
                     <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
                       <Input
                         value={maleLoad}
                         onChange={(e) => setMaleLoad(e.target.value)}
-                        placeholder={loadModality === "double" ? "e.g. 50" : "e.g. 95"}
+                        placeholder={
+                          showDbKb && loadModality === "double" ? "e.g. 50" : "e.g. 95"
+                        }
                         className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
                       />
                       <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -412,13 +427,15 @@ export function MovementPickerDialog({
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">
-                      {loadModality === "double" ? "Female each" : "Female load"}
+                      {showDbKb && loadModality === "double" ? "Female each" : "Female load"}
                     </Label>
                     <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
                       <Input
                         value={femaleLoad}
                         onChange={(e) => setFemaleLoad(e.target.value)}
-                        placeholder={loadModality === "double" ? "e.g. 35" : "e.g. 65"}
+                        placeholder={
+                          showDbKb && loadModality === "double" ? "e.g. 35" : "e.g. 65"
+                        }
                         className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
                       />
                       <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -428,7 +445,7 @@ export function MovementPickerDialog({
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  {loadModality === "double"
+                  {showDbKb && loadModality === "double"
                     ? "Athletes see 50s/35s. Enter one DB/KB weight, not the pair total."
                     : "For weighted movements (thrusters, wall balls, DBs). Leave blank for bodyweight."}
                 </p>

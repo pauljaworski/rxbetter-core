@@ -19,7 +19,7 @@ import { SegmentAddDialog } from "@/components/programmer/SegmentAddDialog";
 import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
 import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
 import { useBenchmarkCatalog } from "@/hooks/staff/useBenchmarkCatalog";
-import { filterBenchmarkCatalog, isMetconSegment } from "@/lib/programming/manual-config";
+import { filterBenchmarkCatalog, isMetconSegment, supportsDbKbLoadModality } from "@/lib/programming/manual-config";
 import { defaultLineItemKindForSegment } from "@/lib/programming/line-item-kind";
 import { deleteProgrammingSegment, persistProgrammingDisplayOrders } from "@/lib/programming/programming-delete";
 import {
@@ -175,9 +175,17 @@ export default function StaffProgramming() {
     const lineKind = defaultLineItemKindForSegment(segment);
     const maleLoad = pick.maleLoadLabel?.trim() || null;
     const femaleLoad = pick.femaleLoadLabel?.trim() || null;
+    const pickStimulus = pick.kind === "catalog" ? pick.bench.stimulus : null;
+    const pickPurpose = pick.kind === "catalog" ? pick.bench.purpose_variation : null;
+    const allowDbKb =
+      supportsDbKbLoadModality({
+        stimulus: pickStimulus,
+        purpose_variation: pickPurpose,
+        programmingSegment: segment,
+      }) && !!pick.loadModality;
     const metconGenderRx = metcon
       ? {
-          ...(pick.loadModality ? { load_modality: pick.loadModality } : {}),
+          ...(allowDbKb ? { load_modality: pick.loadModality } : {}),
           male: {
             reps: pick.reps,
             prescription_unit: unit,
@@ -203,11 +211,15 @@ export default function StaffProgramming() {
                 benchmark_type_id: pick.bench.id,
                 bench_name: pick.bench.name,
                 movement_label: null as string | null,
+                stimulus: pick.bench.stimulus,
+                purpose_variation: pick.bench.purpose_variation ?? null,
               }
             : {
                 benchmark_type_id: null as string | null,
                 bench_name: pick.label,
                 movement_label: pick.label,
+                stimulus: null as string | null,
+                purpose_variation: null as string | null,
               };
         const items: EditorLineItem[] = Array.from({ length: setCount }, (_, j) => ({
           _new: true as const,
