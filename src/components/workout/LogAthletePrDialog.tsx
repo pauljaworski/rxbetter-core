@@ -106,12 +106,12 @@ export function LogAthletePrDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
             <Flame className="h-5 w-5 text-accent" />
-            {currentPrWeight != null ? "Update" : "Log"} {movementName} PR
+            {currentPrWeight != null ? "Update" : "Add"} {movementName} PR
           </DialogTitle>
           <DialogDescription>
             {currentPrWeight != null
               ? `Current vault PR is ${Math.round(currentPrWeight)} lb. Enter a new value to recalculate your ${percentRepMaxLabel(repMaxCount)} and refresh prescribed loads on Today.`
-              : `Adds a historical attempt on the date you choose and recalculates your current ${percentRepMaxLabel(repMaxCount)} from all logged attempts.`}
+              : `Enter the weight and the date you completed it. Your vault ${percentRepMaxLabel(repMaxCount)} updates from all logged attempts.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -127,7 +127,7 @@ export function LogAthletePrDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pr-date">Date achieved</Label>
+            <Label htmlFor="pr-date">Date completed</Label>
             <Input
               id="pr-date"
               type="date"

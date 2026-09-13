@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { Flame } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -20,16 +22,19 @@ import {
   CartesianGrid,
   ReferenceDot,
 } from "recharts";
+import { LogAthletePrDialog } from "@/components/workout/LogAthletePrDialog";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   benchmarkTypeId: string | null;
+  benchmarkDefinitionId?: string | null;
   benchmarkName: string;
   repCount: number | null;
   stimulus?: string | null;
   /** "weight" for lifts, "time" for for-time metcons (mm:ss → seconds, lower is better), "amrap" for rounds/reps (higher is better) */
   metric?: "weight" | "time" | "amrap";
+  onPrSaved?: () => void;
 };
 
 type Point = {
@@ -41,7 +46,6 @@ type Point = {
 
 function parseScoreToSeconds(score: string): number | null {
   const s = score.trim();
-  // mm:ss or h:mm:ss
   const parts = s.split(":").map((x) => Number(x));
   if (parts.length >= 2 && parts.every((n) => Number.isFinite(n))) {
     if (parts.length === 2) return parts[0] * 60 + parts[1];
@@ -51,7 +55,6 @@ function parseScoreToSeconds(score: string): number | null {
 }
 
 function parseScoreToReps(score: string): number | null {
-  // Take leading number (e.g., "20", "20 + 5")
   const m = score.trim().match(/^(\d+(?:\.\d+)?)/);
   if (!m) return null;
   return Number(m[1]);
@@ -69,28 +72,36 @@ export function PrProgressDialog({
   open,
   onOpenChange,
   benchmarkTypeId,
+  benchmarkDefinitionId,
   benchmarkName,
   repCount,
   stimulus,
   metric,
+  onPrSaved,
 }: Props) {
   const { contactId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [points, setPoints] = useState<Point[]>([]);
+  const [logOpen, setLogOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Infer metric if not provided. Lifts → weight; for_time-ish → time; otherwise amrap (reps/rounds).
   const resolvedMetric: "weight" | "time" | "amrap" = useMemo(() => {
     if (metric) return metric;
     if (stimulus === "strength") return "weight";
     return "time";
   }, [metric, stimulus]);
 
+  const canAddPr = resolvedMetric === "weight" && !!benchmarkDefinitionId && !!contactId;
+
+  const reload = useCallback(() => {
+    setReloadKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     if (!open || !benchmarkTypeId || !contactId) return;
     setLoading(true);
     setPoints([]);
     (async () => {
-      // Pull all performances for this benchmark type
       const { data: perfs } = await supabase
         .from("athlete_performance")
         .select(
@@ -100,9 +111,14 @@ export function PrProgressDialog({
         .eq("benchmark_type_id", benchmarkTypeId)
         .order("performance_date", { ascending: true, nullsFirst: false });
 
-      let filtered = (perfs ?? []) as any[];
+      let filtered = (perfs ?? []) as {
+        performance_date: string | null;
+        created_at: string | null;
+        score: string | null;
+        weight_lifted: number | null;
+        benchmark_definition_id: string | null;
+      }[];
 
-      // Filter by rep_count for weight metric — must match exactly.
       if (resolvedMetric === "weight" && repCount != null) {
         const defIds = Array.from(
           new Set(filtered.map((p) => p.benchmark_definition_id).filter(Boolean) as string[]),
@@ -112,9 +128,13 @@ export function PrProgressDialog({
               .from("benchmark_definition")
               .select("id, rep_count")
               .in("id", defIds)
-          : { data: [] as any[] };
-        const okDefs = new Set((defs ?? []).filter((d: any) => d.rep_count === repCount).map((d: any) => d.id));
-        filtered = filtered.filter((p) => p.benchmark_definition_id && okDefs.has(p.benchmark_definition_id));
+          : { data: [] as { id: string; rep_count: number }[] };
+        const okDefs = new Set(
+          (defs ?? []).filter((d) => d.rep_count === repCount).map((d) => d.id),
+        );
+        filtered = filtered.filter(
+          (p) => p.benchmark_definition_id && okDefs.has(p.benchmark_definition_id),
+        );
       }
 
       const pts: Point[] = [];
@@ -124,17 +144,32 @@ export function PrProgressDialog({
         if (resolvedMetric === "weight") {
           const w = Number(p.weight_lifted);
           if (!Number.isFinite(w) || w <= 0) continue;
-          pts.push({ date, label: format(new Date(date + "T00:00:00"), "MMM d"), value: w, raw: `${Math.round(w)} lb` });
+          pts.push({
+            date,
+            label: format(new Date(date + "T00:00:00"), "MMM d"),
+            value: w,
+            raw: `${Math.round(w)} lb`,
+          });
         } else if (resolvedMetric === "time") {
           if (!p.score) continue;
           const secs = parseScoreToSeconds(p.score);
           if (secs == null) continue;
-          pts.push({ date, label: format(new Date(date + "T00:00:00"), "MMM d"), value: secs, raw: p.score });
+          pts.push({
+            date,
+            label: format(new Date(date + "T00:00:00"), "MMM d"),
+            value: secs,
+            raw: p.score,
+          });
         } else {
           if (!p.score) continue;
           const reps = parseScoreToReps(p.score);
           if (reps == null) continue;
-          pts.push({ date, label: format(new Date(date + "T00:00:00"), "MMM d"), value: reps, raw: p.score });
+          pts.push({
+            date,
+            label: format(new Date(date + "T00:00:00"), "MMM d"),
+            value: reps,
+            raw: p.score,
+          });
         }
       }
 
@@ -142,7 +177,7 @@ export function PrProgressDialog({
       setPoints(pts);
       setLoading(false);
     })();
-  }, [open, benchmarkTypeId, repCount, resolvedMetric, contactId]);
+  }, [open, benchmarkTypeId, repCount, resolvedMetric, contactId, reloadKey]);
 
   const best = useMemo(() => {
     if (points.length === 0) return null;
@@ -157,116 +192,161 @@ export function PrProgressDialog({
     resolvedMetric === "weight"
       ? `${repCount ?? "?"} RM progression`
       : resolvedMetric === "time"
-      ? "For-time progression (lower is better)"
-      : "Score progression";
+        ? "For-time progression (lower is better)"
+        : "Score progression";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black tracking-tight">{benchmarkName}</DialogTitle>
-          <DialogDescription>{subtitle}</DialogDescription>
-        </DialogHeader>
-
-        {loading ? (
-          <Skeleton className="h-72 w-full" />
-        ) : points.length === 0 ? (
-          <div className="rounded-lg border border-border bg-secondary/40 p-8 text-center text-sm text-muted-foreground">
-            No matching attempts yet. Log a score to see progress here.
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-md border border-border bg-secondary/40 p-3">
-                <p className="eyebrow">Attempts</p>
-                <p className="font-mono-num mt-1 text-2xl font-black">{points.length}</p>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3 pr-6">
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight">
+                  {benchmarkName}
+                </DialogTitle>
+                <DialogDescription>{subtitle}</DialogDescription>
               </div>
-              <div className="rounded-md border border-border bg-secondary/40 p-3">
-                <p className="eyebrow">Best</p>
-                <p className="font-mono-num mt-1 text-2xl font-black neon-text">
-                  {best?.raw ?? "—"}
-                </p>
-              </div>
-              <div className="rounded-md border border-border bg-secondary/40 p-3">
-                <p className="eyebrow">Latest</p>
-                <p className="font-mono-num mt-1 text-2xl font-black">{points[points.length - 1].raw}</p>
-              </div>
+              {canAddPr && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => setLogOpen(true)}
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Add PR
+                </Button>
+              )}
             </div>
+          </DialogHeader>
 
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="label"
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => (resolvedMetric === "time" ? fmtSeconds(Number(v)) : String(Math.round(Number(v))))}
-                    width={resolvedMetric === "time" ? 56 : 40}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--background))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(value: number) => [
-                      resolvedMetric === "time"
-                        ? fmtSeconds(value)
-                        : `${Math.round(value)} ${yLabel}`,
-                      benchmarkName,
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: "hsl(var(--primary))" }}
-                    activeDot={{ r: 5 }}
-                  />
-                  {best && (
-                    <ReferenceDot
-                      x={best.label}
-                      y={best.value}
-                      r={6}
-                      fill="hsl(var(--accent))"
-                      stroke="hsl(var(--background))"
-                      strokeWidth={2}
+          {loading ? (
+            <Skeleton className="h-72 w-full" />
+          ) : points.length === 0 ? (
+            <div className="space-y-4 rounded-lg border border-border bg-secondary/40 p-8 text-center text-sm text-muted-foreground">
+              <p>No matching attempts yet. Add a PR with the date you hit it.</p>
+              {canAddPr && (
+                <Button type="button" onClick={() => setLogOpen(true)} className="gap-1.5">
+                  <Flame className="h-4 w-4" />
+                  Add PR
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-md border border-border bg-secondary/40 p-3">
+                  <p className="eyebrow">Attempts</p>
+                  <p className="font-mono-num mt-1 text-2xl font-black">{points.length}</p>
+                </div>
+                <div className="rounded-md border border-border bg-secondary/40 p-3">
+                  <p className="eyebrow">Best</p>
+                  <p className="font-mono-num mt-1 text-2xl font-black neon-text">
+                    {best?.raw ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border bg-secondary/40 p-3">
+                  <p className="eyebrow">Latest</p>
+                  <p className="font-mono-num mt-1 text-2xl font-black">
+                    {points[points.length - 1].raw}
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={points} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="label"
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 11 }}
                     />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) =>
+                        resolvedMetric === "time" ? fmtSeconds(Number(v)) : String(Math.round(Number(v)))
+                      }
+                      width={resolvedMetric === "time" ? 56 : 40}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(var(--background))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(value: number) => [
+                        resolvedMetric === "time"
+                          ? fmtSeconds(value)
+                          : `${Math.round(value)} ${yLabel}`,
+                        benchmarkName,
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: "hsl(var(--primary))" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    {best && (
+                      <ReferenceDot
+                        x={best.label}
+                        y={best.value}
+                        r={6}
+                        fill="hsl(var(--accent))"
+                        stroke="hsl(var(--background))"
+                        strokeWidth={2}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-            <div className="max-h-40 overflow-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary/60 text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold">Date</th>
-                    <th className="px-3 py-2 text-right font-semibold">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...points].reverse().map((p, i) => (
-                    <tr key={i} className="border-t border-border/60">
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {format(new Date(p.date + "T00:00:00"), "MMM d, yyyy")}
-                      </td>
-                      <td className="font-mono-num px-3 py-2 text-right font-semibold">{p.raw}</td>
+              <div className="max-h-40 overflow-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary/60 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold">Date</th>
+                      <th className="px-3 py-2 text-right font-semibold">Result</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+                  </thead>
+                  <tbody>
+                    {[...points].reverse().map((p, i) => (
+                      <tr key={i} className="border-t border-border/60">
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {format(new Date(p.date + "T00:00:00"), "MMM d, yyyy")}
+                        </td>
+                        <td className="font-mono-num px-3 py-2 text-right font-semibold">{p.raw}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <LogAthletePrDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        contactId={contactId}
+        benchmarkDefinitionId={benchmarkDefinitionId ?? null}
+        benchmarkTypeId={benchmarkTypeId}
+        movementName={benchmarkName}
+        repMaxCount={repCount ?? 1}
+        repsPrescribed={repCount}
+        currentPrWeight={undefined}
+        onSaved={() => {
+          reload();
+          onPrSaved?.();
+        }}
+      />
+    </>
   );
 }

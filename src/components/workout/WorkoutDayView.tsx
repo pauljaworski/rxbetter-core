@@ -60,8 +60,11 @@ export function WorkoutDayView({
           {dateLabel || "—"}
         </h1>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          {displayName ? `Welcome back, ${displayName.split(" ")[0]}.` : "Welcome back."} Tap a
-          workout for full details, or use Log score on each segment.
+          {viewingToday
+            ? displayName
+              ? `Welcome back, ${displayName.split(" ")[0]}. Tap a workout for full details, or use Log score on each segment.`
+              : "Welcome back. Tap a workout for full details, or use Log score on each segment."
+            : "Browse this day's programming and log scores anytime."}
         </p>
       </header>
 

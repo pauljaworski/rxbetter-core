@@ -12,6 +12,7 @@ export type PrRow = {
   sub_stimulus: string | null;
   purpose_variation: string | null;
   benchmark_type_id: string | null;
+  benchmark_definition_id: string | null;
 };
 
 export function useBenchmarkSummaries(contactId: string | null) {
@@ -54,6 +55,7 @@ export function useBenchmarkSummaries(contactId: string | null) {
         sub_stimulus: t?.sub_stimulus ?? null,
         purpose_variation: t?.purpose_variation ?? null,
         benchmark_type_id: d?.benchmark_type_id ?? null,
+        benchmark_definition_id: s.benchmark_definition_id ?? null,
       };
     });
   }, [contactId]);

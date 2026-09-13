@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useSearchParams } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { RxSidebar } from "./RxSidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,7 @@ import { PersonaSwitcher } from "./PersonaSwitcher";
 import { BottomNav } from "./BottomNav";
 import { AthleteProfileMenu } from "./AthleteProfileMenu";
 import { cn } from "@/lib/utils";
+import { format, isSameDay, parseISO } from "date-fns";
 
 const titles: Record<string, string> = {
   "/": "Today",
@@ -25,9 +26,20 @@ const titles: Record<string, string> = {
   "/staff/memberships": "Memberships",
 };
 
+function trainingTitle(dateParam: string | null): string {
+  if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return "Today";
+  const d = parseISO(dateParam);
+  if (Number.isNaN(d.getTime()) || isSameDay(d, new Date())) return "Today";
+  return format(d, "EEE, MMM d");
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
-  const title = titles[pathname] ?? "RxBetter";
+  const [searchParams] = useSearchParams();
+  const title =
+    pathname === "/"
+      ? trainingTitle(searchParams.get("date"))
+      : (titles[pathname] ?? "RxBetter");
   const { displayName, memberships, activeGymId, setActiveGym, signOut, activePersona } = useAuth();
   const activeGym = memberships.find((m) => m.gym_id === activeGymId);
   const isAthlete = activePersona === "athlete";

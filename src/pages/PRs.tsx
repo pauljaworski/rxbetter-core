@@ -213,10 +213,14 @@ export default function PRs() {
         open={!!openRow}
         onOpenChange={(o) => !o && setOpenRow(null)}
         benchmarkTypeId={openRow?.benchmark_type_id ?? null}
+        benchmarkDefinitionId={openRow?.benchmark_definition_id ?? null}
         benchmarkName={openRow?.bench_name ?? ""}
         repCount={openRow?.rep_count ?? null}
         stimulus={openRow?.stimulus ?? null}
         metric="weight"
+        onPrSaved={() => {
+          refetch();
+        }}
       />
 
       <AthleteDataImportDialog
