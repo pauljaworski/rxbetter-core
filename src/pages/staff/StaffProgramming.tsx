@@ -173,20 +173,22 @@ export default function StaffProgramming() {
     // Metcon: one movement row per add. Strength/WL: Sets creates one row per set.
     const setCount = metcon ? 1 : Math.max(1, pick.sets || 1);
     const lineKind = defaultLineItemKindForSegment(segment);
+    const maleLoad = pick.maleLoadLabel?.trim() || null;
+    const femaleLoad = pick.femaleLoadLabel?.trim() || null;
     const metconGenderRx = metcon
       ? {
           male: {
             reps: pick.reps,
             prescription_unit: unit,
             weight_lb: null as number | null,
-            load_label: null as string | null,
+            load_label: maleLoad,
             height_label: null as string | null,
           },
           female: {
             reps: pick.reps,
             prescription_unit: unit,
             weight_lb: null as number | null,
-            load_label: null as string | null,
+            load_label: femaleLoad,
             height_label: null as string | null,
           },
         }
@@ -213,7 +215,7 @@ export default function StaffProgramming() {
           prescription_unit: unit,
           prescribed_weight: null,
           prescribed_percentage: pick.prescribedPercentage,
-          prescribed_score: null,
+          prescribed_score: maleLoad ?? femaleLoad,
           percent_rep_max: 1,
           line_item_kind: lineKind,
           movement_components: [],

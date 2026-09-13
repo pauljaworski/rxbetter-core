@@ -29,6 +29,7 @@ import {
   PRESCRIPTION_UNIT_LABELS,
   type PrescriptionUnit,
 } from "@/lib/programming/prescription-unit";
+import { ensureLoadUnit } from "@/lib/programming/rx-variants-schema";
 import { ensureGymBenchmarkType } from "@/lib/programming/gym-benchmark-type";
 import { toast } from "sonner";
 import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
@@ -37,8 +38,11 @@ export type MovementPrescription = {
   sets: number;
   reps: number | null;
   prescriptionUnit: PrescriptionUnit;
-  /** Stored fraction 0–1 */
+  /** Stored fraction 0–1; strength / weightlifting only */
   prescribedPercentage: number | null;
+  /** Metcon: optional male / female loads (e.g. 95 / 65) */
+  maleLoadLabel: string | null;
+  femaleLoadLabel: string | null;
 };
 
 export type MovementPick =
@@ -80,6 +84,8 @@ export function MovementPickerDialog({
   const [reps, setReps] = useState<number | null>(null);
   const [unit, setUnit] = useState<PrescriptionUnit>("reps");
   const [pctWhole, setPctWhole] = useState<number | null>(null);
+  const [maleLoad, setMaleLoad] = useState("");
+  const [femaleLoad, setFemaleLoad] = useState("");
   const [pending, setPending] = useState<
     { kind: "catalog"; bench: BenchmarkTypeOption } | { kind: "new"; label: string } | null
   >(null);
@@ -94,6 +100,8 @@ export function MovementPickerDialog({
       setReps(null);
       setUnit("reps");
       setPctWhole(null);
+      setMaleLoad("");
+      setFemaleLoad("");
       setPending(null);
       return;
     }
@@ -128,12 +136,16 @@ export function MovementPickerDialog({
   const metcon = isMetconSegment(programmingSegment);
 
   function prescription(): MovementPrescription {
+    const male = metcon ? ensureLoadUnit(maleLoad) : null;
+    const female = metcon ? ensureLoadUnit(femaleLoad) : null;
     return {
       // Metcon movements are listed once in the workout; Sets only applies to strength.
       sets: metcon ? 1 : Math.max(1, sets || 1),
       reps,
       prescriptionUnit: unit,
-      prescribedPercentage: percentFractionFromWhole(pctWhole),
+      prescribedPercentage: metcon ? null : percentFractionFromWhole(pctWhole),
+      maleLoadLabel: male ?? female,
+      femaleLoadLabel: female ?? male,
     };
   }
 
@@ -194,8 +206,10 @@ export function MovementPickerDialog({
         <DialogHeader>
           <DialogTitle>Add movement</DialogTitle>
           <DialogDescription>
-            Pick a movement, then set sets, amount (or time), unit, and optional % before adding.
-          Use time (m:ss) for pieces like Ski / Row / Bike for 0:60.
+            {metcon
+              ? "Pick a movement, then set amount (or time), unit, and optional male/female load."
+              : "Pick a movement, then set sets, amount (or time), unit, and optional % before adding."}{" "}
+            Use time (m:ss) for pieces like Ski / Row / Bike for 0:60.
           </DialogDescription>
         </DialogHeader>
 
@@ -334,25 +348,69 @@ export function MovementPickerDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">% (optional)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  className="h-8 font-mono-num"
-                  value={pctWhole ?? ""}
-                  onChange={(e) =>
-                    setPctWhole(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                  placeholder="e.g. 75"
-                />
-              </div>
+              {!metcon && (
+                <div className="space-y-1">
+                  <Label className="text-xs">% (optional)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    className="h-8 font-mono-num"
+                    value={pctWhole ?? ""}
+                    onChange={(e) =>
+                      setPctWhole(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    placeholder="e.g. 75"
+                  />
+                </div>
+              )}
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Male and female Rx amounts default to the same value; adjust either after adding if
-              needed.
-            </p>
+            {metcon && (
+              <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Load (optional)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Male load</Label>
+                    <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
+                      <Input
+                        value={maleLoad}
+                        onChange={(e) => setMaleLoad(e.target.value)}
+                        placeholder="e.g. 95"
+                        className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
+                      />
+                      <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        lbs
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Female load</Label>
+                    <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
+                      <Input
+                        value={femaleLoad}
+                        onChange={(e) => setFemaleLoad(e.target.value)}
+                        placeholder="e.g. 65"
+                        className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
+                      />
+                      <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        lbs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  For weighted movements (thrusters, wall balls, DBs). Leave blank for bodyweight.
+                  Athletes see 95/65-style loads.
+                </p>
+              </div>
+            )}
+            {!metcon && (
+              <p className="text-[10px] text-muted-foreground">
+                Optional % of PR applies to strength and weightlifting sets.
+              </p>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
