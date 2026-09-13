@@ -179,7 +179,7 @@ export function GroupBlockCard({
             onClick={() => setScoreOnly((v) => !v)}
           >
             <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log your score"}
+            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log score"}
           </Button>
         </div>
       )}

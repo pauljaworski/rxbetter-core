@@ -30,6 +30,7 @@ export function WorkoutDayView({
   displayName,
   rxGender,
   onLogged,
+  viewingToday = true,
 }: {
   wodDate: string | null;
   wods: WorkoutDayProgramming[];
@@ -41,6 +42,7 @@ export function WorkoutDayView({
   displayName: string | null;
   rxGender?: RxGender | null;
   onLogged: () => void;
+  viewingToday?: boolean;
 }) {
   const dateLabel = wodDate
     ? format(new Date(wodDate + "T00:00:00"), "EEEE, MMM d")
@@ -53,13 +55,13 @@ export function WorkoutDayView({
         className="relative overflow-hidden rounded-[var(--radius)] border border-border p-6 md:p-8"
         style={{ background: "var(--gradient-hero)" }}
       >
-        <p className="eyebrow">Today&apos;s Training</p>
+        <p className="eyebrow">{viewingToday ? "Today's Training" : "Training"}</p>
         <h1 className="mt-1 text-3xl font-black tracking-tight md:text-5xl">
           {dateLabel || "—"}
         </h1>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           {displayName ? `Welcome back, ${displayName.split(" ")[0]}.` : "Welcome back."} Tap a
-          workout for full details and to log your work.
+          workout for full details, or use Log score on each segment.
         </p>
       </header>
 

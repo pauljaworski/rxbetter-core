@@ -294,12 +294,12 @@ export function ComplexSetEditor({
                 }
               />
               {!prTypeId && (
-                <p className="text-[10px] text-muted-foreground">Select a PR basis to use %.</p>
+                <p className="text-[10px] text-muted-foreground">Select percent based on to use %.</p>
               )}
             </div>
           </div>
           <div className="space-y-1">
-            <Label>PR basis movement</Label>
+            <Label>Percent based on</Label>
             <Select
               value={prTypeId ?? "__none"}
               onValueChange={(v) => {

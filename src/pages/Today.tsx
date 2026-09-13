@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { format } from "date-fns";
-import { Trophy } from "lucide-react";
+import { addDays, format, isSameDay, parseISO } from "date-fns";
+import { CalendarDays, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkoutDay } from "@/hooks/useWorkoutDay";
 import { useProgramLibraries } from "@/hooks/useProgramLibraries";
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -30,12 +31,19 @@ import { collectDayTracks, filterWodsByTrack } from "@/lib/programming/day-track
 
 export default function Today() {
   const { contactId, displayName, activeGymId, mode, rxGender, defaultWorkoutScale } = useAuth();
-  const { data, isLoading, error, isEmpty, refetch } = useWorkoutDay(activeGymId, contactId);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const dateKey = format(selectedDate, "yyyy-MM-dd");
+  const isViewingToday = isSameDay(selectedDate, new Date());
+
+  const { data, isLoading, error, isEmpty, refetch } = useWorkoutDay(
+    activeGymId,
+    contactId,
+    dateKey,
+  );
   const { data: libraries } = useProgramLibraries(activeGymId);
   const [viewScale, setViewScale] = useState<WorkoutScale | null>(null);
   const [trackFilter, setTrackFilter] = useState<string>("all");
 
-  const dateLabel = useMemo(() => data.wodDate, [data.wodDate]);
   const dayTracks = useMemo(
     () => collectDayTracks(data.wods, libraries),
     [data.wods, libraries],
@@ -63,13 +71,61 @@ export default function Today() {
     );
   }
 
-  const todayKey = format(new Date(), "yyyy-MM-dd");
   const showTrackFilter = dayTracks.length > 1;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 p-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              aria-label="Previous day"
+              onClick={() => setSelectedDate((d) => addDays(d, -1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <label className="relative flex cursor-pointer items-center gap-1.5 px-1">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold tabular-nums">
+                {format(selectedDate, "MMM d")}
+              </span>
+              <Input
+                type="date"
+                value={dateKey}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  setSelectedDate(parseISO(e.target.value));
+                }}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                aria-label="Pick a date"
+              />
+            </label>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              aria-label="Next day"
+              onClick={() => setSelectedDate((d) => addDays(d, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isViewingToday && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-8 px-2 text-xs"
+                onClick={() => setSelectedDate(new Date())}
+              >
+                Today
+              </Button>
+            )}
+          </div>
           <RxGenderSelect
             availableScales={availableScales}
             viewScale={viewScale}
@@ -95,7 +151,7 @@ export default function Today() {
           )}
         </div>
         <Button asChild variant="secondary" size="sm" className="gap-1.5">
-          <Link to={`/leaderboard?date=${todayKey}`}>
+          <Link to={`/leaderboard?date=${dateKey}`}>
             <Trophy className="h-4 w-4 text-primary" />
             Leaderboard
           </Link>
@@ -111,13 +167,13 @@ export default function Today() {
       {!isLoading && !error && activeGymId && isEmpty && (
         <EmptyState
           title="No programming"
-          description={dateLabel ? `Nothing scheduled for ${dateLabel}.` : "No class programming published yet."}
+          description={`Nothing scheduled for ${format(selectedDate, "EEEE, MMM d")}.`}
         />
       )}
       {!isLoading && !error && !isEmpty && visibleWods.length === 0 && (
         <EmptyState
           title="Nothing on this track"
-          description="Try All tracks, or pick another program for today."
+          description="Try All tracks, or pick another program for this day."
         />
       )}
       {!isLoading && !error && visibleWods.length > 0 && (
@@ -132,6 +188,7 @@ export default function Today() {
           displayName={displayName}
           rxGender={rxGender}
           onLogged={refetch}
+          viewingToday={isViewingToday}
         />
       )}
     </div>

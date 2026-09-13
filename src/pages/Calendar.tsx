@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, Clock, Flame, Users, Trophy } from "lucide-react";
-import { seededHash, seededSample, segmentLabel } from "@/lib/format";
+import { ChevronLeft, ChevronRight, Clock, Flame, Users, Trophy } from "lucide-react";
+import { seededHash, seededSample } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgrammingWeek, type WeekWod } from "@/hooks/useProgrammingWeek";
 import { Card } from "@/components/ui/card";
@@ -19,9 +19,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { summarizeSegmentPrescription, condensePrescriptionPreview } from "@/lib/programming/segment-prescription-summary";
-import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { GroupBlockCard } from "@/components/workout/GroupBlockCard";
+import { CollapsibleWorkoutSegment } from "@/components/workout/CollapsibleWorkoutSegment";
 import {
   buildWorkoutDayBlocks,
   groupScoreForBlock,
@@ -121,7 +120,6 @@ export default function CalendarPage() {
   const { contactId, activeGymId, mode, rxGender } = useAuth();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selected, setSelected] = useState<Date>(new Date());
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [openClass, setOpenClass] = useState<{ date: Date; slot: ClassSlot } | null>(null);
 
   const { data, isLoading, error, refetch } = useProgrammingWeek(activeGymId, contactId, weekStart);
@@ -131,15 +129,6 @@ export default function CalendarPage() {
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
-
-  function toggleExpanded(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   const wodsByDay = useMemo(() => {
     const m = new Map<string, typeof wods>();
@@ -306,108 +295,18 @@ export default function CalendarPage() {
                 }
 
                 const w = block.wod;
-                const items = w.items;
-                const summary = summarizeSegmentPrescription(w, items, rxGender);
-                const preview = condensePrescriptionPreview(summary, 3);
-                const isOpen = expanded.has(w.id);
                 return (
                   <Card key={w.id} className="glass-card overflow-hidden p-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleExpanded(w.id)}
-                      className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
-                      aria-expanded={isOpen}
-                    >
-                      <div>
-                        <p className="eyebrow">
-                          {segmentLabel(w.programming_segment, w.programming_subtype)}
-                          {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
-                          {w.source === "athlete_custom" && (
-                            <Badge variant="secondary" className="ml-2 align-middle text-[9px]">
-                              Personal
-                            </Badge>
-                          )}
-                        </p>
-                        <h3 className="mt-1 text-base font-bold leading-tight">
-                          {w.name ?? "Untitled"}
-                        </h3>
-                        {!isOpen && (
-                          <div className="mt-2 space-y-0.5">
-                            {preview.header && (
-                              <p className="text-xs font-medium text-primary/80">{preview.header}</p>
-                            )}
-                            {preview.lines.map((line, i) => (
-                              <p key={i} className="text-xs text-muted-foreground">
-                                {line}
-                              </p>
-                            ))}
-                            {preview.moreCount > 0 && (
-                              <p className="text-[11px] text-muted-foreground/80">
-                                +{preview.moreCount} more · tap for details
-                              </p>
-                            )}
-                            {!items.length && (w.athlete_notes || w.coaches_notes) && (
-                              <p className="line-clamp-2 text-xs text-muted-foreground/90">
-                                {w.coaches_notes || w.athlete_notes}
-                              </p>
-                            )}
-                            {!items.length && w.description && (
-                              <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground">
-                                {w.description}
-                              </p>
-                            )}
-                            {preview.moreCount === 0 && items.length > 0 && (
-                              <p className="pt-0.5 text-[11px] text-muted-foreground/80">
-                                Tap for details
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronDown
-                        className={cn(
-                          "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                          isOpen && "rotate-180",
-                        )}
-                      />
-                    </button>
-                    {isOpen && (
-                      <div className="border-t border-border/60">
-                        {summary.header && (
-                          <p className="border-b border-border/60 px-4 py-2.5 text-sm font-semibold text-primary">
-                            {summary.header}
-                          </p>
-                        )}
-                        {!items.length && w.description && (
-                          <p className="whitespace-pre-line border-b border-border/60 p-4 text-xs leading-relaxed text-muted-foreground">
-                            {w.description}
-                          </p>
-                        )}
-                        {(w.athlete_notes || w.coaches_notes) && (
-                          <div className="space-y-2 border-b border-border/60 bg-secondary/20 px-4 py-3 text-xs">
-                            {w.coaches_notes && (
-                              <p className="whitespace-pre-line text-foreground/90">
-                                {w.coaches_notes}
-                              </p>
-                            )}
-                            {w.athlete_notes && (
-                              <p className="whitespace-pre-line text-muted-foreground">
-                                {w.athlete_notes}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        <WorkoutSegmentItems
-                          wod={w}
-                          items={items}
-                          contactId={contactId}
-                          rxGender={rxGender}
-                          perfByItem={perfByItem}
-                          segmentPerf={perfBySegment.get(w.id) ?? null}
-                          onLogged={refetch}
-                        />
-                      </div>
-                    )}
+                    <CollapsibleWorkoutSegment
+                      wod={w}
+                      items={w.items}
+                      contactId={contactId}
+                      rxGender={rxGender}
+                      perfByItem={perfByItem}
+                      segmentPerf={perfBySegment.get(w.id) ?? null}
+                      isComplete={!!perfBySegment.get(w.id)?.score}
+                      onLogged={refetch}
+                    />
                   </Card>
                 );
               })}

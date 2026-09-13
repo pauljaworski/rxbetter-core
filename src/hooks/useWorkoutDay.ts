@@ -68,11 +68,17 @@ const EMPTY: WorkoutDayResult = {
   completions: { completedProgramIds: new Set(), completedGroupIds: new Set() },
 };
 
-export function useWorkoutDay(activeGymId: string | null, contactId: string | null) {
+export function useWorkoutDay(
+  activeGymId: string | null,
+  contactId: string | null,
+  /** yyyy-MM-dd; defaults to today */
+  dateKey?: string | null,
+) {
+  const resolvedDateKey = dateKey?.trim() || format(new Date(), "yyyy-MM-dd");
   const loader = useCallback(async (): Promise<WorkoutDayResult> => {
     if (!activeGymId) return EMPTY;
 
-    const todayKey = format(new Date(), "yyyy-MM-dd");
+    const todayKey = resolvedDateKey;
     const trackIds =
       contactId != null ? await fetchAthleteTrackLibraryIds(contactId, activeGymId) : [];
 
@@ -231,7 +237,12 @@ export function useWorkoutDay(activeGymId: string | null, contactId: string | nu
         : { completedProgramIds: new Set<string>(), completedGroupIds: new Set<string>() };
 
     return { wodDate: todayKey, wods, perfByItem, perfBySegment, perfByGroup, completions };
-  }, [activeGymId, contactId]);
+  }, [activeGymId, contactId, resolvedDateKey]);
 
-  return useAsyncState(loader, [activeGymId, contactId], EMPTY, (d) => !d.wodDate || d.wods.length === 0);
+  return useAsyncState(
+    loader,
+    [activeGymId, contactId, resolvedDateKey],
+    EMPTY,
+    (d) => !d.wodDate || d.wods.length === 0,
+  );
 }

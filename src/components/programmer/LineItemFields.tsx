@@ -122,7 +122,7 @@ export function LineItemFields({ mode, item, onChange }: Props) {
           />
           <div className="space-y-1">
             <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-              % basis
+              % based on
             </Label>
             <Select
               value={String(repMax)}
@@ -175,7 +175,7 @@ export function LineItemFields({ mode, item, onChange }: Props) {
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-              % basis
+              % based on
             </Label>
             <Select
               value={String(repMax)}

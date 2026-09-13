@@ -3,7 +3,10 @@ import { CheckCircle2, ChevronDown, Dumbbell, Flame, Timer } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
-import { summarizeSegmentPrescription, condensePrescriptionPreview } from "@/lib/programming/segment-prescription-summary";
+import {
+  summarizeSegmentPrescription,
+  condensePrescriptionPreview,
+} from "@/lib/programming/segment-prescription-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
 import { isMetconSegment } from "@/lib/programming/manual-config";
@@ -49,11 +52,9 @@ export function CollapsibleWorkoutSegment({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [scoreOnly, setScoreOnly] = useState(false);
-  const canQuickLog =
-    !hideSegmentScore &&
-    !compact &&
-    isMetconSegment(wod.programming_segment ?? "") &&
-    !!contactId;
+  const metcon = isMetconSegment(wod.programming_segment ?? "");
+  /** Every standalone segment gets a Log score / Log lifts control when signed in. */
+  const canQuickLog = !hideSegmentScore && !compact && !!contactId;
   const summary = summarizeSegmentPrescription(
     {
       programming_segment: wod.programming_segment ?? "metcon",
@@ -73,6 +74,16 @@ export function CollapsibleWorkoutSegment({
         ? Dumbbell
         : Flame;
   const Icon = segIcon;
+
+  function handleLogClick() {
+    if (metcon) {
+      setScoreOnly((v) => !v);
+      return;
+    }
+    // Strength / skill: open full details so the athlete can log sets.
+    setExpanded(true);
+    setScoreOnly(false);
+  }
 
   return (
     <div className={cn(!compact && "border-b border-border/60 last:border-b-0")}>
@@ -161,19 +172,27 @@ export function CollapsibleWorkoutSegment({
           <Button
             type="button"
             size="sm"
-            variant={scoreOnly ? "secondary" : "default"}
+            variant={scoreOnly && metcon ? "secondary" : "default"}
             className={cn(
-              !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
+              !(scoreOnly && metcon) && "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
-            onClick={() => setScoreOnly((v) => !v)}
+            onClick={handleLogClick}
           >
             <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log your score"}
+            {metcon
+              ? scoreOnly
+                ? "Hide score"
+                : isComplete
+                  ? "Update score"
+                  : "Log score"
+              : isComplete
+                ? "Update lifts"
+                : "Log score"}
           </Button>
         </div>
       )}
 
-      {scoreOnly && !expanded && canQuickLog && (
+      {scoreOnly && !expanded && canQuickLog && metcon && (
         <MetconScoreRow
           wod={wod}
           contactId={contactId}
