@@ -9,6 +9,7 @@ import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { schemeSummaryLabel, schemePartLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
+import { formatLoggedScorePreview } from "@/lib/programming/athlete-logged-summary";
 import { cn } from "@/lib/utils";
 import type { WorkoutDayBlock } from "@/lib/programming/workout-segment-groups";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
@@ -92,6 +93,7 @@ export function GroupBlockCard({
   const title = block.anchor.name?.trim() || "Workout";
   const showPartLabels = groupHasMultipleScores(block);
   const singleScore = !showPartLabels;
+  const loggedScore = formatLoggedScorePreview(groupPerf);
 
   return (
     <Card className="glass-card overflow-hidden p-0">
@@ -168,18 +170,31 @@ export function GroupBlockCard({
       </button>
 
       {!expanded && contactId && (
-        <div className="border-t border-border/40 px-4 py-3 md:px-5">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border/40 px-4 py-3 md:px-5">
+          {loggedScore && !scoreOnly ? (
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Your score
+              </p>
+              <p className="font-mono-num text-lg font-bold tracking-tight text-foreground">
+                {loggedScore}
+              </p>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
           <Button
             type="button"
             size="sm"
             variant={scoreOnly ? "secondary" : "default"}
             className={cn(
+              "shrink-0",
               !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
             onClick={() => setScoreOnly((v) => !v)}
           >
             <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            {scoreOnly ? "Hide score" : isComplete ? "Update score" : "Log score"}
+            {scoreOnly ? "Hide score" : isComplete || loggedScore ? "Update score" : "Log score"}
           </Button>
         </div>
       )}

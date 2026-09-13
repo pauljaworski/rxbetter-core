@@ -7,6 +7,10 @@ import {
   summarizeSegmentPrescription,
   condensePrescriptionPreview,
 } from "@/lib/programming/segment-prescription-summary";
+import {
+  formatLoggedLiftPreviews,
+  formatLoggedScorePreview,
+} from "@/lib/programming/athlete-logged-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
 import { isMetconSegment } from "@/lib/programming/manual-config";
@@ -66,6 +70,9 @@ export function CollapsibleWorkoutSegment({
     rxGender ?? null,
   );
   const preview = condensePrescriptionPreview(summary, 3);
+  const loggedScore = metcon ? formatLoggedScorePreview(segmentPerf) : null;
+  const loggedLifts = !metcon ? formatLoggedLiftPreviews(items, perfByItem) : [];
+  const hasLoggedResult = !!loggedScore || loggedLifts.length > 0;
 
   const segIcon =
     wod.programming_segment === "metcon"
@@ -168,12 +175,36 @@ export function CollapsibleWorkoutSegment({
       </button>
 
       {!expanded && canQuickLog && (
-        <div className="border-t border-border/40 px-4 py-3 md:px-5">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border/40 px-4 py-3 md:px-5">
+          {hasLoggedResult && !scoreOnly ? (
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {metcon ? "Your score" : "Your lifts"}
+              </p>
+              {loggedScore ? (
+                <p className="font-mono-num text-lg font-bold tracking-tight text-foreground">
+                  {loggedScore}
+                </p>
+              ) : (
+                <ul className="mt-0.5 space-y-0.5">
+                  {loggedLifts.map((lift, i) => (
+                    <li key={i} className="text-sm text-foreground">
+                      <span className="text-muted-foreground">{lift.name}</span>
+                      <span className="font-mono-num font-semibold"> · {lift.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
           <Button
             type="button"
             size="sm"
             variant={scoreOnly && metcon ? "secondary" : "default"}
             className={cn(
+              "shrink-0",
               !(scoreOnly && metcon) && "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
             onClick={handleLogClick}
@@ -182,10 +213,10 @@ export function CollapsibleWorkoutSegment({
             {metcon
               ? scoreOnly
                 ? "Hide score"
-                : isComplete
+                : isComplete || loggedScore
                   ? "Update score"
                   : "Log score"
-              : isComplete
+              : isComplete || loggedLifts.length > 0
                 ? "Update lifts"
                 : "Log score"}
           </Button>
