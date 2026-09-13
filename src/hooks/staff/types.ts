@@ -53,6 +53,10 @@ export type StaffClassWod = {
   description: string | null;
   programming_segment: string | null;
   metcon_format: string | null;
+  workout_scheme?: unknown;
+  segment_group_id?: string | null;
+  group_score_anchor?: boolean;
+  programming_subtype?: string | null;
   display_order: number | null;
   athlete_notes: string | null;
   coaches_notes: string | null;
@@ -77,6 +81,7 @@ export type StaffClassPerformance = {
   contact_id: string;
   programming_id: string | null;
   programming_line_item_id: string | null;
+  segment_group_id?: string | null;
   score: string | null;
   weight_lifted: number | null;
   rpe: number | null;
@@ -91,6 +96,10 @@ export type StaffClassDayData = {
   wods: StaffClassWod[];
   itemsByWod: Map<string, StaffClassLineItem[]>;
   perfByItem: Map<string, StaffClassPerformance[]>;
+  /** Segment metcon scores keyed by programming_id */
+  perfBySegment: Map<string, StaffClassPerformance[]>;
+  /** Group scores keyed by segment_group_id */
+  perfByGroup: Map<string, StaffClassPerformance[]>;
   contacts: Map<string, StaffClassContact>;
   totalLogged: number;
 };

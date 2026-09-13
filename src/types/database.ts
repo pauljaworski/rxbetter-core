@@ -211,6 +211,57 @@ export type Database = {
           },
         ]
       }
+      athlete_class_checkin: {
+        Row: {
+          id: string
+          gym_id: string
+          contact_id: string
+          class_date: string
+          start_time: string
+          label: string
+          class_type: string | null
+          duration_min: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          gym_id: string
+          contact_id: string
+          class_date: string
+          start_time: string
+          label: string
+          class_type?: string | null
+          duration_min?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          gym_id?: string
+          contact_id?: string
+          class_date?: string
+          start_time?: string
+          label?: string
+          class_type?: string | null
+          duration_min?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_class_checkin_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gym"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_class_checkin_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_performance: {
         Row: {
           benchmark_definition_id: string | null

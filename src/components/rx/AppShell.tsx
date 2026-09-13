@@ -35,16 +35,15 @@ export function AppShell() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
-        <RxSidebar className={cn(isAthlete && "hidden md:flex")} />
+        {/* Athlete: sheet on mobile via SidebarTrigger; icon-collapse on md+. Staff: always available. */}
+        <RxSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl">
             <SidebarTrigger
-              className={cn(
-                "text-muted-foreground hover:text-foreground",
-                isAthlete ? "hidden" : "inline-flex",
-              )}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Open menu"
             />
-            {!isAthlete && <div className="h-4 w-px bg-border" />}
+            <div className="h-4 w-px bg-border" />
             {isAthlete && (
               <Button
                 asChild
@@ -64,7 +63,7 @@ export function AppShell() {
                 </Link>
               </Button>
             )}
-            <span className="text-sm font-semibold tracking-tight">{title}</span>
+            <span className="truncate text-sm font-semibold tracking-tight">{title}</span>
             <div className="ml-3 hidden md:block">
               <PersonaSwitcher />
             </div>
@@ -76,7 +75,7 @@ export function AppShell() {
                 <select
                   value={activeGymId ?? ""}
                   onChange={(e) => void setActiveGym(e.target.value)}
-                  className="rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium text-foreground"
+                  className="max-w-[7.5rem] truncate rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium text-foreground sm:max-w-none"
                   aria-label="Active gym"
                 >
                   {memberships.map((m) => (
@@ -112,7 +111,7 @@ export function AppShell() {
           </header>
           <main
             className={cn(
-              "mx-auto w-full max-w-6xl flex-1 px-4 pt-6",
+              "mx-auto w-full max-w-6xl flex-1 px-3 pt-5 sm:px-4 sm:pt-6",
               isAthlete ? "pb-28" : "pb-12",
             )}
           >

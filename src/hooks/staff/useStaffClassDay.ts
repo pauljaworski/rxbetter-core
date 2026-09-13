@@ -14,6 +14,8 @@ const EMPTY: StaffClassDayData = {
   wods: [],
   itemsByWod: new Map(),
   perfByItem: new Map(),
+  perfBySegment: new Map(),
+  perfByGroup: new Map(),
   contacts: new Map(),
   totalLogged: 0,
 };
@@ -27,7 +29,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
     const { data: progs, error: progErr } = await supabase
       .from("programming")
       .select(
-        "id, name, description, programming_segment, metcon_format, display_order, athlete_notes, coaches_notes",
+        "id, name, description, programming_segment, metcon_format, workout_scheme, segment_group_id, group_score_anchor, programming_subtype, display_order, athlete_notes, coaches_notes",
       )
       .eq("gym_id", activeGymId)
       .eq("wod_date", dateKey)
@@ -39,10 +41,12 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
     const ids = wods.map((p) => p.id);
     const itemsByWod = new Map<string, StaffClassLineItem[]>();
     const perfByItem = new Map<string, StaffClassPerformance[]>();
+    const perfBySegment = new Map<string, StaffClassPerformance[]>();
+    const perfByGroup = new Map<string, StaffClassPerformance[]>();
     const contacts = new Map<string, StaffClassContact>();
 
     if (!ids.length) {
-      return { wods, itemsByWod, perfByItem, contacts, totalLogged: 0 };
+      return { wods, itemsByWod, perfByItem, perfBySegment, perfByGroup, contacts, totalLogged: 0 };
     }
 
     const { data: items, error: itemErr } = await supabase
@@ -77,7 +81,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
     const { data: perfs, error: perfErr } = await supabase
       .from("athlete_performance")
       .select(
-        "id, contact_id, programming_id, programming_line_item_id, score, weight_lifted, rpe, is_pr, workout_scale, status",
+        "id, contact_id, programming_id, programming_line_item_id, segment_group_id, score, weight_lifted, rpe, is_pr, workout_scale, status",
       )
       .in("programming_id", ids);
 
@@ -85,11 +89,21 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
 
     let totalLogged = 0;
     for (const p of perfs ?? []) {
-      if (!p.programming_line_item_id) continue;
+      const row = p as StaffClassPerformance;
       totalLogged += 1;
-      const arr = perfByItem.get(p.programming_line_item_id) ?? [];
-      arr.push(p as StaffClassPerformance);
-      perfByItem.set(p.programming_line_item_id, arr);
+      if (row.programming_line_item_id) {
+        const arr = perfByItem.get(row.programming_line_item_id) ?? [];
+        arr.push(row);
+        perfByItem.set(row.programming_line_item_id, arr);
+      } else if (row.segment_group_id) {
+        const arr = perfByGroup.get(row.segment_group_id) ?? [];
+        arr.push(row);
+        perfByGroup.set(row.segment_group_id, arr);
+      } else if (row.programming_id) {
+        const arr = perfBySegment.get(row.programming_id) ?? [];
+        arr.push(row);
+        perfBySegment.set(row.programming_id, arr);
+      }
     }
 
     const contactIds = Array.from(new Set((perfs ?? []).map((p) => p.contact_id)));
@@ -107,7 +121,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
       }
     }
 
-    return { wods, itemsByWod, perfByItem, contacts, totalLogged };
+    return { wods, itemsByWod, perfByItem, perfBySegment, perfByGroup, contacts, totalLogged };
   }, [activeGymId, dateKey]);
 
   const state = useAsyncState(loader, [activeGymId, dateKey], EMPTY, (d) => d.wods.length === 0);
@@ -115,11 +129,7 @@ export function useStaffClassDay(activeGymId: string | null, date: Date) {
   const dataWithTotal = useMemo(
     (): StaffClassDayData => ({
       ...state.data,
-      totalLogged: (() => {
-        let n = 0;
-        for (const arr of state.data.perfByItem.values()) n += arr.length;
-        return n;
-      })(),
+      totalLogged: state.data.totalLogged,
     }),
     [state.data],
   );

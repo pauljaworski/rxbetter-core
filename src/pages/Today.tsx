@@ -28,6 +28,7 @@ import {
   resolveDayViewScale,
 } from "@/lib/programming/day-view-scale";
 import { collectDayTracks, filterWodsByTrack } from "@/lib/programming/day-track-filter";
+import { useScoreCheckinGate } from "@/components/classes/ClassCheckinPrompt";
 
 export default function Today() {
   const { contactId, displayName, activeGymId, mode, rxGender, defaultWorkoutScale } = useAuth();
@@ -39,6 +40,12 @@ export default function Today() {
     activeGymId,
     contactId,
     dateKey,
+  );
+  const { wrapOnLogged, prompt: checkinPrompt } = useScoreCheckinGate(
+    activeGymId,
+    contactId,
+    dateKey,
+    refetch,
   );
   const { data: libraries } = useProgramLibraries(activeGymId);
   const [viewScale, setViewScale] = useState<WorkoutScale | null>(null);
@@ -166,8 +173,8 @@ export default function Today() {
       )}
       {!isLoading && !error && activeGymId && isEmpty && (
         <EmptyState
-          title="No programming"
-          description={`Nothing scheduled for ${format(selectedDate, "EEEE, MMM d")}.`}
+          title="No workout published yet"
+          description={`Nothing published for ${format(selectedDate, "EEEE, MMM d")}.`}
         />
       )}
       {!isLoading && !error && !isEmpty && visibleWods.length === 0 && (
@@ -187,10 +194,11 @@ export default function Today() {
           contactId={contactId}
           displayName={displayName}
           rxGender={rxGender}
-          onLogged={refetch}
+          onLogged={wrapOnLogged}
           viewingToday={isViewingToday}
         />
       )}
+      {checkinPrompt}
     </div>
   );
 }

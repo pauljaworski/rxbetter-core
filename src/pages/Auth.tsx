@@ -7,8 +7,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { WORKOUT_SCALE_OPTIONS } from "@/lib/format";
+
+const TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "Europe/London",
+  "Europe/Paris",
+  "Australia/Sydney",
+];
 
 export default function AuthPage() {
   const { user, loading } = useAuth();
@@ -98,12 +119,32 @@ function SignUpForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rxGender, setRxGender] = useState<"male" | "female" | "">("");
+  const [defaultScale, setDefaultScale] = useState<string>("rx");
+  const [weightUnit, setWeightUnit] = useState<"lb" | "kg">("lb");
+  const [timezone, setTimezone] = useState(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+  );
   const [busy, setBusy] = useState(false);
+
+  const tzOptions = TIMEZONES.includes(timezone) ? TIMEZONES : [timezone, ...TIMEZONES];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (rxGender !== "male" && rxGender !== "female") {
+      toast.error("Select Male or Female Rx");
+      return;
+    }
+    if (!defaultScale) {
+      toast.error("Select a default logging scale");
+      return;
+    }
+    if (!timezone.trim()) {
+      toast.error("Select your timezone");
       return;
     }
     setBusy(true);
@@ -112,7 +153,14 @@ function SignUpForm() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: { first_name: firstName, last_name: lastName },
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          rx_gender: rxGender,
+          default_workout_scale: defaultScale,
+          weight_unit: weightUnit,
+          timezone: timezone.trim(),
+        },
       },
     });
     setBusy(false);
@@ -120,7 +168,9 @@ function SignUpForm() {
       toast.error("Sign up failed", { description: error.message });
       return;
     }
-    toast.success("Account created", { description: "Check your inbox if email confirmation is enabled." });
+    toast.success("Account created", {
+      description: "Check your inbox if email confirmation is enabled.",
+    });
   }
 
   return (
@@ -141,7 +191,70 @@ function SignUpForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="su-pw">Password</Label>
-        <Input id="su-pw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input
+          id="su-pw"
+          type="password"
+          required
+          minLength={6}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Male / Female Rx</Label>
+        <Select value={rxGender} onValueChange={(v) => setRxGender(v as "male" | "female")}>
+          <SelectTrigger>
+            <SelectValue placeholder="Required" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="male">Male</SelectItem>
+            <SelectItem value="female">Female</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Default logging scale</Label>
+        <Select value={defaultScale} onValueChange={setDefaultScale}>
+          <SelectTrigger>
+            <SelectValue placeholder="Required" />
+          </SelectTrigger>
+          <SelectContent>
+            {WORKOUT_SCALE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <Label>Weight unit</Label>
+          <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as "lb" | "kg")}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lb">lb</SelectItem>
+              <SelectItem value="kg">kg</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Timezone</Label>
+          <Select value={timezone} onValueChange={setTimezone}>
+            <SelectTrigger>
+              <SelectValue placeholder="Required" />
+            </SelectTrigger>
+            <SelectContent>
+              {tzOptions.map((tz) => (
+                <SelectItem key={tz} value={tz}>
+                  {tz.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <Button type="submit" disabled={busy} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
