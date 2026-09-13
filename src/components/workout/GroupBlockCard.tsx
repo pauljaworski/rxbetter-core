@@ -150,7 +150,7 @@ export function GroupBlockCard({
             </div>
           )}
           {expanded && (
-            <p className="mt-1 text-xs text-muted-foreground">One score for the full workout</p>
+            <p className="mt-1 text-xs text-muted-foreground">One score for this workout</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">

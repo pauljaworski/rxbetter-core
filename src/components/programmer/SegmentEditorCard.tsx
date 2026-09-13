@@ -72,7 +72,7 @@ type Props = {
   onAddMovement: () => void;
   onOpenComplexEditor: () => void;
   onAddRest?: () => void;
-  /** Link this segment with the previous one as one athlete score. */
+  /** Link this segment into a multi-part workout with the previous segment. */
   onLinkWithPrevious?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -446,77 +446,69 @@ export function SegmentEditorCard({
 
         {!collapsed && lineMode === "tracking_only" && (
           <p className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
-            Athletes log one workout score on this segment (time/reps). Movements below are for
-            tracking only — or leave empty and use the description only (e.g. Warm-up).
+            Athletes log one workout score on this segment (e.g. time/reps). Movements below are
+            shown in the athlete view and tracked in athlete history — or leave empty and use the
+            description only (e.g. Warm-up). If the workout has multiple parts, use{" "}
+            <span className="font-medium text-foreground/80">Multi-part segments</span> to connect
+            them, and optionally{" "}
+            <span className="font-medium text-foreground/80">Segment score</span> on any part that
+            should carry its own score.
           </p>
         )}
 
         {!collapsed && (metcon || wod.segment_group_id) && (
-          <div className="space-y-2 rounded-md border border-dashed border-border/80 p-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Multi-part · one athlete score
-              </span>
-              {wod.segment_group_id ? (
-                <>
-                  <Badge variant="secondary" className="text-[10px]">
-                    Linked ({groupMateCount} part{groupMateCount === 1 ? "" : "s"})
-                  </Badge>
-                  <label className="flex items-center gap-1.5 text-xs">
-                    <Checkbox
-                      checked={wod.group_score_anchor ?? false}
-                      onCheckedChange={(c) =>
-                        onUpdate({ group_score_anchor: c === true })
-                      }
-                    />
-                    Total score anchor
-                  </label>
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border/80 p-2">
+            {wod.segment_group_id ? (
+              <>
+                <Badge variant="secondary" className="text-[10px]">
+                  Multi-part ({groupMateCount})
+                </Badge>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={wod.group_score_anchor ?? false}
+                    onCheckedChange={(c) => onUpdate({ group_score_anchor: c === true })}
+                  />
+                  Segment score
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => onUpdate({ segment_group_id: null, group_score_anchor: false })}
+                >
+                  Unlink
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    onUpdate({
+                      segment_group_id: crypto.randomUUID(),
+                      group_score_anchor: true,
+                    })
+                  }
+                >
+                  Multi-part segments
+                </Button>
+                {priorExists && onLinkWithPrevious && (
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     className="h-7 text-xs"
-                    onClick={() =>
-                      onUpdate({ segment_group_id: null, group_score_anchor: false })
-                    }
+                    onClick={onLinkWithPrevious}
                   >
-                    Leave block
+                    Link previous segment
                   </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 text-xs"
-                    onClick={() =>
-                      onUpdate({
-                        segment_group_id: crypto.randomUUID(),
-                        group_score_anchor: true,
-                      })
-                    }
-                  >
-                    Start block
-                  </Button>
-                  {priorExists && onLinkWithPrevious && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={onLinkWithPrevious}
-                    >
-                      Link with previous (one score)
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Use for buy-in → main → cash-out. Athletes see one workout and log one time. Save
-              every linked part after joining.
-            </p>
+                )}
+              </>
+            )}
           </div>
         )}
 
