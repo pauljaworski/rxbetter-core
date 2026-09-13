@@ -7,7 +7,7 @@ import { parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { rankLeaderboardEntries } from "@/lib/leaderboard/rank-entries";
 import { aggregateWeightliftingBoardRows } from "@/lib/leaderboard/aggregate-weightlifting";
 import { segmentLabel } from "@/lib/format";
-import { isMetconSegment } from "@/lib/programming/manual-config";
+import { isMetconSegment, metconFormatLabel } from "@/lib/programming/manual-config";
 
 export type GenderFilter = "male" | "female" | "both";
 export type LevelFilter = "all" | WorkoutScale;
@@ -321,22 +321,24 @@ export function useLeaderboard(
         for (const lvl of levels) {
           const entries = buildEntries(lvl);
           if (!entries.length) continue;
+          const fmt = metconFormatLabel(prog.metcon_format);
           boards.push({
             programmingId: prog.id,
             segmentGroupId: prog.segment_group_id,
             title: prog.name || segmentLabel(prog.programming_segment),
-            subtitle: `${prescribedLevelLabel(lvl) ?? lvl} · ${segmentLabel(prog.programming_segment)}${prog.metcon_format ? ` · ${prog.metcon_format.toUpperCase()}` : ""}`,
+            subtitle: `${prescribedLevelLabel(lvl) ?? lvl} · ${segmentLabel(prog.programming_segment)}${fmt ? ` · ${fmt}` : ""}`,
             entries,
           });
         }
       } else {
         const entries = buildEntries(levelFilter);
         if (entries.length) {
+          const fmt = metconFormatLabel(prog.metcon_format);
           boards.push({
             programmingId: prog.id,
             segmentGroupId: prog.segment_group_id,
             title: prog.name || segmentLabel(prog.programming_segment),
-            subtitle: `${segmentLabel(prog.programming_segment)}${prog.metcon_format ? ` · ${prog.metcon_format.toUpperCase()}` : ""}`,
+            subtitle: `${segmentLabel(prog.programming_segment)}${fmt ? ` · ${fmt}` : ""}`,
             entries,
           });
         }

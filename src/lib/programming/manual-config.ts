@@ -50,6 +50,24 @@ export const METCON_FORMAT_OPTIONS: { value: MetconFormat; label: string }[] = [
   { value: "chipper", label: "Chipper" },
 ];
 
+/** Athlete / eyebrow-facing format label (e.g. for_time → For time). */
+export function metconFormatLabel(format: string | null | undefined): string | null {
+  if (!format?.trim()) return null;
+  const normalized = normalizeMetconFormat(format) ?? format.trim().toLowerCase();
+  switch (normalized) {
+    case "for_time":
+      return "For time";
+    case "amrap":
+      return "AMRAP";
+    case "emom":
+      return "EMOM";
+    case "chipper":
+      return "Chipper";
+    default:
+      return format.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+}
+
 /** Re-export detailed format templates for programmer UI. */
 export { WORKOUT_FORMAT_TEMPLATES } from "@/lib/programming/workout-scheme-schema";
 

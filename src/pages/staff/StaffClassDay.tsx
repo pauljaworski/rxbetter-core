@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { segmentLabel } from "@/lib/format";
+import { metconFormatLabel } from "@/lib/programming/manual-config";
 
 export default function StaffClassDay() {
   const { activeGymId, activePersona } = useAuth();
@@ -86,7 +87,9 @@ export default function StaffClassDay() {
                 <div>
                   <p className="eyebrow">
                     {segmentLabel(w.programming_segment)}
-                    {w.metcon_format ? ` · ${w.metcon_format.toUpperCase()}` : ""}
+                    {metconFormatLabel(w.metcon_format)
+                      ? ` · ${metconFormatLabel(w.metcon_format)}`
+                      : ""}
                   </p>
                   <h3 className="mt-0.5 text-base font-bold leading-tight">{w.name ?? "Untitled"}</h3>
                 </div>

@@ -12,7 +12,7 @@ import {
 } from "@/lib/programming/athlete-logged-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
-import { isMetconSegment } from "@/lib/programming/manual-config";
+import { isMetconSegment, metconFormatLabel } from "@/lib/programming/manual-config";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
@@ -77,6 +77,7 @@ export function CollapsibleWorkoutSegment({
   const loggedScore = metcon ? formatLoggedScorePreview(segmentPerf) : null;
   const loggedLifts = !metcon ? formatLoggedLiftPreviews(items, perfByItem) : [];
   const hasLoggedResult = !!loggedScore || loggedLifts.length > 0;
+  const formatLabel = metconFormatLabel(wod.metcon_format);
 
   const segIcon =
     wod.programming_segment === "metcon"
@@ -116,7 +117,7 @@ export function CollapsibleWorkoutSegment({
           <div className="min-w-0 flex-1">
             <p className="eyebrow">
               {segmentLabel(wod.programming_segment, wod.programming_subtype)}
-              {wod.metcon_format ? ` · ${wod.metcon_format.toUpperCase()}` : ""}
+              {formatLabel ? ` · ${formatLabel}` : ""}
               {wod.prescribed_scale &&
               wod.prescribed_scale !== "na" &&
               prescribedLevelLabel(wod.prescribed_scale)
