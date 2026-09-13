@@ -20,6 +20,7 @@ import {
   type WorkoutIntent,
   type WorkoutScheme,
 } from "@/lib/programming/workout-scheme-schema";
+import { applyBetweenRoundsToItems } from "@/lib/programming/between-rounds-sync";
 import { DurationSecInput } from "@/components/programmer/DurationSecInput";
 
 type Props = {
@@ -48,6 +49,21 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
   const summary = schemeSummaryLabel(scheme);
 
   function setScheme(next: WorkoutScheme) {
+    if (next.kind === "rep_ladder") {
+      onUpdate({
+        workout_scheme: next,
+        items: applyBetweenRoundsToItems(wod.items, next.betweenRounds),
+      });
+      return;
+    }
+    // Leaving a ladder: drop orphan between-rounds row if present.
+    if (scheme?.kind === "rep_ladder") {
+      onUpdate({
+        workout_scheme: next,
+        items: applyBetweenRoundsToItems(wod.items, undefined),
+      });
+      return;
+    }
     onUpdate({ workout_scheme: next });
   }
 
@@ -391,7 +407,8 @@ export function MetconSchemeFields({ wod, onUpdate }: Props) {
               Between rounds (optional)
             </p>
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Movement done between each ladder set (e.g. 200m Run, 10 Burpees).
+              Movement done between each ladder set (e.g. 200m Run). Saved as its own trackable
+              movement for athletes — not only in the workout title.
             </p>
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="space-y-1">

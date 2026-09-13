@@ -233,6 +233,7 @@ export function LineItemFields({ mode, item, onChange }: Props) {
               ? `Athletes see prescribed weight from their ${repMax}RM PR × percent. Override weight (lb) for a fixed load instead.`
               : `Leave percent empty for no PR-based load, or enter % of ${repMax}RM. Override weight (lb) for a fixed load.`}
       </p>
+      <GenderRxFields item={item} mode="strength" onChange={onChange} />
     </div>
   );
 }

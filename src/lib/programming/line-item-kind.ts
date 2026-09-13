@@ -2,6 +2,7 @@ export const LINE_ITEM_KINDS = [
   "strength_set",
   "complex_set",
   "metcon_movement",
+  "between_rounds",
   "rest",
   "note",
 ] as const;

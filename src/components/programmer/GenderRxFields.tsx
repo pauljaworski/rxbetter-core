@@ -11,11 +11,19 @@ import {
   displayHeightAmount,
   ensureLoadUnit,
   ensureHeightUnit,
+  type LoadModality,
   type RxVariant,
   type RxVariants,
 } from "@/lib/programming/rx-variants-schema";
 import { PRESCRIPTION_UNITS, PRESCRIPTION_UNIT_LABELS, type PrescriptionUnit } from "@/lib/programming/prescription-unit";
 import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function NumInput({
   label,
@@ -96,6 +104,7 @@ function seedVariant(item: EditorLineItem): RxVariant {
 /** Editor display: persisted variants or legacy columns seeded into Male and Female. */
 function displayVariants(item: EditorLineItem): RxVariants {
   const parsed = parseRxVariants(item.rx_variants);
+  const modality = parsed.load_modality ?? null;
   if (hasRxVariants(parsed)) {
     const male = parsed.male ?? {};
     const female = parsed.female ?? {};
@@ -110,12 +119,12 @@ function displayVariants(item: EditorLineItem): RxVariants {
       (female.load_label?.trim().length ?? 0) > 0 ||
       (female.height_label?.trim().length ?? 0) > 0;
     // Prefill empty gender from the other so amounts aren't blank on one side.
-    if (maleHas && !femaleHas) return { male, female: { ...male } };
-    if (femaleHas && !maleHas) return { male: { ...female }, female };
-    return { male, female };
+    if (maleHas && !femaleHas) return { load_modality: modality, male, female: { ...male } };
+    if (femaleHas && !maleHas) return { load_modality: modality, male: { ...female }, female };
+    return { load_modality: modality, male, female };
   }
   const seed = seedVariant(item);
-  return { male: { ...seed }, female: { ...seed } };
+  return { load_modality: modality, male: { ...seed }, female: { ...seed } };
 }
 
 function updateVariant(
@@ -159,24 +168,71 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
 
   function toggleEnabled(checked: boolean) {
     if (!checked) {
-      onChange({ rx_variants: emptyRxVariants() });
+      onChange({
+        rx_variants: variants.load_modality
+          ? { load_modality: variants.load_modality }
+          : emptyRxVariants(),
+      });
       return;
     }
     const seed = seedVariant(item);
-    commitVariants(item, { male: { ...seed }, female: { ...seed } }, onChange);
+    commitVariants(
+      item,
+      { load_modality: variants.load_modality, male: { ...seed }, female: { ...seed } },
+      onChange,
+    );
   }
 
   function setUnit(next: PrescriptionUnit) {
     const nextVariants: RxVariants = {
+      load_modality: variants.load_modality,
       male: { ...variants.male, prescription_unit: next },
       female: { ...variants.female, prescription_unit: next },
     };
     commitVariants(item, nextVariants, onChange);
   }
 
+  function setLoadModality(next: LoadModality | null) {
+    const base = hasRxVariants(variants)
+      ? variants
+      : { male: { ...seedVariant(item) }, female: { ...seedVariant(item) } };
+    commitVariants(
+      item,
+      {
+        ...base,
+        load_modality: next,
+      },
+      onChange,
+    );
+  }
+
   function patchVariant(gender: "male" | "female", patch: Partial<RxVariant>) {
     commitVariants(item, updateVariant(variants, gender, patch), onChange);
   }
+
+  const modalitySelect = (
+    <div className="space-y-1">
+      <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+        DB / KB implement
+      </Label>
+      <Select
+        value={variants.load_modality ?? "unset"}
+        onValueChange={(v) => setLoadModality(v === "unset" ? null : (v as LoadModality))}
+      >
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Not set" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="unset">Not set (barbell / other)</SelectItem>
+          <SelectItem value="single">Single dumbbell / kettlebell</SelectItem>
+          <SelectItem value="double">Double dumbbells / kettlebells</SelectItem>
+        </SelectContent>
+      </Select>
+      <p className="text-[10px] text-muted-foreground">
+        Double shows athletes 50s/35s — enter the weight of one DB or KB, not the total.
+      </p>
+    </div>
+  );
 
   return (
     <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-2">
@@ -192,6 +248,8 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
           Rx by gender
         </p>
       )}
+
+      {modalitySelect}
 
       {enabled && (
         <div className="space-y-2">
@@ -238,17 +296,17 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
                   )}
                   {mode === "strength" ? (
                     <NumInput
-                      label="Weight (lb)"
+                      label={variants.load_modality === "double" ? "Each (lb)" : "Weight (lb)"}
                       value={v.weight_lb ?? null}
                       onChange={(weight_lb) => patchVariant(gender, { weight_lb })}
                     />
                   ) : (
                     <>
                       <UnitSuffixInput
-                        label="Load"
+                        label={variants.load_modality === "double" ? "Each load" : "Load"}
                         value={displayLoadAmount(v.load_label)}
                         suffix="lbs"
-                        placeholder="e.g. 20"
+                        placeholder={variants.load_modality === "double" ? "e.g. 50" : "e.g. 20"}
                         onChange={(raw) =>
                           patchVariant(gender, { load_label: ensureLoadUnit(raw) })
                         }
@@ -270,7 +328,9 @@ export function GenderRxFields({ item, mode, onChange, alwaysSplit = false }: Pr
           </div>
           <p className="text-[10px] text-muted-foreground">
             {alwaysSplit
-              ? "Enter load and height as numbers — lbs and ft are applied by default. Athletes see 20/14 and 10'/9'."
+              ? variants.load_modality === "double"
+                ? "Athletes see (50s/35s) for double DB/KB. Leave blank for bodyweight."
+                : "Enter load and height as numbers — lbs and ft are applied by default. Athletes see 20/14 and 10'/9'."
               : "Both tiers are Rx. Athletes see their profile gender; otherwise 15/12-style notation."}
           </p>
         </div>

@@ -177,6 +177,7 @@ export default function StaffProgramming() {
     const femaleLoad = pick.femaleLoadLabel?.trim() || null;
     const metconGenderRx = metcon
       ? {
+          ...(pick.loadModality ? { load_modality: pick.loadModality } : {}),
           male: {
             reps: pick.reps,
             prescription_unit: unit,

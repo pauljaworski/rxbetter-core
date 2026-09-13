@@ -29,7 +29,7 @@ import {
   PRESCRIPTION_UNIT_LABELS,
   type PrescriptionUnit,
 } from "@/lib/programming/prescription-unit";
-import { ensureLoadUnit } from "@/lib/programming/rx-variants-schema";
+import { ensureLoadUnit, type LoadModality } from "@/lib/programming/rx-variants-schema";
 import { ensureGymBenchmarkType } from "@/lib/programming/gym-benchmark-type";
 import { toast } from "sonner";
 import { DurationSecondsInput } from "@/components/programmer/DurationSecondsInput";
@@ -43,6 +43,8 @@ export type MovementPrescription = {
   /** Metcon: optional male / female loads (e.g. 95 / 65) */
   maleLoadLabel: string | null;
   femaleLoadLabel: string | null;
+  /** DB/KB: single vs double (athlete sees 50s when double) */
+  loadModality: LoadModality | null;
 };
 
 export type MovementPick =
@@ -86,6 +88,7 @@ export function MovementPickerDialog({
   const [pctWhole, setPctWhole] = useState<number | null>(null);
   const [maleLoad, setMaleLoad] = useState("");
   const [femaleLoad, setFemaleLoad] = useState("");
+  const [loadModality, setLoadModality] = useState<LoadModality | null>(null);
   const [pending, setPending] = useState<
     { kind: "catalog"; bench: BenchmarkTypeOption } | { kind: "new"; label: string } | null
   >(null);
@@ -102,6 +105,7 @@ export function MovementPickerDialog({
       setPctWhole(null);
       setMaleLoad("");
       setFemaleLoad("");
+      setLoadModality(null);
       setPending(null);
       return;
     }
@@ -146,6 +150,7 @@ export function MovementPickerDialog({
       prescribedPercentage: metcon ? null : percentFractionFromWhole(pctWhole),
       maleLoadLabel: male ?? female,
       femaleLoadLabel: female ?? male,
+      loadModality: metcon ? loadModality : null,
     };
   }
 
@@ -367,17 +372,37 @@ export function MovementPickerDialog({
             </div>
             {metcon && (
               <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/20 p-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">DB / KB implement</Label>
+                  <Select
+                    value={loadModality ?? "unset"}
+                    onValueChange={(v) =>
+                      setLoadModality(v === "unset" ? null : (v as LoadModality))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">Not set (barbell / other)</SelectItem>
+                      <SelectItem value="single">Single dumbbell / kettlebell</SelectItem>
+                      <SelectItem value="double">Double dumbbells / kettlebells</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Load (optional)
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Male load</Label>
+                    <Label className="text-xs">
+                      {loadModality === "double" ? "Male each" : "Male load"}
+                    </Label>
                     <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
                       <Input
                         value={maleLoad}
                         onChange={(e) => setMaleLoad(e.target.value)}
-                        placeholder="e.g. 95"
+                        placeholder={loadModality === "double" ? "e.g. 50" : "e.g. 95"}
                         className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
                       />
                       <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -386,12 +411,14 @@ export function MovementPickerDialog({
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Female load</Label>
+                    <Label className="text-xs">
+                      {loadModality === "double" ? "Female each" : "Female load"}
+                    </Label>
                     <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background">
                       <Input
                         value={femaleLoad}
                         onChange={(e) => setFemaleLoad(e.target.value)}
-                        placeholder="e.g. 65"
+                        placeholder={loadModality === "double" ? "e.g. 35" : "e.g. 65"}
                         className="h-8 border-0 font-mono-num text-xs shadow-none focus-visible:ring-0"
                       />
                       <span className="shrink-0 border-l border-border/60 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -401,8 +428,9 @@ export function MovementPickerDialog({
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  For weighted movements (thrusters, wall balls, DBs). Leave blank for bodyweight.
-                  Athletes see 95/65-style loads.
+                  {loadModality === "double"
+                    ? "Athletes see 50s/35s. Enter one DB/KB weight, not the pair total."
+                    : "For weighted movements (thrusters, wall balls, DBs). Leave blank for bodyweight."}
                 </p>
               </div>
             )}

@@ -36,19 +36,28 @@ describe("rx-variants-schema", () => {
     ).toBe("20/14 lb · 10/9 ft");
   });
 
-  it("formats athlete dual modifiers as (115/75) and (10'/9')", () => {
+  it("formats double DB/KB loads as 50s/35s", () => {
     expect(
       formatDualModifierParens({
-        male: { load_label: "20 lb", height_label: "10 ft" },
-        female: { load_label: "14 lb", height_label: "9 ft" },
+        load_modality: "double",
+        male: { load_label: "50 lb" },
+        female: { load_label: "35 lb" },
       }),
-    ).toEqual(["(20/14)", "(10'/9')"]);
+    ).toEqual(["(50s/35s)"]);
     expect(
       formatDualModifierParens({
-        male: { load_label: "115 lb" },
-        female: { load_label: "75 lb" },
+        load_modality: "double",
+        male: { load_label: "50 lb" },
+        female: { load_label: "50 lb" },
       }),
-    ).toEqual(["(115/75)"]);
+    ).toEqual(["(50s)"]);
+    expect(
+      formatDualModifierParens({
+        load_modality: "single",
+        male: { load_label: "50 lb" },
+        female: { load_label: "35 lb" },
+      }),
+    ).toEqual(["(50/35)"]);
   });
 
   it("does not duplicate meters in athlete display", () => {

@@ -4,6 +4,9 @@ import { formatPrescriptionAmount, PRESCRIPTION_UNITS, type PrescriptionUnit } f
 export const RX_GENDERS = ["male", "female"] as const;
 export type RxGender = (typeof RX_GENDERS)[number];
 
+export const LOAD_MODALITIES = ["single", "double"] as const;
+export type LoadModality = (typeof LOAD_MODALITIES)[number];
+
 const rxVariantSchema = z.object({
   reps: z.number().nullable().optional(),
   prescription_unit: z.enum(PRESCRIPTION_UNITS).optional(),
@@ -15,6 +18,11 @@ const rxVariantSchema = z.object({
 });
 
 export const rxVariantsSchema = z.object({
+  /**
+   * Shared implement count for DB/KB loads.
+   * `double` → athlete sees 50s/35s (per hand); enter one DB/KB weight, not total.
+   */
+  load_modality: z.enum(LOAD_MODALITIES).nullable().optional(),
   male: rxVariantSchema.optional(),
   female: rxVariantSchema.optional(),
 });
@@ -146,14 +154,25 @@ function dualPairLabel(male: string | null, female: string | null): string | nul
   return male ?? female ?? null;
 }
 
-function dualLoadParen(male: string | null, female: string | null): string | null {
+function dualLoadParen(
+  male: string | null,
+  female: string | null,
+  modality?: LoadModality | null,
+): string | null {
+  const suffix = modality === "double" ? "s" : "";
   if (!male && !female) return null;
   if (male && female) {
     const compact = tryCompactDualNumbers(male, female);
-    if (compact) return `(${compact})`;
+    if (compact) {
+      if (compact.includes("/")) {
+        const [a, b] = compact.split("/");
+        return `(${a}${suffix}/${b}${suffix})`;
+      }
+      return `(${compact}${suffix})`;
+    }
   }
   const one = (male ?? female)!.match(/^(\d+(?:\.\d+)?)/);
-  return one ? `(${one[1]})` : wrapParens((male ?? female)!);
+  return one ? `(${one[1]}${suffix})` : wrapParens((male ?? female)!);
 }
 
 function dualHeightParen(male: string | null, female: string | null): string | null {
@@ -208,7 +227,7 @@ export function formatDualModifierLabel(variants: RxVariants): string | null {
   return [load, height].filter(Boolean).join(" · ") || null;
 }
 
-/** Athlete-facing dual modifiers: (115/75) · (10'/9') */
+/** Athlete-facing dual modifiers: (115/75) · (10'/9') or double DB/KB (50s/35s) */
 export function formatDualModifierParens(variants: RxVariants): string[] {
   const m = variants.male;
   const f = variants.female;
@@ -216,6 +235,7 @@ export function formatDualModifierParens(variants: RxVariants): string[] {
   const load = dualLoadParen(
     m ? variantLoadLabel(m) : null,
     f ? variantLoadLabel(f) : null,
+    variants.load_modality,
   );
   const height = dualHeightParen(
     m?.height_label?.trim() ? ensureHeightUnit(m.height_label) : null,
@@ -359,12 +379,21 @@ export function syncLegacyFieldsFromVariants(
 export function rxVariantsForSave(
   variants: RxVariants | undefined | null,
 ): RxVariants {
-  if (!variants || !hasRxVariants(variants)) return emptyRxVariants();
+  if (!variants) return emptyRxVariants();
+  if (!hasRxVariants(variants)) {
+    return variants.load_modality ? { load_modality: variants.load_modality } : emptyRxVariants();
+  }
   const male = variants.male && variantHasData(variants.male) ? variants.male : undefined;
   const female =
     variants.female && variantHasData(variants.female) ? variants.female : undefined;
-  if (!male && !female) return emptyRxVariants();
-  return { ...(male ? { male } : {}), ...(female ? { female } : {}) };
+  if (!male && !female) {
+    return variants.load_modality ? { load_modality: variants.load_modality } : emptyRxVariants();
+  }
+  return {
+    ...(variants.load_modality ? { load_modality: variants.load_modality } : {}),
+    ...(male ? { male } : {}),
+    ...(female ? { female } : {}),
+  };
 }
 
 /** Rx suffix parts for display (amount + load + height, no duplicates). */

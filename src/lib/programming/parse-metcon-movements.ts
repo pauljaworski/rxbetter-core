@@ -15,6 +15,8 @@ export type ParsedMetconMovement = {
   prescribed_score: string | null;
   benchmark_type_id: string | null;
   bench_name?: string;
+  /** True for ladder “after each round” work — stored as line_item_kind between_rounds. */
+  betweenRounds?: boolean;
 };
 
 export type ParseMetconResult = {
@@ -232,6 +234,7 @@ export function parseMetconMovements(
       prescribed_score: null,
       benchmark_type_id: brMatch?.id ?? null,
       bench_name: brMatch?.name ?? brLabel,
+      betweenRounds: true,
     });
   }
 
@@ -252,7 +255,7 @@ export function editorLineItemsFromMetconMovements(
     benchmark_type_id: m.benchmark_type_id,
     bench_name: m.bench_name,
     movement_label: m.benchmark_type_id ? null : m.label,
-    line_item_kind: "metcon_movement" as LineItemKind,
+    line_item_kind: (m.betweenRounds ? "between_rounds" : "metcon_movement") as LineItemKind,
     movement_components: [],
   }));
 }

@@ -39,7 +39,9 @@ function loadLabel(item: LogLineItem): string {
     }
     return "Rest";
   }
-  return item.bench_name ?? "Movement";
+  const name = item.bench_name ?? "Movement";
+  if (item.line_item_kind === "between_rounds") return `Between rounds · ${name}`;
+  return name;
 }
 
 function percentSuffix(item: LogLineItem): string | null {

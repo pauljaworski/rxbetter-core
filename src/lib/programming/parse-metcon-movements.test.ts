@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMetconMovements } from "./parse-metcon-movements";
+import { editorLineItemsFromMetconMovements, parseMetconMovements } from "./parse-metcon-movements";
 
 const catalog = [
   { id: "bt-wb", name: "Wall Ball", stimulus: "strength", sub_stimulus: "squat", purpose_variation: null },
@@ -44,5 +44,8 @@ describe("parseMetconMovements", () => {
     const run = r.movements.find((m) => m.bench_name === "Run");
     expect(run?.reps_prescribed).toBe(200);
     expect(run?.prescription_unit).toBe("meters");
+    expect(run?.betweenRounds).toBe(true);
+    const items = editorLineItemsFromMetconMovements(r.movements);
+    expect(items.find((i) => i.bench_name === "Run")?.line_item_kind).toBe("between_rounds");
   });
 });

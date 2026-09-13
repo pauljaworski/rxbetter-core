@@ -590,7 +590,11 @@ export function SegmentEditorCard({
                       </p>
                     )}
                   </div>
-                  {it.line_item_kind === "rest" ? (
+                  {it.line_item_kind === "between_rounds" ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      Between rounds
+                    </Badge>
+                  ) : it.line_item_kind === "rest" ? (
                     <Badge variant="outline" className="text-[10px]">
                       Rest
                     </Badge>
