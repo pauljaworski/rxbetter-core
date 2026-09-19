@@ -87,7 +87,7 @@ export const tabataSchemeSchema = schemeBase.extend({
   scoreMetric: scoreMetricField("rounds_reps"),
 });
 
-export const PRESCRIPTION_UNITS_BETWEEN = ["reps", "meters", "calories", "feet"] as const;
+export const PRESCRIPTION_UNITS_BETWEEN = ["reps", "meters", "calories", "feet", "seconds"] as const;
 export type BetweenRoundPrescriptionUnit = (typeof PRESCRIPTION_UNITS_BETWEEN)[number];
 
 const betweenRoundSchema = z
@@ -273,12 +273,22 @@ export function schemeSummaryLabel(scheme: WorkoutScheme | null): string | null 
       if (br?.label || br?.amount != null) {
         const unit = br.prescriptionUnit ?? "reps";
         const unitSuffix =
-          unit === "meters" ? "m" : unit === "feet" ? "ft" : unit === "calories" ? " cal" : "";
+          unit === "meters"
+            ? "m"
+            : unit === "feet"
+              ? "ft"
+              : unit === "calories"
+                ? " cal"
+                : unit === "seconds"
+                  ? "s"
+                  : "";
         const amountPart =
           br.amount != null
             ? unit === "reps"
               ? `${br.amount} `
-              : `${br.amount}${unitSuffix} `
+              : unit === "seconds"
+                ? `${br.amount}s `
+                : `${br.amount}${unitSuffix} `
             : "";
         between = ` + ${amountPart}${br.label ?? "movement"} between rounds`.trimEnd();
       }
