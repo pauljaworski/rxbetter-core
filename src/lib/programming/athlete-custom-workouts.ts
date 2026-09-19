@@ -88,12 +88,6 @@ export async function deleteAthleteCustomWorkout(
   programmingId: string,
   contactId: string,
 ): Promise<{ error: string | null }> {
-  const { error: itemErr } = await supabase
-    .from("programming_line_item")
-    .delete()
-    .eq("programming_id", programmingId);
-  if (itemErr) return { error: formatSupabaseError(itemErr.message) };
-
   const { error } = await supabase
     .from("programming")
     .delete()

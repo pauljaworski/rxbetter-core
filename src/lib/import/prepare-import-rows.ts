@@ -38,12 +38,32 @@ function parseRepCount(raw: string | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function formatDateUtc(d: Date): string {
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
+
+function parseExcelSerialDate(s: string): string | null {
+  if (!/^\d{4,5}(?:\.\d+)?$/.test(s)) return null;
+
+  const serial = Number(s);
+  // Covers modern SugarWOD / Excel exports while avoiding short year-like values.
+  if (!Number.isFinite(serial) || serial < 20000 || serial > 80000) return null;
+
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  return Number.isNaN(d.getTime()) ? null : formatDateUtc(d);
+}
+
 /** Parse common date formats to yyyy-MM-dd. */
 export function parseImportDate(raw: string | null): string | null {
   if (!raw?.trim()) return null;
   const s = raw.trim();
 
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const excelDate = parseExcelSerialDate(s);
+  if (excelDate) return excelDate;
 
   const mdy = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
   if (mdy) {
@@ -53,10 +73,7 @@ export function parseImportDate(raw: string | null): string | null {
 
   const d = new Date(s);
   if (!Number.isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    return `${y}-${mo}-${da}`;
+    return formatDateUtc(d);
   }
   return null;
 }
