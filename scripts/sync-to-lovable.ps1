@@ -1,4 +1,4 @@
-# Sync Vite UI from rxbetter-core → Lovable GitHub repo (frontend files only).
+# Sync Vite UI (+ athlete AI edge functions) from rxbetter-core → Lovable GitHub repo.
 # Usage:
 #   .\scripts\sync-to-lovable.ps1 -LovablePath "..\rxbetter-train-smarter-0dddcf23"
 #   .\scripts\sync-to-lovable.ps1 -LovablePath "..\rxbetter-train-smarter-0dddcf23" -Push -Message "sync: staff UI from core"
@@ -59,9 +59,34 @@ foreach ($item in $CopyItems) {
   Write-Host "Copied $item"
 }
 
+# Keep Lovable edge functions aligned with core OpenRouter athlete AI (do not sync all of supabase/).
+$FnFiles = @(
+  "supabase/functions/_shared/auth.ts",
+  "supabase/functions/_shared/openrouter.ts",
+  "supabase/functions/_shared/rate-limit.ts",
+  "supabase/functions/athlete-insights/index.ts",
+  "supabase/functions/metcon-strategy/index.ts"
+)
+foreach ($rel in $FnFiles) {
+  $src = Join-Path $CoreRoot $rel
+  if (-not (Test-Path $src)) {
+    Write-Warning "Skip missing: $rel"
+    continue
+  }
+  $dest = Join-Path $LovableRoot $rel
+  $destDir = Split-Path $dest -Parent
+  if (-not (Test-Path $destDir)) {
+    New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+  }
+  Copy-Item $src $dest -Force
+  Write-Host "Copied $rel"
+}
+
 Push-Location $LovableRoot
 try {
   git add -A
+  # Never stage local secrets or supabase CLI temp
+  git reset HEAD -- .env .env.local "supabase/.temp" 2>$null
   $status = git status --porcelain
   if (-not $status) {
     Write-Host "Lovable repo already up to date."
