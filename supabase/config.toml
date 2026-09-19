@@ -365,6 +365,14 @@ allow_dynamic_registration = false
 [functions.parse-complex-wod]
 verify_jwt = true
 
+# Athlete weekly insights (OpenRouter stream). Secret: OPENROUTER_API_KEY
+[functions.athlete-insights]
+verify_jwt = true
+
+# Athlete metcon strategy for Today. Secret: OPENROUTER_API_KEY
+[functions.metcon-strategy]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { CheckCircle2, ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GroupScoreRow } from "@/components/workout/GroupScoreRow";
 import { MetconMovementList } from "@/components/workout/MetconMovementList";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
+import { MetconStrategySheet } from "@/components/workout/MetconStrategySheet";
 import { schemeSummaryLabel, schemePartLabel, parseWorkoutScheme } from "@/lib/programming/workout-scheme-schema";
 import { isMetconSegment } from "@/lib/programming/manual-config";
 import { summarizeSegmentPrescription } from "@/lib/programming/segment-prescription-summary";
@@ -15,6 +16,7 @@ import type { WorkoutDayBlock } from "@/lib/programming/workout-segment-groups";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
+import { useAuth } from "@/contexts/AuthContext";
 
 type GroupBlock = Extract<WorkoutDayBlock, { kind: "group" }>;
 
@@ -86,14 +88,20 @@ export function GroupBlockCard({
   isComplete,
   onLogged,
 }: Props) {
+  const { activeGymId } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [scoreOnly, setScoreOnly] = useState(false);
+  const [strategyOpen, setStrategyOpen] = useState(false);
   const scheme = parseWorkoutScheme(block.anchor.workout_scheme);
   const schemeLabel = schemeSummaryLabel(scheme);
   const title = block.anchor.name?.trim() || "Workout";
   const showPartLabels = groupHasMultipleScores(block);
   const singleScore = !showPartLabels;
   const loggedScore = formatLoggedScorePreview(groupPerf);
+  const canStrategy =
+    !!contactId &&
+    !!activeGymId &&
+    (isMetconSegment(block.anchor.programming_segment ?? "") || !!block.anchor.metcon_format);
 
   return (
     <Card className="glass-card overflow-hidden p-0">
@@ -183,19 +191,36 @@ export function GroupBlockCard({
           ) : (
             <div className="min-w-0 flex-1" />
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant={scoreOnly ? "secondary" : "default"}
-            className={cn(
-              "shrink-0",
-              !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canStrategy && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStrategyOpen(true);
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Strategy
+              </Button>
             )}
-            onClick={() => setScoreOnly((v) => !v)}
-          >
-            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            {scoreOnly ? "Hide score" : isComplete || loggedScore ? "Update score" : "Log score"}
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={scoreOnly ? "secondary" : "default"}
+              className={cn(
+                "shrink-0",
+                !scoreOnly && "bg-primary text-primary-foreground hover:bg-primary/90",
+              )}
+              onClick={() => setScoreOnly((v) => !v)}
+            >
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+              {scoreOnly ? "Hide score" : isComplete || loggedScore ? "Update score" : "Log score"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -294,6 +319,13 @@ export function GroupBlockCard({
           onLogged={onLogged}
         />
       )}
+
+      <MetconStrategySheet
+        open={strategyOpen}
+        onOpenChange={setStrategyOpen}
+        programmingId={block.anchor.id}
+        workoutName={title}
+      />
     </Card>
   );
 }

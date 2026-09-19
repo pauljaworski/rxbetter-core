@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, Dumbbell, Flame, Timer } from "lucide-react";
+import { CheckCircle2, ChevronDown, Dumbbell, Flame, Timer, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { segmentLabel, prescribedLevelLabel } from "@/lib/format";
@@ -12,12 +12,14 @@ import {
 } from "@/lib/programming/athlete-logged-summary";
 import { WorkoutSegmentItems } from "@/components/workout/WorkoutSegmentItems";
 import { MetconScoreRow } from "@/components/workout/MetconScoreRow";
+import { MetconStrategySheet } from "@/components/workout/MetconStrategySheet";
 import { isMetconSegment, metconFormatLabel } from "@/lib/programming/manual-config";
 import type { LogLineItem, LogWodContext } from "@/components/rx/LogScoreSheet";
 import type { SegmentPerformance } from "@/hooks/useWorkoutDay";
 import type { ExistingPerformance } from "@/components/rx/LogScoreSheet";
 import { cn } from "@/lib/utils";
 import type { RxGender } from "@/lib/programming/rx-variants-schema";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Props = {
   wod: LogWodContext & {
@@ -53,11 +55,14 @@ export function CollapsibleWorkoutSegment({
   onLogged,
   compact,
 }: Props) {
+  const { activeGymId } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [scoreOnly, setScoreOnly] = useState(false);
+  const [strategyOpen, setStrategyOpen] = useState(false);
   const metcon = isMetconSegment(wod.programming_segment ?? "");
   /** Every standalone segment gets a Log score / Log lifts control when signed in. */
   const canQuickLog = !hideSegmentScore && !compact && !!contactId;
+  const canStrategy = metcon && !!contactId && !!activeGymId && !compact;
   const summary = summarizeSegmentPrescription(
     {
       programming_segment: wod.programming_segment ?? "metcon",
@@ -204,27 +209,44 @@ export function CollapsibleWorkoutSegment({
           ) : (
             <div className="min-w-0 flex-1" />
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant={scoreOnly && metcon ? "secondary" : "default"}
-            className={cn(
-              "shrink-0",
-              !(scoreOnly && metcon) && "bg-primary text-primary-foreground hover:bg-primary/90",
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canStrategy && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStrategyOpen(true);
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Strategy
+              </Button>
             )}
-            onClick={handleLogClick}
-          >
-            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-            {metcon
-              ? scoreOnly
-                ? "Hide score"
-                : isComplete || loggedScore
-                  ? "Update score"
-                  : "Log score"
-              : isComplete || loggedLifts.length > 0
-                ? "Update lifts"
-                : "Log score"}
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={scoreOnly && metcon ? "secondary" : "default"}
+              className={cn(
+                "shrink-0",
+                !(scoreOnly && metcon) && "bg-primary text-primary-foreground hover:bg-primary/90",
+              )}
+              onClick={handleLogClick}
+            >
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+              {metcon
+                ? scoreOnly
+                  ? "Hide score"
+                  : isComplete || loggedScore
+                    ? "Update score"
+                    : "Log score"
+                : isComplete || loggedLifts.length > 0
+                  ? "Update lifts"
+                  : "Log score"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -239,6 +261,20 @@ export function CollapsibleWorkoutSegment({
 
       {expanded && (
         <div className="border-t border-border/60 bg-card/50">
+          {canStrategy && (
+            <div className="flex justify-end border-b border-border/60 px-4 py-2 md:px-5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => setStrategyOpen(true)}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Strategy
+              </Button>
+            </div>
+          )}
           {summary.header && (
             <p className="border-b border-border/60 px-5 py-2.5 text-sm font-semibold text-primary">
               {summary.header}
@@ -271,6 +307,13 @@ export function CollapsibleWorkoutSegment({
           />
         </div>
       )}
+
+      <MetconStrategySheet
+        open={strategyOpen}
+        onOpenChange={setStrategyOpen}
+        programmingId={wod.id}
+        workoutName={wod.name}
+      />
     </div>
   );
 }
