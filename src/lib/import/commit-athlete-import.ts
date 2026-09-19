@@ -11,37 +11,62 @@ export type CommitImportResult = {
 };
 
 type ExistingPerfKey = string;
+const EXISTING_PAGE_SIZE = 1000;
+
+function normalizeWorkoutLabel(label: string | null | undefined): string {
+  return (label ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function labelFromScoreMeta(scoreMeta: unknown): string | null {
+  if (!scoreMeta || typeof scoreMeta !== "object" || Array.isArray(scoreMeta)) return null;
+  const label = (scoreMeta as { label?: unknown }).label;
+  return typeof label === "string" ? label : null;
+}
 
 function perfKey(
   date: string,
   definitionId: string | null,
   weight: number | null,
   score: string | null,
+  workoutLabel: string | null = null,
 ): ExistingPerfKey {
-  return `${date}|${definitionId ?? ""}|${weight ?? ""}|${score ?? ""}`;
+  if (definitionId || weight != null) {
+    return `lift|${date}|${definitionId ?? ""}|${weight ?? ""}|${score?.trim() ?? ""}`;
+  }
+  return `workout|${date}|${score?.trim() ?? ""}|${normalizeWorkoutLabel(workoutLabel)}`;
 }
 
 async function fetchExistingKeys(contactId: string): Promise<Set<ExistingPerfKey>> {
-  const { data, error } = await supabase
-    .from("athlete_performance")
-    .select("performance_date, benchmark_definition_id, weight_lifted, score")
-    .eq("contact_id", contactId);
-
-  if (error) throw new Error(formatSupabaseError(error.message));
-
   const keys = new Set<ExistingPerfKey>();
-  for (const row of data ?? []) {
-    const date = row.performance_date?.slice(0, 10);
-    if (!date) continue;
-    keys.add(
-      perfKey(
-        date,
-        row.benchmark_definition_id,
-        row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
-        row.score?.trim() ?? null,
-      ),
-    );
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_performance")
+      .select("performance_date, benchmark_definition_id, weight_lifted, score, score_meta")
+      .eq("contact_id", contactId)
+      .range(from, from + EXISTING_PAGE_SIZE - 1);
+
+    if (error) throw new Error(formatSupabaseError(error.message));
+
+    for (const row of data ?? []) {
+      const date = row.performance_date?.slice(0, 10);
+      if (!date) continue;
+      keys.add(
+        perfKey(
+          date,
+          row.benchmark_definition_id,
+          row.weight_lifted != null ? Math.round(Number(row.weight_lifted)) : null,
+          row.score?.trim() ?? null,
+          labelFromScoreMeta(row.score_meta),
+        ),
+      );
+    }
+
+    if (!data || data.length < EXISTING_PAGE_SIZE) break;
+    from += EXISTING_PAGE_SIZE;
   }
+
   return keys;
 }
 
@@ -93,11 +118,16 @@ export async function commitAthleteImport(
   }[] = [];
 
   for (const row of importable) {
+    const workoutLabel =
+      row.kind === "workout"
+        ? row.workoutName?.trim() || row.movementLabel?.trim() || "Workout"
+        : null;
     const key = perfKey(
       row.date!,
       row.benchmarkDefinitionId,
       row.weightLb != null ? Math.round(row.weightLb) : null,
       row.score,
+      workoutLabel,
     );
     if (existingKeys.has(key)) {
       result.duplicates++;
@@ -123,7 +153,7 @@ export async function commitAthleteImport(
       if (row.benchmarkDefinitionId) definitionIds.add(row.benchmarkDefinitionId);
       existingKeys.add(key);
     } else {
-      const label = row.workoutName?.trim() || row.movementLabel?.trim() || "Workout";
+      const label = workoutLabel ?? "Workout";
       payloads.push({
         contact_id: contactId,
         performance_date: row.date!,

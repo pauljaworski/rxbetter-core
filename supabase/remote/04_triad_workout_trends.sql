@@ -1,14 +1,16 @@
 -- Triad Workout Trends: programming + line items + Paul performances
+begin;
+
 alter table public.programming disable trigger programming_update_guard;
 alter table public.programming_line_item disable trigger pli_update_guard;
 
 delete from public.athlete_performance where programming_id in (
-  select id from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30'
+  select id from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30' and id::text like 'e3000000%'
 );
 delete from public.programming_line_item where programming_id in (
-  select id from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30'
+  select id from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30' and id::text like 'e3000000%'
 );
-delete from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30';
+delete from public.programming where gym_id = 'a0000000-0000-4000-8000-000000000001' and wod_date >= '2026-03-16' and wod_date <= '2026-06-30' and id::text like 'e3000000%';
 
 insert into public.programming (id, gym_id, program_library_id, name, wod_date, programming_segment, prescribed_scale, display_order, description, source)
 values ('e3000000-0000-4000-8000-202603160001', 'a0000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'Back Squat 5x5 (65,70,75,75,75%)', '2026-03-16', 'weightlifting', 'rx', 1, 'Back Squat 5x5 (65,70,75,75,75%)', 'gym');
@@ -779,3 +781,5 @@ values ('c0000000-0000-4000-8000-000000000001', 'e3000000-0000-4000-8000-2026051
 
 alter table public.programming enable trigger programming_update_guard;
 alter table public.programming_line_item enable trigger pli_update_guard;
+
+commit;

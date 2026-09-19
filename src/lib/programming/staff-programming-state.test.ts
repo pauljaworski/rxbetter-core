@@ -115,4 +115,14 @@ describe("moveSegmentInDay", () => {
     const next = moveSegmentInDay(wods, 2, "up");
     expect(next.map((w) => w.name)).toEqual(["Cooldown-down", "Buy-in", "Main"]);
   });
+
+  it("does not copy group score identity into duplicated segments", () => {
+    const clone = cloneEditorWod(
+      { ...baseWod, segment_group_id: "group-1", group_score_anchor: true },
+      1,
+    );
+
+    expect(clone.segment_group_id).toBeNull();
+    expect(clone.group_score_anchor).toBe(false);
+  });
 });
