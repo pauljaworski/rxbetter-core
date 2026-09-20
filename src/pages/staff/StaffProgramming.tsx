@@ -11,10 +11,12 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorBanner } from "@/components/layout/ErrorBanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Save, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Save, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WodIntakePanel } from "@/components/programmer/WodIntakePanel";
+import { WeekBulkIntakePanel } from "@/components/programmer/WeekBulkIntakePanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SegmentAddDialog } from "@/components/programmer/SegmentAddDialog";
 import { SegmentEditorCard } from "@/components/programmer/SegmentEditorCard";
 import { ComplexSetEditor } from "@/components/programmer/ComplexSetEditor";
@@ -53,7 +55,7 @@ export default function StaffProgramming() {
    */
   const awaitRefreshBeforeApplyRef = useRef(false);
   const [segmentAddOpen, setSegmentAddOpen] = useState(false);
-  const [showQuickIntake, setShowQuickIntake] = useState(false);
+  const [showTextIntake, setShowTextIntake] = useState(true);
   const [movementPicker, setMovementPicker] = useState<{ wodIdx: number } | null>(null);
   const [complexEditor, setComplexEditor] = useState<{ wodIdx: number } | null>(null);
   const { data: benchmarkCatalog } = useBenchmarkCatalog();
@@ -651,30 +653,48 @@ export default function StaffProgramming() {
         }}
       />
 
-      {/* Quick intake — collapsed by default */}
+      {/* Text → structured programming */}
       <div className="border-t border-border/60 pt-6">
         <button
           type="button"
           className="mb-3 flex items-center gap-1.5 text-left"
-          onClick={() => setShowQuickIntake((v) => !v)}
-          aria-expanded={showQuickIntake}
+          onClick={() => setShowTextIntake((v) => !v)}
+          aria-expanded={showTextIntake}
         >
-          {showQuickIntake ? (
+          {showTextIntake ? (
             <ChevronRight className="h-4 w-4 rotate-90 text-muted-foreground" />
           ) : (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
-          <span className="eyebrow">Quick intake (optional)</span>
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="eyebrow">AI / text intake</span>
         </button>
-        {showQuickIntake && (
-          <WodIntakePanel
-            date={date}
-            defaultLib={defaultLibId}
-            displayOrder={wods.length}
-            onCommitted={() => {
-              requestServerSync("date");
-            }}
-          />
+        {showTextIntake && (
+          <Tabs defaultValue="day" className="space-y-3">
+            <TabsList>
+              <TabsTrigger value="day">This day</TabsTrigger>
+              <TabsTrigger value="week">Week / bulk</TabsTrigger>
+            </TabsList>
+            <TabsContent value="day">
+              <WodIntakePanel
+                date={date}
+                defaultLib={defaultLibId}
+                displayOrder={wods.length}
+                onCommitted={() => {
+                  requestServerSync("date");
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="week">
+              <WeekBulkIntakePanel
+                weekStart={weekStart}
+                defaultLib={defaultLibId}
+                onCommitted={() => {
+                  requestServerSync("date");
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

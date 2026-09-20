@@ -1,69 +1,57 @@
 # WOD plain-text intake (Parse & Confirm)
 
-Programmers paste workout text on **Programming** (`/staff/programming`). The client parses locally, shows editable chips, then commits structured rows — **no AI at save time**.
+Programmers paste workout text on **Programming** (`/staff/programming`) under **AI / text intake**.
 
-## Flow
+## Modes
 
-1. Paste text (e.g. `Back Squat 5x3 @ 80%`)
-2. **Parse** — regex + fuzzy `benchmark_type` match (`src/lib/wod-parser/`)
-3. **Parse with AI** (optional, **off by default**) — set `VITE_ENABLE_WOD_AI_PARSE=true` for OpenRouter
-4. Verify/edit draft (`WodIntakeDraft`)
-5. **Save to calendar** — insert `programming_intake_stage` → `programming` + `programming_line_item` → mark intake `committed`
+### This day
+1. Paste one block (strength or metcon)
+2. **Parse with AI** (default) or **Parse (fast)** regex
+3. Verify/edit draft chips
+4. **Save to calendar** → `programming_intake_stage` → `programming` + line items
 
-## Parser grammar (Phase 1 — regex)
+### Week / bulk
+1. Paste multiple days labeled `Monday`, `Tue`, or `2026-09-15`
+2. Separate segments with `Strength` / `Metcon` headers or `---`
+3. **Split & parse (AI)** → review grid → uncheck skips → **Save N selected**
+
+## Parser grammar (fast / regex)
 
 | Pattern | Example |
 |---------|---------|
-| Sets × reps @ % | `Back Squat 5x3 @ 80%` → **5 line items**, each 3 reps @ 80%; **score** left blank (athlete logs); segment description = `5x3 @ 80%` |
-| Percent ladder | `Back Squat 5x3 65,70,75,80,85%` → one line item per % |
+| Sets × reps @ % | `Back Squat 5x3 @ 80%` → **5 line items**, each 3 reps @ 80% |
+| Percent ladder | `Back Squat 5x3 65,70,75,80,85%` |
 | Reps @ weight | `Deadlift 3 @ 225` |
-| Metcon (fallback) | `AMRAP 12…` → draft metcon + **Parse with AI** for line items |
+| Metcon | Prefer **Parse with AI** for movements |
 
-Unmatched movements stay editable; pick from catalog dropdown before save.
+## AI parse (OpenRouter)
 
-## Phase 2 — AI parse (OpenRouter)
-
-Edge function: `supabase/functions/parse-complex-wod` (deploy from **rxbetter-core** only).
+Edge function: `supabase/functions/parse-complex-wod` (deploy from **rxbetter-core**).
 
 | Guard | Limit |
 |-------|--------|
-| Input | Workout text only, max 2,500 chars |
+| Input | Workout text only, max 2,500 chars **per block** |
 | Auth | Programmer JWT + library scope |
-| Rate | 30 LLM parses / coach / day (configurable `WOD_PARSE_DAILY_LIMIT`) |
-| Tokens | ~900–1200 max per request |
+| Rate | 30 LLM parses / coach / day (`WOD_PARSE_DAILY_LIMIT`) |
 | Save | Never calls LLM |
 
-**Secrets (Supabase → Edge Functions):** `OPENROUTER_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (auto-injected), optional `WOD_PARSE_DAILY_LIMIT`, `OPENROUTER_SITE_URL`.
+AI is **on by default**. Set `VITE_ENABLE_WOD_AI_PARSE=false` to hide AI buttons.
 
-**Model routing:** fast / standard / complex tiers → Gemini Flash, GPT-4o-mini, Claude Haiku (fallback chain).
-
-**CrossFit grounding:** few-shot examples in `supabase/functions/_shared/cf-parse-examples.json` + system prompt (not fine-tuning).
-
-Deploy:
+**Secrets:** `OPENROUTER_API_KEY`, optional `WOD_PARSE_DAILY_LIMIT`, `OPENROUTER_SITE_URL`.
 
 ```powershell
-cd rxbetter-core
-npx supabase functions deploy parse-complex-wod --no-verify-jwt
-# Prefer verify JWT: default when linked; pass user session Bearer token from client
+npx supabase functions deploy parse-complex-wod
 ```
-
-Client invokes with `supabase.functions.invoke('parse-complex-wod', { body: { gym_id, program_library_id, raw_text, ... } })`.
 
 ## Schema
 
-Table: `programming_intake_stage` (migration `20260521120000_programming_intake_stage.sql`)
+Table: `programming_intake_stage`
 
-- `raw_text`, `parsed_payload` (JSON), `parser_mode` (`regex` \| `llm` \| `manual`)
-- `token_count`, `latency_ms` — populated for LLM parses
-- `parsed_payload._meta` — optional `{ model, token_count, parser_tier }`
+- `raw_text`, `parsed_payload`, `parser_mode` (`regex` \| `llm` \| `manual`)
 - `status`: `staged` \| `committed` \| `rejected`
 
 ## Publish to Lovable
 
-After UI changes in **rxbetter-core**:
-
 ```powershell
 .\scripts\sync-to-lovable.ps1 -LovablePath "..\rxbetter-train-smarter-0dddcf23" -Push
 ```
-
-Edge functions are **not** copied to the Lovable mirror.

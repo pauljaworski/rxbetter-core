@@ -11,9 +11,8 @@ import { IntakeStageTable } from "./IntakeStageTable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WOD_AI_PARSE_ENABLED } from "@/lib/wod-parser/feature-flags";
-import { Sparkles, ChevronDown, Check, X } from "lucide-react";
+import { Sparkles, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
@@ -25,7 +24,6 @@ type Props = {
 
 export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: Props) {
   const { activeGymId, contactId } = useAuth();
-  const [open, setOpen] = useState(true);
   const { data: catalog, isLoading: catalogLoading } = useBenchmarkCatalog();
   const catalogEntries = useMemo(
     () => catalog.map((c) => ({ id: c.id, name: c.name, stimulus: c.stimulus })),
@@ -56,13 +54,13 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
     if (!result.draft) {
       toast.message(
         result.needsLlmFallback
-          ? "Complex WOD — edit the draft below or add line items in the manual editor."
-          : "Could not parse. Try a line like: Back Squat 5x3 @ 80%",
+          ? "Complex WOD — try Parse with AI, or edit the draft below."
+          : "Could not parse. Try: Back Squat 5x3 @ 80%",
       );
       return;
     }
-    if (result.needsLlmFallback) {
-      toast.message("Metcon detected — review the draft and add movements below or in the manual editor.");
+    if (result.needsLlmFallback && WOD_AI_PARSE_ENABLED) {
+      toast.message("Partial parse — Parse with AI will structure movements better.");
     }
   }
 
@@ -156,102 +154,92 @@ export function WodIntakePanel({ date, defaultLib, displayOrder, onCommitted }: 
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="glass-card overflow-hidden p-0">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 border-b border-border/60 px-4 py-3 text-left hover:bg-secondary/40"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-sm font-bold">Quick intake</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Paste plain text · verify chips · save to {format(date, "MMM d")}
-                </p>
-              </div>
-            </div>
-            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-4 p-4">
-          <Textarea
-            placeholder={'e.g. Back Squat 5x3 @ 80%\nOr: Deadlift 3 @ 225'}
-            value={parser.rawText}
-            onChange={(e) => parser.setRawText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                void handleParse();
-              }
-            }}
-            rows={3}
-            className="font-mono text-sm"
-            disabled={catalogLoading || !defaultLib}
-          />
-          <p className="text-[10px] text-muted-foreground">
-            Ctrl+Enter to parse. Sets×reps (e.g. 5x3 @ 80%) → reps per set in the score field.
+    <Card className="glass-card space-y-4 p-4">
+      <div className="flex items-start gap-2">
+        <Sparkles className="mt-0.5 h-4 w-4 text-primary" />
+        <div>
+          <p className="text-sm font-bold">Paste one workout</p>
+          <p className="text-[11px] text-muted-foreground">
+            One text block → one segment on {format(date, "EEE, MMM d")}. AI structures metcons and
+            messy strength blocks; review chips, then save.
           </p>
-          <div className="flex flex-wrap gap-2">
+        </div>
+      </div>
+
+      <Textarea
+        placeholder={
+          "Back Squat 5x3 @ 80%\n\nor\n\nAMRAP 12:\n10 thrusters 95/65\n10 pull-ups"
+        }
+        value={parser.rawText}
+        onChange={(e) => parser.setRawText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            if (WOD_AI_PARSE_ENABLED) void handleParseWithAi();
+            else void handleParse();
+          }
+        }}
+        rows={6}
+        className="font-mono text-sm"
+        disabled={catalogLoading || !defaultLib}
+      />
+      <p className="text-[10px] text-muted-foreground">
+        Ctrl+Enter to {WOD_AI_PARSE_ENABLED ? "Parse with AI" : "Parse"}. Strength:{" "}
+        <span className="font-mono">5x3 @ 80%</span> → one set per line item.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {WOD_AI_PARSE_ENABLED && (
+          <Button
+            size="sm"
+            onClick={() => void handleParseWithAi()}
+            disabled={catalogLoading || !defaultLib || !parser.rawText.trim() || parser.aiParsing}
+            className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            {parser.aiParsing ? "Parsing…" : "Parse with AI"}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void handleParse()}
+          disabled={catalogLoading || !defaultLib || parser.aiParsing}
+        >
+          Parse (fast)
+        </Button>
+        {parser.draft && (
+          <>
             <Button
               size="sm"
-              variant="secondary"
-              onClick={() => void handleParse()}
-              disabled={catalogLoading || !defaultLib || parser.aiParsing}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => void handleCommit()}
+              disabled={busy}
             >
-              Parse
+              <Check className="mr-1 h-3.5 w-3.5" /> Save to calendar
             </Button>
-            {WOD_AI_PARSE_ENABLED && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void handleParseWithAi()}
-                disabled={
-                  catalogLoading || !defaultLib || !parser.rawText.trim() || parser.aiParsing
-                }
-              >
-                <Sparkles className="mr-1 h-3.5 w-3.5" />
-                {parser.aiParsing ? "Parsing…" : "Parse with AI"}
-              </Button>
-            )}
-            {parser.draft && (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => void handleCommit()}
-                  disabled={busy}
-                >
-                  <Check className="mr-1 h-3.5 w-3.5" /> Save to calendar
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void handleReject()} disabled={busy}>
-                  <X className="mr-1 h-3.5 w-3.5" /> Discard
-                </Button>
-              </>
-            )}
-          </div>
-          {parser.aiError && (
-            <p className="text-xs text-destructive">{parser.aiError}</p>
-          )}
-          {parser.needsLlmFallback && !parser.draft?.lineItems.length && !parser.usedAi && (
-            <p className="text-xs text-amber-600">
-              Regex could not fully structure this WOD. Edit below or use the manual editor.
-            </p>
-          )}
-          {parser.draft && (
-            <WodIntakeDraft
-              draft={parser.draft}
-              catalog={catalog}
-              onChange={(d) => {
-                draftEditedRef.current = true;
-                parser.updateDraft(d);
-              }}
-            />
-          )}
-          <IntakeStageTable rows={stageRows} isLoading={stagesLoading} />
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+            <Button size="sm" variant="outline" onClick={() => void handleReject()} disabled={busy}>
+              <X className="mr-1 h-3.5 w-3.5" /> Discard
+            </Button>
+          </>
+        )}
+      </div>
+      {parser.aiError && <p className="text-xs text-destructive">{parser.aiError}</p>}
+      {parser.needsLlmFallback && !parser.draft?.lineItems.length && !parser.usedAi && (
+        <p className="text-xs text-amber-600">
+          Fast parse couldn&apos;t fully structure this. Use Parse with AI or edit below.
+        </p>
+      )}
+      {parser.draft && (
+        <WodIntakeDraft
+          draft={parser.draft}
+          catalog={catalog}
+          onChange={(d) => {
+            draftEditedRef.current = true;
+            parser.updateDraft(d);
+          }}
+        />
+      )}
+      <IntakeStageTable rows={stageRows} isLoading={stagesLoading} />
+    </Card>
   );
 }

@@ -15,7 +15,13 @@ export type IntakeCommitInput = {
   containsErrors: boolean;
   correctionApplied: boolean;
   displayOrder: number;
+  /** Override the hook's default date (bulk multi-day). */
+  wodDate?: Date | string;
 };
+
+function toDateKey(d: Date | string): string {
+  return typeof d === "string" ? d : format(d, "yyyy-MM-dd");
+}
 
 export function useIntakeCommit(
   activeGymId: string | null,
@@ -24,12 +30,15 @@ export function useIntakeCommit(
   defaultLib: string | null,
 ) {
   const [busy, setBusy] = useState(false);
-  const dateKey = format(date, "yyyy-MM-dd");
+  const defaultDateKey = format(date, "yyyy-MM-dd");
 
-  async function rejectIntake(input: Omit<IntakeCommitInput, "displayOrder"> & { displayOrder?: number }) {
+  async function rejectIntake(
+    input: Omit<IntakeCommitInput, "displayOrder"> & { displayOrder?: number },
+  ) {
     if (!activeGymId || !contactId || !defaultLib) {
       return { error: "Missing gym, contact, or library." };
     }
+    const dateKey = input.wodDate ? toDateKey(input.wodDate) : defaultDateKey;
     setBusy(true);
     const { error } = await supabase.from("programming_intake_stage").insert({
       gym_id: activeGymId,
@@ -57,6 +66,7 @@ export function useIntakeCommit(
       return { error: "Missing gym, contact, or library.", programmingId: null };
     }
 
+    const dateKey = input.wodDate ? toDateKey(input.wodDate) : defaultDateKey;
     const primaryLib = input.draft.segment.program_library_id ?? defaultLib;
     const wod: EditorWod = {
       ...input.draft.segment,
