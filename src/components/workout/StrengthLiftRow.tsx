@@ -463,7 +463,7 @@ export function StrengthLiftRow({
         benchmarkTypeId={item.benchmark_type_id}
         movementName={item.bench_name ?? movementName}
         repMaxCount={repCount}
-        repsPrescribed={item.reps_prescribed}
+        repsPrescribed={repCount}
         defaultDate={wod.wod_date}
         currentPrWeight={displayPrWeight}
         onSaved={() => {
