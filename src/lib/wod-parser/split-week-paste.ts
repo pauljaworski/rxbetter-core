@@ -1,4 +1,4 @@
-import { addDays, format, isValid, parse, startOfWeek } from "date-fns";
+import { addDays, format, isValid, startOfWeek } from "date-fns";
 
 export type DayPasteBlock = {
   /** yyyy-MM-dd */
@@ -47,12 +47,16 @@ const WEEKDAY_SHORT: Record<string, number> = {
 
 /** Header line that starts a new calendar day. */
 const DAY_HEADER =
-  /^(?:#{1,3}\s*)?(?:day\s*[:=\-]?\s*)?(?:(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b\.?)(?:\s*[,\-]?\s*(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?))?\s*:?\s*$/i;
+  /^(?:#{1,3}\s*)?(?:day\s*[:=\-]?\s*)?(?:(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b\.?)(?:\s*[,\-]?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{1,2}-\d{1,2}-\d{4}))?\s*:?\s*$/i;
 
 const ISO_DAY_HEADER = /^(?:#{1,3}\s*)?(\d{4}-\d{2}-\d{2})\s*:?\s*$/;
 
+/**
+ * US month/day headers. Hyphenated `12-9` / `21-15` are CrossFit ladders, not dates.
+ * Allow slashes (`9/15`, `9/15/2026`) or an unambiguous 4-digit year (`9-15-2026`).
+ */
 const MDY_DAY_HEADER =
-  /^(?:#{1,3}\s*)?(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\s*:?\s*$/;
+  /^(?:#{1,3}\s*)?(?:(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?|(\d{1,2})-(\d{1,2})-(\d{4}))\s*:?\s*$/;
 
 const SEGMENT_HEADER =
   /^(?:#{1,3}\s*)?(?:strength|weightlifting|metcon|wod|amrap|emom|for\s*time|skill|warmup|warm[\s\-]?up|hiit|accessory|conditioning)\b/i;
@@ -69,20 +73,31 @@ function resolveDateFromWeekday(weekStart: Date, dowMon0: number): Date {
   return addDays(weekStart, dowMon0);
 }
 
+/** Calendar date with no JS overflow (`new Date(2026, 20, 15)` is Sep 2027). */
+function dateFromYmd(year: number, month: number, day: number): Date | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return isValid(d) ? d : null;
+}
+
 function tryParseFlexibleDate(raw: string, weekStart: Date): Date | null {
   const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (iso) {
-    const d = parse(raw, "yyyy-MM-dd", weekStart);
-    return isValid(d) ? d : null;
+    return dateFromYmd(Number(iso[1]), Number(iso[2]), Number(iso[3]));
   }
-  const mdy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
-  if (mdy) {
-    const month = Number(mdy[1]);
-    const day = Number(mdy[2]);
-    let year = mdy[3] ? Number(mdy[3]) : weekStart.getFullYear();
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (slash) {
+    const month = Number(slash[1]);
+    const day = Number(slash[2]);
+    let year = slash[3] ? Number(slash[3]) : weekStart.getFullYear();
     if (year < 100) year += 2000;
-    const d = new Date(year, month - 1, day);
-    return isValid(d) ? d : null;
+    return dateFromYmd(year, month, day);
+  }
+  const hyphenYear = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (hyphenYear) {
+    return dateFromYmd(Number(hyphenYear[3]), Number(hyphenYear[1]), Number(hyphenYear[2]));
   }
   return null;
 }
