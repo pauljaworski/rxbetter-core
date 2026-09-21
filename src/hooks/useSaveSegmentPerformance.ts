@@ -4,6 +4,10 @@ import { formatSupabaseError } from "@/lib/format";
 import type { WorkoutScale } from "@/lib/format";
 import { tryMarkProgrammingSegmentComplete } from "@/lib/programming/segment-completion";
 import type { Json } from "@/types/database";
+import {
+  buildSegmentPerformanceUpdate,
+  type SegmentPerformanceWriteFields,
+} from "@/lib/programming/segment-performance-write";
 
 export type SaveSegmentPerformanceInput = {
   contactId: string;
@@ -12,6 +16,7 @@ export type SaveSegmentPerformanceInput = {
   existingId?: string;
   score: string;
   resultValue: number | null;
+  /** When omitted, existing score_meta is preserved on update. */
   scoreMeta?: Json | null;
   workoutScale: WorkoutScale | null;
   programmingSegment: string | null;
@@ -24,17 +29,15 @@ export function useSaveSegmentPerformance() {
     input: SaveSegmentPerformanceInput,
   ): Promise<{ error: string | null; id?: string }> {
     setSubmitting(true);
-    const payload = {
+    const fields: SegmentPerformanceWriteFields = {
       score: input.score,
-      result_value: input.resultValue,
-      score_meta: input.scoreMeta ?? {},
-      performance_date: input.wodDate,
-      workout_scale: input.workoutScale,
-      status: "completed" as const,
-      is_pr: false,
-      programming_line_item_id: null,
-      weight_lifted: null,
+      resultValue: input.resultValue,
+      wodDate: input.wodDate,
+      workoutScale: input.workoutScale,
     };
+    if ("scoreMeta" in input) {
+      fields.scoreMeta = input.scoreMeta;
+    }
 
     let id = input.existingId;
     let error: { message: string } | null = null;
@@ -42,18 +45,24 @@ export function useSaveSegmentPerformance() {
     if (input.existingId) {
       const res = await supabase
         .from("athlete_performance")
-        .update(payload)
+        .update(buildSegmentPerformanceUpdate(fields))
         .eq("id", input.existingId);
       error = res.error;
     } else {
       const res = await supabase
         .from("athlete_performance")
         .insert({
-          ...payload,
+          ...buildSegmentPerformanceUpdate({
+            ...fields,
+            // New segment scores start with empty meta unless caller provided one.
+            scoreMeta: "scoreMeta" in input ? input.scoreMeta : {},
+          }),
           contact_id: input.contactId,
           programming_id: input.programmingId,
+          programming_line_item_id: null,
           benchmark_definition_id: null,
           benchmark_type_id: null,
+          weight_lifted: null,
         })
         .select("id")
         .single();
