@@ -264,8 +264,15 @@ export function parseWodText(options: ParseWodOptions): ParseWodResult {
     };
   }
 
-  const parsed = parseStrengthLine(lines[0], options.catalog);
-  if (!parsed) {
+  const parsedBlocks: StrengthParseResult[] = [];
+  const leftover: string[] = [];
+  for (const line of lines) {
+    const parsed = parseStrengthLine(line, options.catalog);
+    if (parsed) parsedBlocks.push(parsed);
+    else leftover.push(line);
+  }
+
+  if (!parsedBlocks.length) {
     return {
       draft: null,
       needsLlmFallback: true,
@@ -273,30 +280,59 @@ export function parseWodText(options: ParseWodOptions): ParseWodResult {
     };
   }
 
-  const extraLines = lines.slice(1).join("\n");
-  const descriptionParts = [parsed.schemeSummary, extraLines].filter(Boolean);
+  const lineItems: EditorLineItem[] = [];
+  for (const block of parsedBlocks) {
+    for (const it of block.lineItems) {
+      lineItems.push({ ...it, sequence_number: lineItems.length + 1 });
+    }
+  }
+
+  const names: string[] = [];
+  for (const block of parsedBlocks) {
+    if (!names.includes(block.movement)) names.push(block.movement);
+  }
+  const descriptionParts = [
+    ...parsedBlocks.map((b) => b.schemeSummary).filter((s): s is string => Boolean(s)),
+    ...leftover,
+  ];
   const seg: EditorWod = {
     ...emptySegment(options.defaultLibraryId, options.displayOrder ?? 0),
-    name: parsed.movement,
+    name: names.length === 1 ? names[0] : names.join(" · "),
     description: descriptionParts.length ? descriptionParts.join("\n") : null,
     programming_segment: "weightlifting",
   };
 
-  const warnings = [...parsed.warnings];
-  if (parsed.lineItems.some((it) => !it.benchmark_type_id)) {
+  const warnings = parsedBlocks.flatMap((b) => b.warnings);
+  if (lineItems.some((it) => !it.benchmark_type_id)) {
     warnings.push("Pick a movement from the catalog before saving.");
   }
+  if (leftover.length) {
+    warnings.push("Some lines were not turned into movements.");
+  }
+
+  const unmatched = [
+    ...new Set(
+      lineItems
+        .filter((it) => !it.benchmark_type_id)
+        .map((it) => it.bench_name ?? "")
+        .filter(Boolean),
+    ),
+  ];
+
+  // A later line that still looks like sets×reps was not structured. Bulk intake
+  // skips AI when needsLlmFallback is false, so flag it and keep the lines we did parse.
+  const unparsedPrescription = leftover.some(
+    (line) => /\d+\s*x\s*\d+/i.test(line) || /\d+\s*@\s*\d+/.test(line),
+  );
 
   return {
     draft: {
       segment: seg,
-      lineItems: parsed.lineItems,
+      lineItems,
       warnings,
-      unmatchedTokens: parsed.lineItems.some((it) => !it.benchmark_type_id)
-        ? [parsed.movement]
-        : undefined,
+      unmatchedTokens: unmatched.length ? unmatched : undefined,
     },
-    needsLlmFallback: false,
+    needsLlmFallback: unparsedPrescription,
     latencyMs: Math.round(performance.now() - start),
   };
 }

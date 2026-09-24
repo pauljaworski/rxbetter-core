@@ -74,6 +74,38 @@ describe("parseWodText", () => {
     expect(r.draft?.lineItems).toHaveLength(5);
   });
 
+  it("keeps every strength line as movements, not only the first", () => {
+    const r = parseWodText({
+      rawText: "Back Squat 5x3 @ 80%\nBench Press 5x5 @ 70%\nRest 2:00 between lifts",
+      catalog: [
+        ...catalog,
+        { id: "bt-bench", name: "Bench Press", stimulus: "strength" },
+      ],
+      defaultLibraryId: "lib-1",
+    });
+    expect(r.needsLlmFallback).toBe(false);
+    expect(r.draft?.segment.name).toBe("Back Squat · Bench Press");
+    expect(r.draft?.lineItems).toHaveLength(10);
+    expect(r.draft?.lineItems.filter((it) => it.benchmark_type_id === "bt-squat")).toHaveLength(5);
+    expect(r.draft?.lineItems.filter((it) => it.benchmark_type_id === "bt-bench")).toHaveLength(5);
+    expect(r.draft?.lineItems[0].prescribed_percentage).toBeCloseTo(0.8);
+    expect(r.draft?.lineItems[5].reps_prescribed).toBe(5);
+    expect(r.draft?.lineItems[5].prescribed_percentage).toBeCloseTo(0.7);
+    expect(r.draft?.lineItems.map((it) => it.sequence_number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(r.draft?.segment.description).toContain("Rest 2:00 between lifts");
+    expect(r.draft?.warnings.some((w) => w.includes("not turned into movements"))).toBe(true);
+  });
+
+  it("asks for AI when a later sets line could not be structured", () => {
+    const r = parseWodText({
+      rawText: "Back Squat 5x3 @ 80%\nBench — 5x5 @ 70%",
+      catalog,
+      defaultLibraryId: "lib-1",
+    });
+    expect(r.draft?.lineItems).toHaveLength(5);
+    expect(r.needsLlmFallback).toBe(true);
+  });
+
   it("parses AMRAP metcon with movements deterministically", () => {
     const r = parseWodText({
       rawText: "AMRAP 12\n10 Thrusters\n15 Pull-ups",
