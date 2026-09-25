@@ -24,6 +24,27 @@ describe("parseMetconMovements", () => {
     const r = parseMetconMovements("AMRAP 12\n10 Thrusters\n15 Pull-ups", catalog);
     expect(r.metconFormat).toBe("amrap");
     expect(r.scheme?.kind).toBe("amrap");
+    expect(r.movements.map((m) => m.label)).toEqual(["Thrusters", "Pull-Up"]);
+  });
+
+  it("keeps movements under an AMRAP header that ends with a colon", () => {
+    const r = parseMetconMovements("AMRAP 12:\n10 Thrusters\n15 Pull-ups", catalog);
+    expect(r.scheme).toMatchObject({ kind: "amrap", timeCapMin: 12 });
+    expect(r.movements.map((m) => m.label)).toEqual(["Thrusters", "Pull-Up"]);
+    expect(r.movements.some((m) => m.label === ":")).toBe(false);
+  });
+
+  it("keeps movements on the header line and on following lines", () => {
+    const r = parseMetconMovements("AMRAP 12: 10 Thrusters\n15 Pull-ups", catalog);
+    expect(r.movements.map((m) => m.label)).toEqual(["Thrusters", "Pull-Up"]);
+  });
+
+  it("keeps movements under a colon RFT header", () => {
+    const r = parseMetconMovements("3 RFT:\n20 Wall Balls\n15 T2B", catalog);
+    expect(r.scheme).toMatchObject({ kind: "rft", rounds: 3 });
+    expect(r.movements.map((m) => m.bench_name)).toEqual(
+      expect.arrayContaining(["Wall Ball", "Toes to Bar"]),
+    );
   });
 
   it("parses rep ladder with between-rounds run", () => {
