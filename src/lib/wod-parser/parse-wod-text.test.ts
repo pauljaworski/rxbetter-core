@@ -85,6 +85,19 @@ describe("parseWodText", () => {
     expect(r.draft?.segment.metcon_format).toBe("amrap");
     expect(r.draft?.lineItems.length).toBeGreaterThanOrEqual(1);
     expect(r.draft?.segment.workout_scheme).toMatchObject({ kind: "amrap", timeCapMin: 12 });
+    expect(r.draft?.lineItems.map((it) => it.benchmark_type_id)).toEqual(["bt-thr", "bt-pu"]);
+  });
+
+  it("does not drop movements when the AMRAP header ends with a colon", () => {
+    const r = parseWodText({
+      rawText: "AMRAP 12:\n10 thrusters\n10 pull-ups",
+      catalog,
+      defaultLibraryId: "lib-1",
+    });
+    expect(r.needsLlmFallback).toBe(false);
+    expect(r.draft?.segment.workout_scheme).toMatchObject({ kind: "amrap", timeCapMin: 12 });
+    expect(r.draft?.lineItems.map((it) => it.benchmark_type_id)).toEqual(["bt-thr", "bt-pu"]);
+    expect(r.draft?.lineItems.every((it) => it.bench_name !== ":")).toBe(true);
   });
 
   it("parses 3 RFT header with scheme", () => {

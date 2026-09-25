@@ -96,6 +96,23 @@ function parseRepSequence(seqStr: string): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 
+/**
+ * Movements live on the header remainder, the following lines, or both.
+ * A trailing colon (`AMRAP 12:`) is not a movement — treating it as one
+ * drops every line under the header.
+ */
+function movementTextAfterHeader(remainder: string | undefined, rawText: string): string {
+  const rest = (remainder ?? "").replace(/^[\s:;,\-–—.|]+/, "").trim();
+  const following = rawText
+    .split(/\n/)
+    .slice(1)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+  if (rest && following) return `${rest}\n${following}`;
+  return rest || following;
+}
+
 export function parseMetconMovements(
   rawText: string,
   catalog: BenchmarkCatalogEntry[],
@@ -111,7 +128,9 @@ export function parseMetconMovements(
     const repSequence = parseRepSequence(m[1]);
     if (repSequence.length >= 2) {
       metconFormat = "for_time";
-      const { movementsPart, betweenPart } = splitLadderBlob(m[2]?.trim() ?? "");
+      const { movementsPart, betweenPart } = splitLadderBlob(
+        movementTextAfterHeader(m[2], rawText),
+      );
       movementBlob = movementsPart;
       scheme = {
         kind: "rep_ladder",
@@ -128,7 +147,7 @@ export function parseMetconMovements(
     if (m) {
       metconFormat = "for_time";
       scheme = { kind: "rft", rounds: Number(m[1]), scoreMetric: "time", workoutIntent: "for_time" };
-      movementBlob = m[2]?.trim() || rawText.split(/\n/).slice(1).join(",");
+      movementBlob = movementTextAfterHeader(m[2], rawText);
     }
   }
 
@@ -137,7 +156,7 @@ export function parseMetconMovements(
     if (m && /\bfor\s+time|rft\b/i.test(line)) {
       metconFormat = "for_time";
       scheme = { kind: "rft", rounds: Number(m[1]), scoreMetric: "time", workoutIntent: "for_time" };
-      movementBlob = m[2]?.trim() || "";
+      movementBlob = movementTextAfterHeader(m[2], rawText);
     }
   }
 
@@ -150,7 +169,7 @@ export function parseMetconMovements(
         timeCapMin: Number(m[1]),
         scoreMetric: "rounds_reps",
       };
-      movementBlob = m[2]?.trim() || rawText.split(/\n/).slice(1).join(",");
+      movementBlob = movementTextAfterHeader(m[2], rawText);
     }
   }
 
@@ -167,7 +186,7 @@ export function parseMetconMovements(
         rounds: Number(m[3]),
         scoreMetric: "sum_interval_times",
       };
-      movementBlob = m[4]?.trim() || rawText.split(/\n/).slice(1).join(",");
+      movementBlob = movementTextAfterHeader(m[4], rawText);
     }
   }
 
@@ -176,7 +195,7 @@ export function parseMetconMovements(
     if (m) {
       metconFormat = "for_time";
       scheme = { kind: "for_time", scoreMetric: "time", workoutIntent: "for_time" };
-      movementBlob = m[1]?.trim() || rawText.split(/\n/).slice(1).join(",");
+      movementBlob = movementTextAfterHeader(m[1], rawText);
     }
   }
 
